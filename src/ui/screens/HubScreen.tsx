@@ -210,10 +210,18 @@ export default function HubScreen({ setScreen, accent }: { setScreen: (s: Screen
       {/* BOTTOM-CENTER: primary actions */}
       <div style={{ position: "absolute", left: "50%", bottom: 34, transform: "translateX(-50%)", display: "flex", gap: 16, alignItems: "center" }}>
         <SecBtn icon="◷" label={t(S.btn.routeMap)} />
-        <div onClick={goSail} style={{ padding: "16px 46px", borderRadius: 6, background: primaryBg(accent), border: "1px solid rgba(255,236,196,.6)", color: C.ink, fontFamily: FONT_SERIF, fontSize: 21, fontWeight: 900, letterSpacing: ".1em", whiteSpace: "nowrap", cursor: "pointer", boxShadow: "0 8px 22px rgba(217,164,65,.35), inset 0 1px 0 rgba(255,255,255,.4)" }}>
+        <div onClick={() => { Sfx.click(); goSail(); }} style={{ padding: "16px 46px", borderRadius: 6, background: primaryBg(accent), border: "1px solid rgba(255,236,196,.6)", color: C.ink, fontFamily: FONT_SERIF, fontSize: 21, fontWeight: 900, letterSpacing: ".1em", whiteSpace: "nowrap", cursor: "pointer", boxShadow: "0 8px 22px rgba(217,164,65,.35), inset 0 1px 0 rgba(255,255,255,.4)" }}>
           {t(S.btn.setSail)}
         </div>
-        <SecBtn icon="⚓" label={t(S.btn.restPort)} />
+        <SecBtn
+          icon="⚓"
+          label={t(S.btn.restPort)}
+          onClick={() => {
+            Sfx.click();
+            dispatch({ type: "REST" });
+            say({ speaker: "narrator_girl", expr: "smile", line: { zh: "靠港休整一天，重新評估海象～", en: "Rested a day in port — sea state re-assessed." } });
+          }}
+        />
       </div>
 
       {/* 解說員少女：任務引導（點擊換表情/台詞） */}
@@ -230,9 +238,9 @@ export default function HubScreen({ setScreen, accent }: { setScreen: (s: Screen
   );
 }
 
-function SecBtn({ icon, label }: { icon: string; label: string }) {
+function SecBtn({ icon, label, onClick }: { icon: string; label: string; onClick?: () => void }) {
   return (
-    <div style={{ padding: "13px 22px", borderRadius: 5, background: "rgba(15,40,50,.82)", border: "1px solid rgba(214,167,84,.45)", color: C.cream, fontSize: 15, fontWeight: 700, cursor: "pointer", backdropFilter: "blur(3px)", display: "flex", alignItems: "center", gap: 8, whiteSpace: "nowrap" }}>
+    <div onClick={onClick} style={{ padding: "13px 22px", borderRadius: 5, background: "rgba(15,40,50,.82)", border: "1px solid rgba(214,167,84,.45)", color: C.cream, fontSize: 15, fontWeight: 700, cursor: "pointer", backdropFilter: "blur(3px)", display: "flex", alignItems: "center", gap: 8, whiteSpace: "nowrap" }}>
       <span style={{ color: C.gold, fontSize: 17 }}>{icon}</span> {label}
     </div>
   );

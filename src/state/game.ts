@@ -52,14 +52,26 @@ export type Action =
   | { type: "ACCEPT_QUEST" }
   | { type: "BUY"; partId: string; qty: number; cost: number }
   | { type: "FINISH_REPAIR"; quest: Quest } // 維修完成 → 結算（A3）
+  | { type: "FAIL_REPAIR" } // 天氣窗關閉、撤離（#17）
+  | { type: "REST" } // 靠港休整：進日 + 重新擲海象（#18）
   | { type: "NEXT_QUEST"; poolSize: number } // 下一筆工單（#4 輪替到新故障）
   | { type: "ASSIGN_QUEST"; quest: Quest } // 課程模式臨時指派（#6）
   | { type: "RESET" };
 
+// 擲海象：約 6 成可作業、3 成警戒、1 成停航
+function rollSea(): SeaState {
+  const r = Math.random();
+  return r < 0.6 ? "workable" : r < 0.9 ? "caution" : "closed";
+}
+
 export function reducer(s: GameData, a: Action): GameData {
   switch (a.type) {
     case "ACCEPT_QUEST":
-      return { ...s, questStage: "active", repairDone: false };
+      return { ...s, questStage: "active", repairDone: false, seaState: rollSea() };
+    case "FAIL_REPAIR":
+      return { ...s, availability: Math.max(0, s.availability - 4) };
+    case "REST":
+      return { ...s, day: s.day + 1, seaState: rollSea(), availability: Math.min(100, s.availability + 1) };
     case "BUY": {
       if (a.cost > s.budget) return s;
       const inv = { ...s.inventory, [a.partId]: (s.inventory[a.partId] ?? 0) + a.qty };
@@ -77,9 +89,9 @@ export function reducer(s: GameData, a: Action): GameData {
       };
     case "NEXT_QUEST":
       if (s.questStage !== "done") return s;
-      return { ...s, customQuest: null, questIndex: (s.questIndex + 1) % a.poolSize, questStage: "available", repairDone: false, day: s.day + 1 };
+      return { ...s, customQuest: null, questIndex: (s.questIndex + 1) % a.poolSize, questStage: "available", repairDone: false, day: s.day + 1, seaState: rollSea() };
     case "ASSIGN_QUEST":
-      return { ...s, customQuest: a.quest, questStage: "available", repairDone: false };
+      return { ...s, customQuest: a.quest, questStage: "available", repairDone: false, seaState: rollSea() };
     case "RESET":
       return { ...INITIAL };
     default:

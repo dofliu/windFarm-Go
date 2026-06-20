@@ -36,14 +36,29 @@ export default function RepairScreen({ setScreen }: { setScreen: (s: Screen) => 
   const [pick, setPick] = useState<number | null>(null);
   // 前兩步預設完成；步驟 3~5 可點擊完成
   const [steps, setSteps] = useState<boolean[]>(fault.sop.map((_, i) => i < 2));
+  // 作業窗（#17）：海象越差，可用時段越少
+  const windowMax = data.seaState === "closed" ? 6 : data.seaState === "caution" ? 8 : 10;
+  const [win, setWin] = useState(windowMax);
 
   const quizCorrect = pick === q.correct;
   const allSteps = steps.every(Boolean);
-  const ready = quizCorrect && allSteps && data.questStage === "active" && !data.repairDone;
+  const complete = quizCorrect && allSteps;
+  const failed = win <= 0 && !complete; // 窗內未完成 → 撤離
+  const ready = complete && data.questStage === "active" && !data.repairDone && !failed;
 
-  const toggleStep = (i: number) => {
-    if (i < 2) return; // 前兩步固定完成
-    setSteps((s) => s.map((v, idx) => (idx === i ? !v : v)));
+  const spend = (c: number) => setWin((w) => Math.max(0, w - c));
+
+  const completeStep = (i: number) => {
+    if (i < 2 || steps[i] || failed) return; // 前兩步固定、已完成、已撤離不可再動
+    setSteps((s) => s.map((v, idx) => (idx === i ? true : v)));
+    spend(2); // 每個 SOP 步驟耗 2 時段
+  };
+
+  const retreat = () => {
+    Sfx.error();
+    dispatch({ type: "FAIL_REPAIR" });
+    say({ speaker: "veteran_sailor", line: { zh: "海象變差、作業窗關了！先撤離，擇日再來。", en: "Weather's turned — window's shut. Retreat and try another day." } });
+    setScreen("hub");
   };
 
   const finish = () => {
@@ -101,12 +116,26 @@ export default function RepairScreen({ setScreen }: { setScreen: (s: Screen) => 
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
             <Avatar id="safety_officer" src={exprUrl("safety_officer", "neutral")} size={22} headShot />
             <span style={{ fontSize: 11, color: C.mist }}>{t(S.panel.workWindow)}</span>
+            <span style={{ marginLeft: "auto", fontSize: 11, color: C.mist }}>{t({ zh: "海象", en: "Sea" })}: {t(S.status[data.seaState])}</span>
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 7, marginTop: 6 }}>
-            <span style={{ width: 11, height: 11, borderRadius: "50%", background: C.greenBright, boxShadow: `0 0 8px ${C.greenBright}` }} />
-            <span style={{ fontSize: 17, fontWeight: 900, color: C.greenLight, fontFamily: FONT_SERIF }}>{t({ zh: "可作業", en: "Workable" })}</span>
-          </div>
-          <div style={{ fontSize: 11, color: C.mist, marginTop: 6 }}>{t({ zh: "浪高 1.2m · 風速 8m/s", en: "1.2m · 8m/s" })}</div>
+          {(() => {
+            const pct = (win / windowMax) * 100;
+            const col = failed ? C.red : pct > 40 ? C.greenBright : C.amber;
+            return (
+              <>
+                <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginTop: 6 }}>
+                  <span style={{ fontSize: 22, fontWeight: 900, color: col, fontFamily: FONT_SERIF }}>{win}</span>
+                  <span style={{ fontSize: 12, color: C.mist }}>/ {windowMax} {t({ zh: "時段", en: "slots" })}</span>
+                </div>
+                <div style={{ marginTop: 6, height: 6, borderRadius: 4, background: "rgba(255,255,255,.1)", overflow: "hidden" }}>
+                  <div style={{ width: `${pct}%`, height: "100%", background: col, transition: "width .2s" }} />
+                </div>
+                <div style={{ fontSize: 11, color: failed ? C.red : C.mist, marginTop: 6 }}>
+                  {failed ? t({ zh: "⚠ 作業窗已關閉", en: "⚠ Window closed" }) : t({ zh: "答錯 / 每步驟會消耗作業窗", en: "Wrong answers & each step cost time" })}
+                </div>
+              </>
+            );
+          })()}
         </div>
       </div>
 
@@ -153,7 +182,9 @@ export default function RepairScreen({ setScreen }: { setScreen: (s: Screen) => 
                 <div
                   key={i}
                   onClick={() => {
-                    if (pick === null) (i === q.correct ? Sfx.success : Sfx.error)();
+                    if (pick !== null || failed) return;
+                    (i === q.correct ? Sfx.success : Sfx.error)();
+                    spend(i === q.correct ? 1 : 3); // 答錯多耗作業窗
                     setPick(i);
                   }}
                   style={s}
@@ -182,7 +213,7 @@ export default function RepairScreen({ setScreen }: { setScreen: (s: Screen) => 
                 ? { background: C.green, color: "#0f2630", border: "none" as const, content: "✓" }
                 : { background: "rgba(255,255,255,.08)", color: C.mist, border: "1px solid rgba(255,255,255,.2)", content: String(i + 1) };
               return (
-                <div key={i} onClick={() => toggleStep(i)} style={{ display: "flex", alignItems: "center", gap: 10, padding: "6px 0", cursor: fixed ? "default" : "pointer" }}>
+                <div key={i} onClick={() => completeStep(i)} style={{ display: "flex", alignItems: "center", gap: 10, padding: "6px 0", cursor: fixed || done ? "default" : "pointer" }}>
                   <span style={{ width: 18, height: 18, flex: "none", borderRadius: 4, background: box.background, color: box.color, border: box.border, display: "flex", alignItems: "center", justifyContent: "center", fontSize: done ? 12 : 11, fontWeight: 900 }}>{box.content}</span>
                   <span style={{ fontSize: 13, color: done ? C.mist3 : C.cream, fontWeight: done ? 400 : 700, textDecoration: done ? "line-through" : "none" }}>{t(step)}</span>
                 </div>
@@ -193,6 +224,13 @@ export default function RepairScreen({ setScreen }: { setScreen: (s: Screen) => 
           <div style={{ padding: "0 14px 14px" }}>
             {data.questStage !== "active" ? (
               <div style={{ textAlign: "center", fontSize: 12, color: C.mist }}>{t({ zh: "（請先在母港接單）", en: "(Accept an order in port first)" })}</div>
+            ) : failed ? (
+              <button
+                onClick={retreat}
+                style={{ width: "100%", padding: "11px 0", borderRadius: 6, border: "1px solid rgba(220,100,80,.6)", background: "rgba(220,100,80,.18)", color: C.redText, fontFamily: FONT_SERIF, fontWeight: 900, fontSize: 15, letterSpacing: ".06em", cursor: "pointer" }}
+              >
+                🌧️ {t({ zh: "天氣窗關閉 · 撤離", en: "Window closed · Retreat" })}
+              </button>
             ) : (
               <button
                 disabled={!ready}

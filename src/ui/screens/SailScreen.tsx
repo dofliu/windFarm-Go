@@ -6,6 +6,8 @@ import { SailTurbines } from "../Turbine";
 import { AdvisorPopup, Avatar } from "../Portrait";
 import { exprUrl } from "../characters";
 import { S } from "../../i18n/strings";
+import { useGame } from "../../state/GameContext";
+import { Sfx } from "../../audio/sfx";
 import type { Screen } from "../../App";
 
 function CtvShip({ left, top, scale, opacity, wakeH, hullW, hullH, cabinW, cabinH }: { left: string; top: number; scale: number; opacity: number; wakeH: number; hullW: number; hullH: number; cabinW: number; cabinH: number }) {
@@ -49,6 +51,8 @@ const cmdBtn: CSSProperties = {
 
 export default function SailScreen({ setScreen, accent }: { setScreen: (s: Screen) => void; accent: string }) {
   useLang();
+  const { data } = useGame();
+  const closed = data.seaState === "closed";
   return (
     <div style={{ position: "absolute", inset: 0, zIndex: 2 }}>
       {/* open sea bg */}
@@ -122,8 +126,15 @@ export default function SailScreen({ setScreen, accent }: { setScreen: (s: Scree
         <div style={cmdBtn}>{t({ zh: "甲板", en: "Deck" })}</div>
         <div style={cmdBtn}>{t({ zh: "海象", en: "Sea" })}</div>
         <div style={cmdBtn}>{t({ zh: "派工", en: "Assign" })}</div>
-        <div onClick={() => setScreen("repair")} style={{ ...cmdBtn, padding: "11px 28px", background: "linear-gradient(180deg, #d9a441 0%, #b07d2a 100%)", border: "1px solid rgba(255,236,196,.6)", color: C.ink, fontWeight: 900, boxShadow: "0 6px 16px rgba(217,164,65,.32)" }}>
-          {t(S.btn.dockClimb)}
+        <div
+          onClick={() => {
+            if (closed) { Sfx.error(); return; }
+            Sfx.click();
+            setScreen("repair");
+          }}
+          style={{ ...cmdBtn, padding: "11px 28px", background: closed ? "rgba(255,255,255,.08)" : "linear-gradient(180deg, #d9a441 0%, #b07d2a 100%)", border: closed ? "1px solid rgba(220,100,80,.5)" : "1px solid rgba(255,236,196,.6)", color: closed ? C.mist : C.ink, fontWeight: 900, boxShadow: closed ? "none" : "0 6px 16px rgba(217,164,65,.32)", cursor: closed ? "not-allowed" : "pointer" }}
+        >
+          {closed ? t({ zh: "海象停航", en: "Sea Closed" }) : t(S.btn.dockClimb)}
         </div>
       </div>
 
