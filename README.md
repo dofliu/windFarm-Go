@@ -6,6 +6,8 @@ An educational, *Uncharted-Waters*-style game that reframes offshore **wind-farm
 
 > Built as a teaching tool by **DOF Lab, National Chin-Yi University of Technology (NCUT)**.
 
+▶ **[Play online](https://dofliu.github.io/windFarm-Go/)**
+
 ![Home Port](docs/design_handoff_offshore_om_game/screenshots/01-母港大廳.png)
 
 ## Screens

@@ -6,6 +6,8 @@
 
 > 由 **國立勤益科技大學（NCUT）DOF Lab** 製作的教學工具。
 
+▶ **[線上試玩](https://dofliu.github.io/windFarm-Go/)**
+
 ![母港大廳](docs/design_handoff_offshore_om_game/screenshots/01-母港大廳.png)
 
 ## 畫面
