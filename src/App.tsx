@@ -6,7 +6,9 @@ import HubScreen from "./ui/screens/HubScreen";
 import MarketScreen from "./ui/screens/MarketScreen";
 import SailScreen from "./ui/screens/SailScreen";
 import RepairScreen from "./ui/screens/RepairScreen";
+import DialogueLayer from "./ui/DialogueLayer";
 import { GameProvider } from "./state/GameContext";
+import { DialogueProvider } from "./state/DialogueContext";
 
 export type Screen = "hub" | "market" | "sail" | "repair";
 
@@ -28,6 +30,7 @@ export default function App() {
 
   return (
     <GameProvider>
+      <DialogueProvider>
       <div
         style={{
           position: "fixed",
@@ -61,8 +64,10 @@ export default function App() {
           {screen === "repair" && <RepairScreen setScreen={setScreen} />}
 
           <TopBar screen={screen} setScreen={setScreen} accent={accent} />
+          <DialogueLayer />
         </div>
       </div>
+      </DialogueProvider>
     </GameProvider>
   );
 }

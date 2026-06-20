@@ -4,6 +4,7 @@ import { t } from "../../game/systems/i18n";
 import { useLang } from "../useLang";
 import { AdvisorPopup, Avatar } from "../Portrait";
 import { useGame } from "../../state/GameContext";
+import { useDialogue } from "../../state/DialogueContext";
 import { questAt, FAULTS } from "../faults";
 import type { Screen } from "../../App";
 
@@ -24,6 +25,7 @@ function Hotspot({ left, top, label, color, alarm }: { left: number; top: number
 export default function RepairScreen({ setScreen }: { setScreen: (s: Screen) => void }) {
   useLang();
   const { data, dispatch } = useGame();
+  const { say } = useDialogue();
   const quest = questAt(data.questIndex);
   const fault = FAULTS[quest.targetFault];
   const q = fault.quiz;
@@ -43,6 +45,10 @@ export default function RepairScreen({ setScreen }: { setScreen: (s: Screen) => 
 
   const finish = () => {
     dispatch({ type: "FINISH_REPAIR", quest });
+    say([
+      { speaker: "repair_eng", line: { zh: `${quest.unit} 修復完成、已回報 SCADA，幹得漂亮！`, en: `${quest.unit} repaired and reported to SCADA — nicely done!` } },
+      { speaker: "narrator_girl", expr: "wink", line: { zh: "工單完成！預算與妥善率都進帳囉，要不要再接下一筆？", en: "Order complete! Budget and availability are up — fancy another?" } },
+    ]);
     setScreen("hub");
   };
 

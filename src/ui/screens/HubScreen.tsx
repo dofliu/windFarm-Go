@@ -5,6 +5,7 @@ import { useLang } from "../useLang";
 import { AdvisorPopup, Avatar } from "../Portrait";
 import { exprUrl, NARRATOR_EXPR } from "../characters";
 import { useGame } from "../../state/GameContext";
+import { useDialogue } from "../../state/DialogueContext";
 import { QUEST_POOL, questAt } from "../faults";
 import type { I18n } from "../../game/systems/types";
 import type { QuestStage } from "../../state/game";
@@ -97,6 +98,7 @@ function TickerRow({ stars, name, price, farm, pct, onClick }: { stars: string; 
 export default function HubScreen({ setScreen, accent }: { setScreen: (s: Screen) => void; accent: string }) {
   useLang();
   const { data, dispatch } = useGame();
+  const { say } = useDialogue();
   const stage = data.questStage;
   const quest = questAt(data.questIndex);
   const goMarket = () => setScreen("market");
@@ -177,7 +179,10 @@ export default function HubScreen({ setScreen, accent }: { setScreen: (s: Screen
             <span style={{ padding: "4px 10px", borderRadius: 3, background: "rgba(127,206,142,.12)", border: "1px solid rgba(127,206,142,.35)", color: C.greenLight, fontSize: 12 }}>{t({ zh: "資歷 +120", en: "XP +120" })}</span>
             {stage === "available" && (
               <button
-                onClick={() => dispatch({ type: "ACCEPT_QUEST" })}
+                onClick={() => {
+                  dispatch({ type: "ACCEPT_QUEST" });
+                  say({ speaker: "narrator_girl", expr: "happy", line: { zh: `工單已接下！駕乘風號前往 ${quest.unit}，從上方「出海航行」出發吧！`, en: `Order accepted! Sail the Windrider to ${quest.unit} — use "Set Sail" above!` } });
+                }}
                 style={{ marginLeft: "auto", padding: "5px 16px", borderRadius: 4, border: "1px solid rgba(255,236,196,.6)", background: primaryBg(accent), color: C.ink, fontFamily: FONT_SERIF, fontWeight: 900, fontSize: 13, cursor: "pointer" }}
               >
                 {t({ zh: "接單", en: "Accept" })}
@@ -185,7 +190,10 @@ export default function HubScreen({ setScreen, accent }: { setScreen: (s: Screen
             )}
             {stage === "done" && (
               <button
-                onClick={() => dispatch({ type: "NEXT_QUEST", poolSize: QUEST_POOL.length })}
+                onClick={() => {
+                  dispatch({ type: "NEXT_QUEST", poolSize: QUEST_POOL.length });
+                  say({ speaker: "narrator_girl", expr: "smile", line: { zh: "新的一天，新的工單～看看這次是哪座機組出狀況！", en: "New day, new order — let's see which unit needs us!" } });
+                }}
                 style={{ marginLeft: "auto", padding: "5px 14px", borderRadius: 4, border: "1px solid rgba(214,167,84,.5)", background: "rgba(15,40,50,.82)", color: C.cream, fontFamily: FONT_SERIF, fontWeight: 700, fontSize: 13, cursor: "pointer" }}
               >
                 ✅ {t({ zh: "下一筆工單", en: "Next Order" })}
