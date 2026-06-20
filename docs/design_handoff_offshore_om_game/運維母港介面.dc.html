@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@500;700;900&family=Noto+Sans+TC:wght@400;500;700;900&family=Cinzel:wght@600;700&display=swap" rel="stylesheet">
+<style>
+  *{ box-sizing:border-box; margin:0; padding:0; }
+  html,body{ height:100%; background:#0a1318; }
+  @keyframes spin{ to{ transform:rotate(360deg); } }
+  @keyframes bob{ 0%,100%{ transform:translateY(0); } 50%{ transform:translateY(-5px); } }
+  @keyframes shimmer{ 0%{ opacity:.35; } 50%{ opacity:.7; } 100%{ opacity:.35; } }
+</style>
+</helmet>
+
+<div style="position:fixed; inset:0; display:flex; align-items:center; justify-content:center; background:radial-gradient(circle at 50% 40%, #14242d, #070d11 80%); overflow:hidden; font-family:'Noto Sans TC',sans-serif;">
+  <div style="position:relative; width:1600px; height:900px; flex:none; transform:scale({{scale}}); transform-origin:center center; box-shadow:0 40px 110px rgba(0,0,0,.7); border-radius:6px; overflow:hidden;">
+
+    <!-- ============ SHARED BACKGROUND SCENE ============ -->
+    <div style="position:absolute; inset:0; z-index:0;">
+      <!-- sky -->
+      <div style="position:absolute; left:0; right:0; top:0; height:58%; background:linear-gradient(180deg,#9dc0d6 0%, #bcd2da 28%, #ddd5c1 50%, #f0e2c4 60%);"></div>
+      <!-- sun glow -->
+      <div style="position:absolute; left:0; right:0; top:0; height:62%; background:radial-gradient(circle at 50% 88%, rgba(255,243,212,.95), rgba(255,243,212,0) 42%);"></div>
+      <!-- distant city / cliff haze -->
+      <div style="position:absolute; left:0; right:0; top:44%; height:12%; background:linear-gradient(180deg, rgba(150,170,180,.28), rgba(150,170,180,0)); filter:blur(2px);"></div>
+      <!-- sea -->
+      <div style="position:absolute; left:0; right:0; bottom:0; height:44%; background:linear-gradient(180deg,#5e97a2 0%, #347683 32%, #1d5160 72%, #143f4c 100%);"></div>
+      <!-- sea sun reflection streak -->
+      <div style="position:absolute; left:42%; right:42%; top:54%; bottom:0; background:linear-gradient(180deg, rgba(255,236,196,.5), rgba(255,236,196,0) 60%); filter:blur(8px);"></div>
+      <!-- horizon line -->
+      <div style="position:absolute; left:0; right:0; top:55.7%; height:1px; background:rgba(255,255,255,.35);"></div>
+
+      <!-- wind turbines on horizon -->
+      <div style="display:{{turbineDisplay}};">
+        <div style="position:absolute; left:16%; bottom:45.5%; width:46px; height:78px; opacity:.32; transform:scale(.75);">
+          <div style="position:absolute; bottom:0; left:22px; width:3px; height:56px; background:linear-gradient(180deg,#eef4f5,#b6c4c9);"></div>
+          <div style="position:absolute; top:12px; left:24px; width:0; height:0; animation:spin 13s linear infinite;">
+            <div style="position:absolute; left:-1.5px; top:0; width:3px; height:30px; background:linear-gradient(180deg,#f1f6f7,#c2cfd3); border-radius:2px; transform-origin:1.5px 0; transform:rotate(10deg);"></div>
+            <div style="position:absolute; left:-1.5px; top:0; width:3px; height:30px; background:linear-gradient(180deg,#f1f6f7,#c2cfd3); border-radius:2px; transform-origin:1.5px 0; transform:rotate(130deg);"></div>
+            <div style="position:absolute; left:-1.5px; top:0; width:3px; height:30px; background:linear-gradient(180deg,#f1f6f7,#c2cfd3); border-radius:2px; transform-origin:1.5px 0; transform:rotate(250deg);"></div>
+          </div>
+          <div style="position:absolute; top:9px; left:21px; width:6px; height:6px; border-radius:50%; background:#e6edef;"></div>
+        </div>
+        <div style="position:absolute; left:33%; bottom:46%; width:46px; height:78px; opacity:.45; transform:scale(.95);">
+          <div style="position:absolute; bottom:0; left:22px; width:3px; height:56px; background:linear-gradient(180deg,#eef4f5,#b6c4c9);"></div>
+          <div style="position:absolute; top:12px; left:24px; width:0; height:0; animation:spin 11s linear infinite;">
+            <div style="position:absolute; left:-1.5px; top:0; width:3px; height:30px; background:linear-gradient(180deg,#f1f6f7,#c2cfd3); border-radius:2px; transform-origin:1.5px 0; transform:rotate(40deg);"></div>
+            <div style="position:absolute; left:-1.5px; top:0; width:3px; height:30px; background:linear-gradient(180deg,#f1f6f7,#c2cfd3); border-radius:2px; transform-origin:1.5px 0; transform:rotate(160deg);"></div>
+            <div style="position:absolute; left:-1.5px; top:0; width:3px; height:30px; background:linear-gradient(180deg,#f1f6f7,#c2cfd3); border-radius:2px; transform-origin:1.5px 0; transform:rotate(280deg);"></div>
+          </div>
+          <div style="position:absolute; top:9px; left:21px; width:6px; height:6px; border-radius:50%; background:#e6edef;"></div>
+        </div>
+        <div style="position:absolute; left:51%; bottom:45.2%; width:46px; height:78px; opacity:.5; transform:scale(1.1);">
+          <div style="position:absolute; bottom:0; left:22px; width:3px; height:56px; background:linear-gradient(180deg,#eef4f5,#b6c4c9);"></div>
+          <div style="position:absolute; top:12px; left:24px; width:0; height:0; animation:spin 9s linear infinite;">
+            <div style="position:absolute; left:-1.5px; top:0; width:3px; height:30px; background:linear-gradient(180deg,#f1f6f7,#c2cfd3); border-radius:2px; transform-origin:1.5px 0; transform:rotate(0deg);"></div>
+            <div style="position:absolute; left:-1.5px; top:0; width:3px; height:30px; background:linear-gradient(180deg,#f1f6f7,#c2cfd3); border-radius:2px; transform-origin:1.5px 0; transform:rotate(120deg);"></div>
+            <div style="position:absolute; left:-1.5px; top:0; width:3px; height:30px; background:linear-gradient(180deg,#f1f6f7,#c2cfd3); border-radius:2px; transform-origin:1.5px 0; transform:rotate(240deg);"></div>
+          </div>
+          <div style="position:absolute; top:9px; left:21px; width:6px; height:6px; border-radius:50%; background:#e6edef;"></div>
+        </div>
+        <div style="position:absolute; left:67%; bottom:46.3%; width:46px; height:78px; opacity:.4; transform:scale(.85);">
+          <div style="position:absolute; bottom:0; left:22px; width:3px; height:56px; background:linear-gradient(180deg,#eef4f5,#b6c4c9);"></div>
+          <div style="position:absolute; top:12px; left:24px; width:0; height:0; animation:spin 12s linear infinite;">
+            <div style="position:absolute; left:-1.5px; top:0; width:3px; height:30px; background:linear-gradient(180deg,#f1f6f7,#c2cfd3); border-radius:2px; transform-origin:1.5px 0; transform:rotate(20deg);"></div>
+            <div style="position:absolute; left:-1.5px; top:0; width:3px; height:30px; background:linear-gradient(180deg,#f1f6f7,#c2cfd3); border-radius:2px; transform-origin:1.5px 0; transform:rotate(140deg);"></div>
+            <div style="position:absolute; left:-1.5px; top:0; width:3px; height:30px; background:linear-gradient(180deg,#f1f6f7,#c2cfd3); border-radius:2px; transform-origin:1.5px 0; transform:rotate(260deg);"></div>
+          </div>
+          <div style="position:absolute; top:9px; left:21px; width:6px; height:6px; border-radius:50%; background:#e6edef;"></div>
+        </div>
+        <div style="position:absolute; left:80%; bottom:45.6%; width:46px; height:78px; opacity:.3; transform:scale(.7);">
+          <div style="position:absolute; bottom:0; left:22px; width:3px; height:56px; background:linear-gradient(180deg,#eef4f5,#b6c4c9);"></div>
+          <div style="position:absolute; top:12px; left:24px; width:0; height:0; animation:spin 14s linear infinite;">
+            <div style="position:absolute; left:-1.5px; top:0; width:3px; height:30px; background:linear-gradient(180deg,#f1f6f7,#c2cfd3); border-radius:2px; transform-origin:1.5px 0; transform:rotate(60deg);"></div>
+            <div style="position:absolute; left:-1.5px; top:0; width:3px; height:30px; background:linear-gradient(180deg,#f1f6f7,#c2cfd3); border-radius:2px; transform-origin:1.5px 0; transform:rotate(180deg);"></div>
+            <div style="position:absolute; left:-1.5px; top:0; width:3px; height:30px; background:linear-gradient(180deg,#f1f6f7,#c2cfd3); border-radius:2px; transform-origin:1.5px 0; transform:rotate(300deg);"></div>
+          </div>
+          <div style="position:absolute; top:9px; left:21px; width:6px; height:6px; border-radius:50%; background:#e6edef;"></div>
+        </div>
+      </div>
+
+      <!-- foreground pier plank -->
+      <div style="position:absolute; left:0; right:0; bottom:0; height:64px; background:linear-gradient(180deg,#6b4f33,#4a3621); border-top:2px solid rgba(0,0,0,.25);"></div>
+      <div style="position:absolute; left:0; right:0; bottom:0; height:64px; background:repeating-linear-gradient(90deg, rgba(0,0,0,0) 0 78px, rgba(0,0,0,.22) 78px 80px); opacity:.7;"></div>
+      <!-- vignette -->
+      <div style="position:absolute; inset:0; background:radial-gradient(circle at 50% 42%, rgba(6,18,24,0) 52%, rgba(6,18,24,.5) 100%); pointer-events:none;"></div>
+    </div>
+
+    <!-- ============ HUB SCREEN ============ -->
+    <div style="display:{{hubDisplay}}; position:absolute; inset:0; z-index:2;">
+
+      <!-- location markers -->
+      <div onClick="{{ goMarket }}" style="position:absolute; left:560px; top:300px; width:120px; text-align:center; cursor:pointer; animation:bob 4s ease-in-out infinite;">
+        <div style="width:62px; height:62px; margin:0 auto; border-radius:50%; background:radial-gradient(circle at 50% 35%, #1d4d5d, #0f3140); border:2px solid #d9a441; box-shadow:0 6px 16px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.15); display:flex; align-items:center; justify-content:center; font-family:'Noto Serif TC',serif; font-size:28px; font-weight:900; color:#f1d99a;">備</div>
+        <div style="display:inline-block; margin-top:7px; padding:3px 12px; background:rgba(12,30,38,.9); border:1px solid rgba(214,167,84,.5); border-radius:3px; color:#f4ead2; font-size:14px; font-weight:700; letter-spacing:.04em; white-space:nowrap;">備品交易所</div>
+      </div>
+
+      <div style="position:absolute; left:760px; top:230px; width:120px; text-align:center; cursor:pointer; animation:bob 4.6s ease-in-out infinite;">
+        <div style="width:62px; height:62px; margin:0 auto; border-radius:50%; background:radial-gradient(circle at 50% 35%, #1d4d5d, #0f3140); border:2px solid #d9a441; box-shadow:0 6px 16px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.15); display:flex; align-items:center; justify-content:center; font-family:'Noto Serif TC',serif; font-size:28px; font-weight:900; color:#f1d99a;">工</div>
+        <div style="display:inline-block; margin-top:7px; padding:3px 12px; background:rgba(12,30,38,.9); border:1px solid rgba(214,167,84,.5); border-radius:3px; color:#f4ead2; font-size:14px; font-weight:700; letter-spacing:.04em; white-space:nowrap;">機具工坊</div>
+      </div>
+
+      <div style="position:absolute; left:940px; top:296px; width:120px; text-align:center; cursor:pointer; animation:bob 5.2s ease-in-out infinite;">
+        <div style="width:62px; height:62px; margin:0 auto; border-radius:50%; background:radial-gradient(circle at 50% 35%, #1d4d5d, #0f3140); border:2px solid #d9a441; box-shadow:0 6px 16px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.15); display:flex; align-items:center; justify-content:center; font-family:'Noto Serif TC',serif; font-size:28px; font-weight:900; color:#f1d99a;">調</div>
+        <div style="display:inline-block; margin-top:7px; padding:3px 12px; background:rgba(12,30,38,.9); border:1px solid rgba(214,167,84,.5); border-radius:3px; color:#f4ead2; font-size:14px; font-weight:700; letter-spacing:.04em; white-space:nowrap;">調度中心</div>
+      </div>
+
+      <div style="position:absolute; left:650px; top:430px; width:120px; text-align:center; cursor:pointer; animation:bob 4.2s ease-in-out infinite;">
+        <div style="width:62px; height:62px; margin:0 auto; border-radius:50%; background:radial-gradient(circle at 50% 35%, #1d4d5d, #0f3140); border:2px solid #d9a441; box-shadow:0 6px 16px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.15); display:flex; align-items:center; justify-content:center; font-family:'Noto Serif TC',serif; font-size:28px; font-weight:900; color:#f1d99a;">師</div>
+        <div style="display:inline-block; margin-top:7px; padding:3px 12px; background:rgba(12,30,38,.9); border:1px solid rgba(214,167,84,.5); border-radius:3px; color:#f4ead2; font-size:14px; font-weight:700; letter-spacing:.04em; white-space:nowrap;">技師公會</div>
+      </div>
+
+      <div style="position:absolute; left:880px; top:452px; width:120px; text-align:center; cursor:pointer; animation:bob 4.8s ease-in-out infinite;">
+        <div style="width:62px; height:62px; margin:0 auto; border-radius:50%; background:radial-gradient(circle at 50% 35%, #1d4d5d, #0f3140); border:2px solid #d9a441; box-shadow:0 6px 16px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.15); display:flex; align-items:center; justify-content:center; font-family:'Noto Serif TC',serif; font-size:28px; font-weight:900; color:#f1d99a;">船</div>
+        <div style="display:inline-block; margin-top:7px; padding:3px 12px; background:rgba(12,30,38,.9); border:1px solid rgba(214,167,84,.5); border-radius:3px; color:#f4ead2; font-size:14px; font-weight:700; letter-spacing:.04em; white-space:nowrap;">CTV 整備廠</div>
+      </div>
+
+      <!-- LEFT: market ticker panel -->
+      <div style="position:absolute; left:28px; top:92px; width:312px; background:linear-gradient(180deg, rgba(20,50,63,.93), rgba(13,36,46,.95)); border:1px solid rgba(214,167,84,.45); border-radius:5px; box-shadow:0 12px 32px rgba(0,0,0,.4), inset 0 1px 0 rgba(255,255,255,.06); overflow:hidden;">
+        <div style="display:flex; align-items:center; justify-content:space-between; padding:9px 14px; background:linear-gradient(180deg, rgba(217,164,65,.22), rgba(217,164,65,.05)); border-bottom:1px solid rgba(214,167,84,.35);">
+          <span style="font-family:'Noto Serif TC',serif; font-weight:700; font-size:16px; color:#f4ead2; letter-spacing:.06em;">風場行情</span>
+          <span style="font-family:'Noto Sans TC'; font-size:13px; color:#9fc2cc; font-variant-numeric:tabular-nums;">00:30:23</span>
+        </div>
+        <div style="padding:10px 12px;">
+          <div style="font-size:12px; color:#d9a441; font-weight:700; letter-spacing:.1em; margin-bottom:7px;">熱門備品</div>
+          <div onClick="{{ goMarket }}" style="display:flex; align-items:center; gap:10px; padding:8px; border-radius:4px; background:rgba(255,255,255,.04); margin-bottom:7px; cursor:pointer;">
+            <div style="width:42px; height:42px; flex:none; border-radius:4px; background:repeating-linear-gradient(45deg,#2a5562 0 6px,#244c58 6px 12px); border:1px solid rgba(214,167,84,.3);"></div>
+            <div style="flex:1; min-width:0;">
+              <div style="color:#e2b24a; font-size:11px; line-height:1;">★★★★</div>
+              <div style="color:#f4ead2; font-size:14px; font-weight:700; margin:2px 0;">變槳軸承</div>
+              <div style="color:#8fb3bd; font-size:11px;">◎ 130,800 · 西島風場</div>
+            </div>
+            <div style="text-align:right; flex:none;"><span style="color:#7fce8e; font-size:14px; font-weight:900;">↑300%</span></div>
+          </div>
+          <div onClick="{{ goMarket }}" style="display:flex; align-items:center; gap:10px; padding:8px; border-radius:4px; background:rgba(255,255,255,.04); margin-bottom:12px; cursor:pointer;">
+            <div style="width:42px; height:42px; flex:none; border-radius:4px; background:repeating-linear-gradient(45deg,#2a5562 0 6px,#244c58 6px 12px); border:1px solid rgba(214,167,84,.3);"></div>
+            <div style="flex:1; min-width:0;">
+              <div style="color:#e2b24a; font-size:11px; line-height:1;">★★★★★</div>
+              <div style="color:#f4ead2; font-size:14px; font-weight:700; margin:2px 0;">齒輪箱齒輪油</div>
+              <div style="color:#8fb3bd; font-size:11px;">◎ 130,800 · 彰芳風場</div>
+            </div>
+            <div style="text-align:right; flex:none;"><span style="color:#7fce8e; font-size:14px; font-weight:900;">↑350%</span></div>
+          </div>
+
+          <div style="font-size:12px; color:#d9a441; font-weight:700; letter-spacing:.1em; margin-bottom:7px;">行情快訊</div>
+          <div style="display:flex; gap:8px; margin-bottom:8px;">
+            <div style="flex:1; padding:7px 8px; border-radius:4px; background:rgba(220,100,80,.12); border:1px solid rgba(220,100,80,.3);">
+              <div style="color:#dc6450; font-size:11px; font-weight:700;">爆跌 · 耗材</div>
+              <div style="color:#cfe0e6; font-size:12px; margin-top:3px;">潤滑油 ◎2,380</div>
+              <div style="color:#dc6450; font-size:12px; font-weight:700;">↓ -89%</div>
+            </div>
+            <div style="flex:1; padding:7px 8px; border-radius:4px; background:rgba(127,206,142,.1); border:1px solid rgba(127,206,142,.28);">
+              <div style="color:#7fce8e; font-size:11px; font-weight:700;">爆漲 · 金屬</div>
+              <div style="color:#cfe0e6; font-size:12px; margin-top:3px;">海纜 ◎6,688</div>
+              <div style="color:#7fce8e; font-size:12px; font-weight:700;">↑ +125%</div>
+            </div>
+          </div>
+        </div>
+        <div style="display:flex; border-top:1px solid rgba(214,167,84,.25);">
+          <div style="flex:1; text-align:center; padding:9px 0; font-size:13px; font-weight:700; color:#0f2630; background:linear-gradient(180deg,#e8c074,#d9a441);">世界行情</div>
+          <div style="flex:1; text-align:center; padding:9px 0; font-size:13px; color:#9fc2cc;">我的機組</div>
+          <div style="flex:1; text-align:center; padding:9px 0; font-size:13px; color:#9fc2cc;">分類</div>
+        </div>
+      </div>
+
+      <!-- RIGHT: action rail -->
+      <div style="position:absolute; right:26px; top:108px; display:flex; flex-direction:column; gap:14px; align-items:center;">
+        <div style="text-align:center; cursor:pointer;"><div style="width:56px; height:56px; border-radius:50%; background:radial-gradient(circle at 50% 35%, #20586a, #0f3140); border:2px solid rgba(214,167,84,.7); box-shadow:0 5px 14px rgba(0,0,0,.4); display:flex; align-items:center; justify-content:center; font-family:'Noto Serif TC',serif; font-size:24px; font-weight:900; color:#f1d99a;">任</div><div style="margin-top:4px; font-size:11px; color:#e4eef0; text-shadow:0 1px 3px #000;">任務</div></div>
+        <div style="text-align:center; cursor:pointer;"><div style="width:56px; height:56px; border-radius:50%; background:radial-gradient(circle at 50% 35%, #20586a, #0f3140); border:2px solid rgba(214,167,84,.7); box-shadow:0 5px 14px rgba(0,0,0,.4); display:flex; align-items:center; justify-content:center; font-family:'Noto Serif TC',serif; font-size:24px; font-weight:900; color:#f1d99a;">船</div><div style="margin-top:4px; font-size:11px; color:#e4eef0; text-shadow:0 1px 3px #000;">船隊</div></div>
+        <div style="text-align:center; cursor:pointer;"><div style="width:56px; height:56px; border-radius:50%; background:radial-gradient(circle at 50% 35%, #20586a, #0f3140); border:2px solid rgba(214,167,84,.7); box-shadow:0 5px 14px rgba(0,0,0,.4); display:flex; align-items:center; justify-content:center; font-family:'Noto Serif TC',serif; font-size:24px; font-weight:900; color:#f1d99a;">倉</div><div style="margin-top:4px; font-size:11px; color:#e4eef0; text-shadow:0 1px 3px #000;">倉庫</div></div>
+        <div style="text-align:center; cursor:pointer;"><div style="width:56px; height:56px; border-radius:50%; background:radial-gradient(circle at 50% 35%, #20586a, #0f3140); border:2px solid rgba(214,167,84,.7); box-shadow:0 5px 14px rgba(0,0,0,.4); display:flex; align-items:center; justify-content:center; font-family:'Noto Serif TC',serif; font-size:24px; font-weight:900; color:#f1d99a;">鑑</div><div style="margin-top:4px; font-size:11px; color:#e4eef0; text-shadow:0 1px 3px #000;">圖鑑</div></div>
+        <div style="text-align:center; cursor:pointer;"><div style="width:56px; height:56px; border-radius:50%; background:radial-gradient(circle at 50% 35%, #20586a, #0f3140); border:2px solid rgba(214,167,84,.7); box-shadow:0 5px 14px rgba(0,0,0,.4); display:flex; align-items:center; justify-content:center; font-family:'Noto Serif TC',serif; font-size:24px; font-weight:900; color:#f1d99a;">榜</div><div style="margin-top:4px; font-size:11px; color:#e4eef0; text-shadow:0 1px 3px #000;">排行</div></div>
+      </div>
+
+      <!-- BOTTOM-LEFT: quest card -->
+      <div style="position:absolute; left:28px; bottom:26px; width:372px; background:linear-gradient(180deg, rgba(20,50,63,.93), rgba(13,36,46,.95)); border:1px solid rgba(214,167,84,.45); border-radius:5px; box-shadow:0 12px 30px rgba(0,0,0,.4); overflow:hidden;">
+        <div style="display:flex; align-items:center; gap:8px; padding:8px 14px; background:linear-gradient(180deg, rgba(217,164,65,.22), rgba(217,164,65,.05)); border-bottom:1px solid rgba(214,167,84,.35);">
+          <span style="font-family:'Noto Serif TC',serif; font-weight:700; font-size:15px; white-space:nowrap; color:#f4ead2;">進行中工單</span>
+          <span style="margin-left:auto; font-size:12px; color:#9fc2cc;">3 / 5</span>
+        </div>
+        <div style="padding:12px 14px;">
+          <div style="color:#f4ead2; font-size:15px; font-weight:700; margin-bottom:4px;">更換偏航電機 · CH-12 號機組</div>
+          <div style="color:#9fb9c2; font-size:12.5px; line-height:1.5;">前往「彰化外海・CH-12」，於浪高 1.5m 內完成偏航電機更換並回報 SCADA。</div>
+          <div style="display:flex; align-items:center; gap:8px; margin-top:10px;">
+            <div style="flex:1; height:7px; border-radius:4px; background:rgba(255,255,255,.1); overflow:hidden;"><div style="width:35%; height:100%; background:linear-gradient(90deg,#e8c074,#d9a441);"></div></div>
+            <span style="font-size:12px; color:#cfe0e6; font-variant-numeric:tabular-nums;">0 / 1</span>
+          </div>
+          <div style="display:flex; gap:8px; margin-top:12px;">
+            <span style="padding:4px 10px; border-radius:3px; background:rgba(217,164,65,.14); border:1px solid rgba(214,167,84,.4); color:#f1d99a; font-size:12px;">預算 +18 萬</span>
+            <span style="padding:4px 10px; border-radius:3px; background:rgba(127,206,142,.12); border:1px solid rgba(127,206,142,.35); color:#9be0a8; font-size:12px;">資歷 +120</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- BOTTOM-CENTER: primary actions -->
+      <div style="position:absolute; left:50%; bottom:34px; transform:translateX(-50%); display:flex; gap:16px; align-items:center;">
+        <div style="padding:13px 22px; border-radius:5px; background:rgba(15,40,50,.82); border:1px solid rgba(214,167,84,.45); color:#f4ead2; font-size:15px; font-weight:700; cursor:pointer; backdrop-filter:blur(3px); display:flex; align-items:center; gap:8px; white-space:nowrap;"><span style="color:#d9a441; font-size:17px;">◷</span> 航線圖</div>
+        <div style="padding:16px 46px; border-radius:6px; background:{{primaryBg}}; border:1px solid rgba(255,236,196,.6); color:#3a2708; font-family:'Noto Serif TC',serif; font-size:21px; font-weight:900; letter-spacing:.1em; white-space:nowrap; cursor:pointer; box-shadow:0 8px 22px rgba(217,164,65,.35), inset 0 1px 0 rgba(255,255,255,.4);">出 海 作 業</div>
+        <div style="padding:13px 22px; border-radius:5px; background:rgba(15,40,50,.82); border:1px solid rgba(214,167,84,.45); color:#f4ead2; font-size:15px; font-weight:700; cursor:pointer; backdrop-filter:blur(3px); display:flex; align-items:center; gap:8px; white-space:nowrap;"><span style="color:#d9a441; font-size:17px;">⚓</span> 靠港休整</div>
+      </div>
+    </div>
+
+    <!-- ============ MARKET SCREEN ============ -->
+    <div style="display:{{marketDisplay}}; position:absolute; inset:0; z-index:2;">
+      <div style="position:absolute; inset:0; background:rgba(7,20,26,.55); backdrop-filter:blur(2px);"></div>
+
+      <div style="position:absolute; left:40px; right:40px; top:90px; bottom:30px; display:flex; gap:18px;">
+
+        <!-- LEFT: parts grid panel -->
+        <div style="flex:1; background:linear-gradient(180deg, rgba(20,50,63,.94), rgba(13,36,46,.96)); border:1px solid rgba(214,167,84,.45); border-radius:6px; box-shadow:0 16px 40px rgba(0,0,0,.5); display:flex; flex-direction:column; overflow:hidden;">
+          <div style="display:flex; align-items:center; padding:12px 18px; border-bottom:1px solid rgba(214,167,84,.3);">
+            <div style="display:flex; gap:6px;">
+              <div style="padding:7px 20px; border-radius:4px 4px 0 0; background:linear-gradient(180deg,#e8c074,#d9a441); color:#3a2708; font-weight:700; font-size:15px;">買入</div>
+              <div style="padding:7px 20px; color:#9fc2cc; font-weight:500; font-size:15px;">賣出</div>
+            </div>
+            <div style="margin-left:auto; font-size:13px; color:#9fc2cc;">下次到貨 <span style="color:#f4ead2; font-weight:700; font-variant-numeric:tabular-nums;">11:04</span></div>
+          </div>
+          <div style="flex:1; padding:18px; display:grid; grid-template-columns:repeat(3,1fr); grid-auto-rows:min-content; gap:14px; overflow:auto;">
+            <sc-for list="{{ parts }}" as="p" hint-placeholder-count="9">
+              <div style="background:rgba(225,237,242,.07); border:1px solid rgba(214,167,84,.35); border-radius:5px; padding:11px 12px; cursor:pointer;">
+                <div style="display:flex; align-items:baseline; justify-content:space-between;">
+                  <span style="color:#f4ead2; font-size:15px; font-weight:700; font-family:'Noto Serif TC',serif;">{{ p.n }}</span>
+                </div>
+                <div style="color:#e2b24a; font-size:12px; letter-spacing:1px; margin:3px 0 8px;">{{ p.starStr }}</div>
+                <div style="display:flex; align-items:center; gap:10px;">
+                  <div style="width:52px; height:52px; flex:none; border-radius:5px; background:repeating-linear-gradient(45deg,#2a5562 0 6px,#244c58 6px 12px); border:1px solid rgba(214,167,84,.3); display:flex; align-items:center; justify-content:center; font-family:monospace; font-size:9px; color:#8fb3bd;">IMG</div>
+                  <div style="flex:1; text-align:right;">
+                    <div style="font-size:22px; font-weight:900; color:{{ p.idxColor }}; line-height:1;">{{ p.idxStr }}</div>
+                    <div style="font-size:12px; color:#9fb9c2; margin-top:2px;">庫存 {{ p.qty }}</div>
+                  </div>
+                </div>
+                <div style="display:flex; align-items:center; gap:5px; margin-top:9px; padding-top:8px; border-top:1px solid rgba(255,255,255,.07);">
+                  <span style="color:#d9a441; font-size:14px;">◎</span>
+                  <span style="color:#f4ead2; font-size:16px; font-weight:700; font-variant-numeric:tabular-nums;">{{ p.price }}</span>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+
+        <!-- RIGHT: NPC + cargo + tax -->
+        <div style="width:392px; flex:none; display:flex; flex-direction:column; gap:14px;">
+          <!-- NPC art placeholder -->
+          <div style="flex:1; position:relative; border-radius:6px; border:1px solid rgba(214,167,84,.4); background:repeating-linear-gradient(135deg,#1c4250 0 12px,#193b48 12px 24px); overflow:hidden; box-shadow:0 16px 40px rgba(0,0,0,.5);">
+            <div style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center; flex-direction:column; gap:8px;">
+              <div style="font-family:monospace; font-size:13px; color:#8fb3bd; letter-spacing:.1em;">採購官 立繪</div>
+              <div style="font-family:monospace; font-size:11px; color:#6f97a1;">NPC character art</div>
+              <div style="font-family:monospace; font-size:11px; color:#6f97a1;">392 × 360</div>
+            </div>
+            <div style="position:absolute; left:14px; top:14px; padding:5px 12px; background:rgba(12,30,38,.85); border:1px solid rgba(214,167,84,.45); border-radius:3px; color:#f4ead2; font-size:13px; font-weight:700;">交易所主管</div>
+          </div>
+
+          <!-- cargo + tax -->
+          <div style="background:linear-gradient(180deg, rgba(20,50,63,.94), rgba(13,36,46,.96)); border:1px solid rgba(214,167,84,.45); border-radius:6px; padding:14px 16px; box-shadow:0 12px 30px rgba(0,0,0,.45);">
+            <div style="display:flex; align-items:center; gap:10px; margin-bottom:12px;">
+              <span style="color:#d9a441; font-size:18px;">▣</span>
+              <span style="color:#f4ead2; font-size:14px; font-weight:700;">貨艙</span>
+              <div style="flex:1; height:9px; border-radius:5px; background:rgba(255,255,255,.1); overflow:hidden;"><div style="width:62%; height:100%; background:linear-gradient(90deg,#e8c074,#d9a441);"></div></div>
+              <span style="font-size:12px; color:#cfe0e6; font-variant-numeric:tabular-nums;">620 / 1000</span>
+            </div>
+            <div style="display:flex; justify-content:space-between; padding:5px 0; font-size:13px; color:#9fb9c2; border-top:1px dashed rgba(255,255,255,.1);"><span>稅率</span><span style="color:#f4ead2;">12%</span></div>
+            <div style="display:flex; justify-content:space-between; padding:5px 0; font-size:13px; color:#9fb9c2;"><span>稅前</span><span style="color:#f4ead2; font-variant-numeric:tabular-nums; white-space:nowrap;">◎ 1,250,000</span></div>
+            <div style="display:flex; justify-content:space-between; padding:5px 0; font-size:13px; color:#9fb9c2;"><span>稅後</span><span style="color:#7fce8e; font-weight:700; font-variant-numeric:tabular-nums; white-space:nowrap;">◎ 1,100,000</span></div>
+            <div style="margin-top:12px; text-align:center; padding:13px 0; border-radius:5px; background:{{primaryBg}}; color:#3a2708; font-family:'Noto Serif TC',serif; font-size:17px; font-weight:900; letter-spacing:.12em; white-space:nowrap; cursor:pointer; box-shadow:0 6px 18px rgba(217,164,65,.3), inset 0 1px 0 rgba(255,255,255,.4);">確 認 採 購</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ SAIL SCREEN ============ -->
+    <div style="display:{{sailDisplay}}; position:absolute; inset:0; z-index:2;">
+      <!-- open sea bg -->
+      <div style="position:absolute; inset:0;">
+        <div style="position:absolute; left:0; right:0; top:0; height:34%; background:linear-gradient(180deg,#a9cfe0 0%, #cfe1de 55%, #ece4cd 100%);"></div>
+        <div style="position:absolute; left:0; right:0; top:0; height:42%; background:radial-gradient(circle at 50% 96%, rgba(255,246,221,.9), rgba(255,246,221,0) 46%);"></div>
+        <div style="position:absolute; left:0; right:0; bottom:0; height:66%; background:linear-gradient(180deg,#50b4c5 0%, #2f93ab 28%, #1f6f88 68%, #134e61 100%);"></div>
+        <div style="position:absolute; left:0; right:0; bottom:0; height:66%; background:repeating-linear-gradient(178deg, rgba(255,255,255,.06) 0 2px, rgba(255,255,255,0) 2px 28px);"></div>
+        <div style="position:absolute; left:36%; right:36%; top:33%; bottom:0; background:linear-gradient(180deg, rgba(255,240,205,.5), rgba(255,240,205,0) 55%); filter:blur(12px);"></div>
+        <div style="position:absolute; left:0; right:0; top:33.6%; height:1px; background:rgba(255,255,255,.45);"></div>
+        <!-- distant wind farm -->
+        <div style="display:{{turbineDisplay}};">
+          <div style="position:absolute; left:21%; top:248px; width:40px; height:64px; opacity:.4; transform:scale(.8);">
+            <div style="position:absolute; bottom:0; left:19px; width:3px; height:46px; background:linear-gradient(180deg,#eef4f5,#b6c4c9);"></div>
+            <div style="position:absolute; top:10px; left:20px; width:0; height:0; animation:spin 12s linear infinite;"><div style="position:absolute; left:-1.5px; top:0; width:3px; height:25px; background:#eef3f4; border-radius:2px; transform-origin:1.5px 0; transform:rotate(0deg);"></div><div style="position:absolute; left:-1.5px; top:0; width:3px; height:25px; background:#eef3f4; border-radius:2px; transform-origin:1.5px 0; transform:rotate(120deg);"></div><div style="position:absolute; left:-1.5px; top:0; width:3px; height:25px; background:#eef3f4; border-radius:2px; transform-origin:1.5px 0; transform:rotate(240deg);"></div></div>
+            <div style="position:absolute; top:7px; left:17px; width:6px; height:6px; border-radius:50%; background:#e6edef;"></div>
+          </div>
+          <div style="position:absolute; left:62%; top:240px; width:40px; height:64px; opacity:.5; transform:scale(1);">
+            <div style="position:absolute; bottom:0; left:19px; width:3px; height:46px; background:linear-gradient(180deg,#eef4f5,#b6c4c9);"></div>
+            <div style="position:absolute; top:10px; left:20px; width:0; height:0; animation:spin 9s linear infinite;"><div style="position:absolute; left:-1.5px; top:0; width:3px; height:25px; background:#eef3f4; border-radius:2px; transform-origin:1.5px 0; transform:rotate(40deg);"></div><div style="position:absolute; left:-1.5px; top:0; width:3px; height:25px; background:#eef3f4; border-radius:2px; transform-origin:1.5px 0; transform:rotate(160deg);"></div><div style="position:absolute; left:-1.5px; top:0; width:3px; height:25px; background:#eef3f4; border-radius:2px; transform-origin:1.5px 0; transform:rotate(280deg);"></div></div>
+            <div style="position:absolute; top:7px; left:17px; width:6px; height:6px; border-radius:50%; background:#e6edef;"></div>
+          </div>
+          <div style="position:absolute; left:74%; top:252px; width:40px; height:64px; opacity:.36; transform:scale(.75);">
+            <div style="position:absolute; bottom:0; left:19px; width:3px; height:46px; background:linear-gradient(180deg,#eef4f5,#b6c4c9);"></div>
+            <div style="position:absolute; top:10px; left:20px; width:0; height:0; animation:spin 13s linear infinite;"><div style="position:absolute; left:-1.5px; top:0; width:3px; height:25px; background:#eef3f4; border-radius:2px; transform-origin:1.5px 0; transform:rotate(20deg);"></div><div style="position:absolute; left:-1.5px; top:0; width:3px; height:25px; background:#eef3f4; border-radius:2px; transform-origin:1.5px 0; transform:rotate(140deg);"></div><div style="position:absolute; left:-1.5px; top:0; width:3px; height:25px; background:#eef3f4; border-radius:2px; transform-origin:1.5px 0; transform:rotate(260deg);"></div></div>
+            <div style="position:absolute; top:7px; left:17px; width:6px; height:6px; border-radius:50%; background:#e6edef;"></div>
+          </div>
+        </div>
+        <!-- CTV formation -->
+        <div style="position:absolute; left:47%; top:300px; transform:scale(.66); opacity:.9;">
+          <div style="position:absolute; left:50%; top:14px; transform:translateX(-50%); width:30px; height:88px; background:linear-gradient(180deg, rgba(255,255,255,.55), rgba(255,255,255,0)); clip-path:polygon(36% 0,64% 0,100% 100%,0 100%); filter:blur(1px);"></div>
+          <div style="position:relative; width:46px; height:18px; margin:0 auto; background:linear-gradient(180deg,#46586a,#1c2730); border-radius:6px 6px 14px 14px/6px 6px 22px 22px; box-shadow:0 4px 8px rgba(0,0,0,.3);"><div style="position:absolute; top:-8px; left:50%; transform:translateX(-50%); width:20px; height:9px; background:linear-gradient(180deg,#f1f4f5,#c4ced2); border-radius:3px 3px 0 0;"></div><div style="position:absolute; top:6px; left:0; right:0; height:3px; background:#e0a83e;"></div></div>
+        </div>
+        <div style="position:absolute; left:43%; top:360px; transform:scale(.9); opacity:.96;">
+          <div style="position:absolute; left:50%; top:14px; transform:translateX(-50%); width:30px; height:92px; background:linear-gradient(180deg, rgba(255,255,255,.6), rgba(255,255,255,0)); clip-path:polygon(36% 0,64% 0,100% 100%,0 100%); filter:blur(1px);"></div>
+          <div style="position:relative; width:46px; height:18px; margin:0 auto; background:linear-gradient(180deg,#46586a,#1c2730); border-radius:6px 6px 14px 14px/6px 6px 22px 22px; box-shadow:0 4px 8px rgba(0,0,0,.35);"><div style="position:absolute; top:-8px; left:50%; transform:translateX(-50%); width:20px; height:9px; background:linear-gradient(180deg,#f1f4f5,#c4ced2); border-radius:3px 3px 0 0;"></div><div style="position:absolute; top:6px; left:0; right:0; height:3px; background:#e0a83e;"></div></div>
+        </div>
+        <div style="position:absolute; left:38.5%; top:432px; transform:scale(1.18); opacity:1;">
+          <div style="position:absolute; left:50%; top:14px; transform:translateX(-50%); width:32px; height:96px; background:linear-gradient(180deg, rgba(255,255,255,.62), rgba(255,255,255,0)); clip-path:polygon(36% 0,64% 0,100% 100%,0 100%); filter:blur(1px);"></div>
+          <div style="position:relative; width:48px; height:19px; margin:0 auto; background:linear-gradient(180deg,#46586a,#19242d); border-radius:6px 6px 14px 14px/6px 6px 22px 22px; box-shadow:0 6px 10px rgba(0,0,0,.4);"><div style="position:absolute; top:-9px; left:50%; transform:translateX(-50%); width:22px; height:10px; background:linear-gradient(180deg,#f1f4f5,#c4ced2); border-radius:3px 3px 0 0;"></div><div style="position:absolute; top:6px; left:0; right:0; height:3px; background:#e0a83e;"></div></div>
+        </div>
+        <div style="position:absolute; inset:0; background:radial-gradient(circle at 50% 46%, rgba(6,18,24,0) 55%, rgba(6,18,24,.42) 100%); pointer-events:none;"></div>
+      </div>
+
+      <!-- destination chip -->
+      <div style="position:absolute; left:40px; top:96px; padding:9px 16px; border-radius:6px; background:rgba(10,28,36,.82); border:1px solid rgba(214,167,84,.4); backdrop-filter:blur(3px); display:flex; align-items:center; gap:10px;">
+        <span style="color:#d9a441; font-size:16px;">⚑</span>
+        <div><div style="color:#f4ead2; font-size:14px; font-weight:700;">航向 · 彰化外海 CH-12</div><div style="color:#9fb9c2; font-size:11px;">距離 12.4 浬 · 預計抵達 00:42</div></div>
+      </div>
+
+      <!-- ship status panel -->
+      <div style="position:absolute; right:26px; top:92px; width:288px; background:linear-gradient(180deg, rgba(20,50,63,.94), rgba(13,36,46,.96)); border:1px solid rgba(214,167,84,.5); border-radius:6px; box-shadow:0 14px 36px rgba(0,0,0,.5);">
+        <div style="text-align:center; padding:9px 0; background:linear-gradient(180deg,#e8c074,#cf9a35); border-radius:6px 6px 0 0; color:#3a2708; font-family:'Noto Serif TC',serif; font-weight:900; font-size:17px; letter-spacing:.08em;">海昌一號 · CTV</div>
+        <div style="padding:13px 15px;">
+          <div style="display:flex; gap:8px; margin-bottom:12px;">
+            <div style="flex:1; text-align:center; padding:6px 0; border-radius:4px; background:rgba(255,255,255,.05); border:1px solid rgba(214,167,84,.25);"><div style="font-size:10px; color:#9fb9c2;">緯度 N</div><div style="font-size:15px; color:#f4ead2; font-weight:700; font-variant-numeric:tabular-nums;">24.0°</div></div>
+            <div style="flex:1; text-align:center; padding:6px 0; border-radius:4px; background:rgba(255,255,255,.05); border:1px solid rgba(214,167,84,.25);"><div style="font-size:10px; color:#9fb9c2;">經度 E</div><div style="font-size:15px; color:#f4ead2; font-weight:700; font-variant-numeric:tabular-nums;">120.1°</div></div>
+          </div>
+
+          <div style="display:flex; align-items:center; gap:9px; margin-bottom:9px;"><div style="width:26px; height:26px; flex:none; border-radius:50%; background:#16323d; border:1px solid rgba(214,167,84,.5); display:flex; align-items:center; justify-content:center; font-family:'Noto Serif TC',serif; font-size:13px; color:#f1d99a;">油</div><span style="width:34px; font-size:12px; color:#cfe0e6;">燃油</span><div style="flex:1; height:8px; border-radius:4px; background:rgba(255,255,255,.1); overflow:hidden;"><div style="width:78%; height:100%; background:linear-gradient(90deg,#e8c074,#d9a441);"></div></div><span style="width:30px; text-align:right; font-size:12px; color:#f4ead2; font-variant-numeric:tabular-nums;">78%</span></div>
+          <div style="display:flex; align-items:center; gap:9px; margin-bottom:9px;"><div style="width:26px; height:26px; flex:none; border-radius:50%; background:#16323d; border:1px solid rgba(214,167,84,.5); display:flex; align-items:center; justify-content:center; font-family:'Noto Serif TC',serif; font-size:13px; color:#f1d99a;">水</div><span style="width:34px; font-size:12px; color:#cfe0e6;">飲水</span><div style="flex:1; height:8px; border-radius:4px; background:rgba(255,255,255,.1); overflow:hidden;"><div style="width:92%; height:100%; background:linear-gradient(90deg,#6fb8d6,#3f93c4);"></div></div><span style="width:30px; text-align:right; font-size:12px; color:#f4ead2; font-variant-numeric:tabular-nums;">92%</span></div>
+          <div style="display:flex; align-items:center; gap:9px; margin-bottom:9px;"><div style="width:26px; height:26px; flex:none; border-radius:50%; background:#16323d; border:1px solid rgba(214,167,84,.5); display:flex; align-items:center; justify-content:center; font-family:'Noto Serif TC',serif; font-size:13px; color:#f1d99a;">員</div><span style="width:34px; font-size:12px; color:#cfe0e6;">技師</span><div style="flex:1; height:8px; border-radius:4px; background:rgba(255,255,255,.1); overflow:hidden;"><div style="width:60%; height:100%; background:linear-gradient(90deg,#7fce8e,#4f9e62);"></div></div><span style="width:30px; text-align:right; font-size:12px; color:#f4ead2; font-variant-numeric:tabular-nums;">12 人</span></div>
+          <div style="display:flex; align-items:center; gap:9px; margin-bottom:13px;"><div style="width:26px; height:26px; flex:none; border-radius:50%; background:#16323d; border:1px solid rgba(214,167,84,.5); display:flex; align-items:center; justify-content:center; font-family:'Noto Serif TC',serif; font-size:13px; color:#f1d99a;">勞</div><span style="width:34px; font-size:12px; color:#cfe0e6;">疲勞</span><div style="flex:1; height:8px; border-radius:4px; background:rgba(255,255,255,.1); overflow:hidden;"><div style="width:18%; height:100%; background:linear-gradient(90deg,#e89a5b,#cf6b3a);"></div></div><span style="width:30px; text-align:right; font-size:12px; color:#f4ead2; font-variant-numeric:tabular-nums;">18%</span></div>
+
+          <div style="display:flex; gap:10px; align-items:center;">
+            <div style="display:flex; gap:8px;">
+              <div style="width:50px; height:50px; border-radius:5px; background:repeating-linear-gradient(45deg,#244c58 0 6px,#1f4350 6px 12px); border:1px solid rgba(214,167,84,.4); display:flex; align-items:center; justify-content:center; font-size:10px; color:#cfe0e6; text-align:center; line-height:1.1;">導航儀</div>
+              <div style="width:50px; height:50px; border-radius:5px; background:repeating-linear-gradient(45deg,#244c58 0 6px,#1f4350 6px 12px); border:1px solid rgba(214,167,84,.4); display:flex; align-items:center; justify-content:center; font-size:10px; color:#cfe0e6; text-align:center; line-height:1.1;">對講機</div>
+            </div>
+            <div style="margin-left:auto; position:relative; width:58px; height:58px; border-radius:50%; background:radial-gradient(circle at 50% 40%,#16323d,#0d242d); border:2px solid rgba(214,167,84,.55);">
+              <div style="position:absolute; top:3px; left:50%; transform:translateX(-50%); font-size:9px; color:#d9a441; font-weight:700;">N</div>
+              <div style="position:absolute; top:50%; left:50%; width:3px; height:22px; background:linear-gradient(180deg,#dc6450 0 55%,#e6edef 55%); transform-origin:bottom center; transform:translate(-50%,-100%) rotate(38deg); border-radius:2px;"></div>
+              <div style="position:absolute; top:50%; left:50%; width:6px; height:6px; background:#d9a441; border-radius:50%; transform:translate(-50%,-50%);"></div>
+            </div>
+          </div>
+
+          <div style="margin-top:13px;"><div style="display:flex; justify-content:space-between; font-size:11px; color:#9fb9c2; margin-bottom:4px;"><span>航程進度</span><span>62%</span></div><div style="height:7px; border-radius:4px; background:rgba(255,255,255,.1); overflow:hidden;"><div style="width:62%; height:100%; background:linear-gradient(90deg,#e8c074,#d9a441);"></div></div></div>
+        </div>
+      </div>
+
+      <!-- command bar -->
+      <div style="position:absolute; left:40px; bottom:28px; display:flex; gap:10px;">
+        <div style="padding:11px 20px; border-radius:5px; background:linear-gradient(180deg, rgba(24,56,68,.92), rgba(14,38,48,.94)); border:1px solid rgba(214,167,84,.45); color:#f4ead2; font-family:'Noto Serif TC',serif; font-size:15px; font-weight:700; white-space:nowrap; cursor:pointer; box-shadow:0 5px 14px rgba(0,0,0,.35);">航線圖</div>
+        <div style="padding:11px 20px; border-radius:5px; background:linear-gradient(180deg, rgba(24,56,68,.92), rgba(14,38,48,.94)); border:1px solid rgba(214,167,84,.45); color:#f4ead2; font-family:'Noto Serif TC',serif; font-size:15px; font-weight:700; white-space:nowrap; cursor:pointer; box-shadow:0 5px 14px rgba(0,0,0,.35);">甲板</div>
+        <div style="padding:11px 20px; border-radius:5px; background:linear-gradient(180deg, rgba(24,56,68,.92), rgba(14,38,48,.94)); border:1px solid rgba(214,167,84,.45); color:#f4ead2; font-family:'Noto Serif TC',serif; font-size:15px; font-weight:700; white-space:nowrap; cursor:pointer; box-shadow:0 5px 14px rgba(0,0,0,.35);">海象</div>
+        <div style="padding:11px 20px; border-radius:5px; background:linear-gradient(180deg, rgba(24,56,68,.92), rgba(14,38,48,.94)); border:1px solid rgba(214,167,84,.45); color:#f4ead2; font-family:'Noto Serif TC',serif; font-size:15px; font-weight:700; white-space:nowrap; cursor:pointer; box-shadow:0 5px 14px rgba(0,0,0,.35);">派工</div>
+        <div onClick="{{ goRepair }}" style="padding:11px 28px; border-radius:5px; background:{{primaryBg}}; border:1px solid rgba(255,236,196,.6); color:#3a2708; font-family:'Noto Serif TC',serif; font-size:15px; font-weight:900; white-space:nowrap; cursor:pointer; box-shadow:0 6px 16px rgba(217,164,65,.32);">靠泊登塔</div>
+      </div>
+    </div>
+
+    <!-- ============ REPAIR SCREEN ============ -->
+    <div style="display:{{repairDisplay}}; position:absolute; inset:0; z-index:2;">
+      <!-- dusk platform bg -->
+      <div style="position:absolute; inset:0;">
+        <div style="position:absolute; left:0; right:0; top:0; height:56%; background:linear-gradient(180deg,#34435e 0%, #5a5d72 38%, #b08a6a 64%, #d8b487 75%);"></div>
+        <div style="position:absolute; left:0; right:0; top:0; height:60%; background:radial-gradient(circle at 62% 90%, rgba(255,214,160,.7), rgba(255,214,160,0) 42%);"></div>
+        <div style="position:absolute; left:0; right:0; bottom:0; height:44%; background:linear-gradient(180deg,#2b5566 0%, #1c4151 40%, #122f3b 100%);"></div>
+        <div style="position:absolute; left:0; right:0; bottom:0; height:44%; background:repeating-linear-gradient(178deg, rgba(255,255,255,.04) 0 2px, rgba(255,255,255,0) 2px 30px);"></div>
+        <div style="position:absolute; inset:0; background:radial-gradient(circle at 30% 40%, rgba(6,16,22,0) 50%, rgba(6,16,22,.55) 100%); pointer-events:none;"></div>
+      </div>
+
+      <!-- turbine schematic -->
+      <div style="position:absolute; left:120px; top:110px; width:430px; height:680px;">
+        <!-- monopile -->
+        <div style="position:absolute; left:198px; top:472px; width:34px; height:120px; background:linear-gradient(90deg,#3d4a52,#566570,#2c363d); border-radius:3px;"></div>
+        <!-- tower -->
+        <div style="position:absolute; left:175px; top:150px; width:80px; height:330px; background:linear-gradient(90deg,#5a6770,#8a98a0 45%,#4a565d); clip-path:polygon(40% 0,60% 0,72% 100%,28% 100%);"></div>
+        <!-- nacelle -->
+        <div style="position:absolute; left:150px; top:128px; width:130px; height:42px; background:linear-gradient(180deg,#e7edef,#aab7bd); border-radius:10px 16px 16px 10px; box-shadow:0 4px 10px rgba(0,0,0,.3);"></div>
+        <!-- hub -->
+        <div style="position:absolute; left:138px; top:135px; width:26px; height:26px; border-radius:50%; background:radial-gradient(circle at 40% 35%,#f2f6f7,#9aa8ae); border:1px solid #7d8b91; z-index:2;"></div>
+        <!-- blades -->
+        <div style="position:absolute; left:151px; top:148px; width:0; height:0; animation:spin 16s linear infinite; z-index:1;">
+          <div style="position:absolute; left:-8px; top:0; width:16px; height:160px; background:linear-gradient(180deg,#eef3f4,#aebbc0); clip-path:polygon(22% 0,78% 0,56% 100%,44% 100%); transform-origin:8px 0; transform:rotate(0deg);"></div>
+          <div style="position:absolute; left:-8px; top:0; width:16px; height:160px; background:linear-gradient(180deg,#eef3f4,#aebbc0); clip-path:polygon(22% 0,78% 0,56% 100%,44% 100%); transform-origin:8px 0; transform:rotate(120deg);"></div>
+          <div style="position:absolute; left:-8px; top:0; width:16px; height:160px; background:linear-gradient(180deg,#eef3f4,#aebbc0); clip-path:polygon(22% 0,78% 0,56% 100%,44% 100%); transform-origin:8px 0; transform:rotate(240deg);"></div>
+        </div>
+
+        <!-- hotspots -->
+        <!-- 變槳系統 -->
+        <div style="position:absolute; left:96px; top:128px; display:flex; align-items:center; gap:6px; z-index:3;"><div style="padding:3px 9px; border-radius:3px; background:rgba(12,30,38,.9); border:1px solid #7fce8e; color:#cdeccf; font-size:11px; white-space:nowrap;">變槳系統 · 正常</div><span style="width:11px; height:11px; border-radius:50%; background:#7fce8e; box-shadow:0 0 6px #7fce8e;"></span></div>
+        <!-- 機艙/齒輪箱 ALARM -->
+        <div style="position:absolute; left:286px; top:118px; display:flex; align-items:center; gap:6px; z-index:3;"><span style="width:13px; height:13px; border-radius:50%; background:#dc6450; box-shadow:0 0 0 0 rgba(220,100,80,.6); animation:shimmer 1.2s ease-in-out infinite;"></span><div style="padding:3px 9px; border-radius:3px; background:rgba(40,16,14,.92); border:1px solid #dc6450; color:#f0cbc4; font-size:11px; font-weight:700; white-space:nowrap;">齒輪箱 · 油溫過高</div></div>
+        <!-- 發電機 -->
+        <div style="position:absolute; left:286px; top:152px; display:flex; align-items:center; gap:6px; z-index:3;"><span style="width:11px; height:11px; border-radius:50%; background:#e3ad42; box-shadow:0 0 6px #e3ad42;"></span><div style="padding:3px 9px; border-radius:3px; background:rgba(12,30,38,.9); border:1px solid #e3ad42; color:#f4e0b4; font-size:11px; white-space:nowrap;">發電機 · 注意</div></div>
+        <!-- 偏航系統 -->
+        <div style="position:absolute; left:262px; top:196px; display:flex; align-items:center; gap:6px; z-index:3;"><span style="width:11px; height:11px; border-radius:50%; background:#7fce8e; box-shadow:0 0 6px #7fce8e;"></span><div style="padding:3px 9px; border-radius:3px; background:rgba(12,30,38,.9); border:1px solid #7fce8e; color:#cdeccf; font-size:11px; white-space:nowrap;">偏航系統 · 正常</div></div>
+        <!-- 塔筒 -->
+        <div style="position:absolute; left:262px; top:320px; display:flex; align-items:center; gap:6px; z-index:3;"><span style="width:11px; height:11px; border-radius:50%; background:#7fce8e; box-shadow:0 0 6px #7fce8e;"></span><div style="padding:3px 9px; border-radius:3px; background:rgba(12,30,38,.9); border:1px solid #7fce8e; color:#cdeccf; font-size:11px; white-space:nowrap;">塔筒結構 · 正常</div></div>
+        <!-- 基礎/海纜 -->
+        <div style="position:absolute; left:248px; top:500px; display:flex; align-items:center; gap:6px; z-index:3;"><span style="width:11px; height:11px; border-radius:50%; background:#7fce8e; box-shadow:0 0 6px #7fce8e;"></span><div style="padding:3px 9px; border-radius:3px; background:rgba(12,30,38,.9); border:1px solid #7fce8e; color:#cdeccf; font-size:11px; white-space:nowrap;">基礎/海纜 · 正常</div></div>
+      </div>
+
+      <!-- left bottom: 妥善率 + 安全窗 -->
+      <div style="position:absolute; left:40px; bottom:28px; width:300px; display:flex; gap:12px;">
+        <div style="flex:1; background:linear-gradient(180deg, rgba(20,50,63,.93), rgba(13,36,46,.95)); border:1px solid rgba(214,167,84,.4); border-radius:6px; padding:12px 14px;">
+          <div style="font-size:11px; color:#9fb9c2;">機組妥善率</div>
+          <div style="font-size:30px; font-weight:900; color:#e89a5b; font-family:'Noto Serif TC',serif; line-height:1.1;">86<span style="font-size:15px;">%</span></div>
+          <div style="margin-top:6px; height:6px; border-radius:4px; background:rgba(255,255,255,.1); overflow:hidden;"><div style="width:86%; height:100%; background:linear-gradient(90deg,#e89a5b,#cf6b3a);"></div></div>
+        </div>
+        <div style="flex:1; background:linear-gradient(180deg, rgba(20,50,63,.93), rgba(13,36,46,.95)); border:1px solid rgba(214,167,84,.4); border-radius:6px; padding:12px 14px;">
+          <div style="font-size:11px; color:#9fb9c2;">作業安全窗</div>
+          <div style="display:flex; align-items:center; gap:7px; margin-top:6px;"><span style="width:11px; height:11px; border-radius:50%; background:#62c281; box-shadow:0 0 8px #62c281;"></span><span style="font-size:17px; font-weight:900; color:#9be0a8; font-family:'Noto Serif TC',serif;">可作業</span></div>
+          <div style="font-size:11px; color:#9fb9c2; margin-top:6px;">浪高 1.2m · 風速 8m/s</div>
+        </div>
+      </div>
+
+      <!-- right column -->
+      <div style="position:absolute; right:26px; top:92px; bottom:28px; width:392px; display:flex; flex-direction:column; gap:13px;">
+        <!-- SCADA alarm -->
+        <div style="background:linear-gradient(180deg, rgba(20,50,63,.94), rgba(13,36,46,.96)); border:1px solid rgba(220,100,80,.5); border-radius:6px; overflow:hidden; box-shadow:0 12px 30px rgba(0,0,0,.45);">
+          <div style="display:flex; align-items:center; gap:8px; padding:9px 14px; background:linear-gradient(180deg, rgba(220,100,80,.25), rgba(220,100,80,.06)); border-bottom:1px solid rgba(220,100,80,.4);"><span style="width:9px; height:9px; border-radius:50%; background:#dc6450; box-shadow:0 0 8px #dc6450; animation:shimmer 1.2s ease-in-out infinite;"></span><span style="font-family:'Noto Serif TC',serif; font-weight:700; font-size:15px; white-space:nowrap; color:#f4ead2;">SCADA 即時告警</span><span style="margin-left:auto; font-size:11px; color:#9fb9c2;">CH-12 · 14:32</span></div>
+          <div style="padding:11px 14px;">
+            <div style="display:flex; align-items:center; gap:9px;"><span style="padding:3px 8px; border-radius:3px; background:#dc6450; color:#fff; font-size:11px; font-weight:700;">嚴重</span><span style="color:#f4ead2; font-size:14px; font-weight:700;">齒輪箱油溫過高 78°C</span></div>
+            <div style="display:flex; flex-wrap:wrap; gap:8px; margin-top:9px;"><span style="padding:3px 8px; border-radius:3px; background:rgba(227,173,66,.16); border:1px solid rgba(227,173,66,.4); color:#f4e0b4; font-size:11px; white-space:nowrap;">警戒 · 發電機振動</span><span style="padding:3px 8px; border-radius:3px; background:rgba(227,173,66,.16); border:1px solid rgba(227,173,66,.4); color:#f4e0b4; font-size:11px; white-space:nowrap;">警戒 · 濾芯壓差</span></div>
+          </div>
+        </div>
+
+        <!-- diagnosis quiz -->
+        <div style="background:linear-gradient(180deg, rgba(20,50,63,.94), rgba(13,36,46,.96)); border:1px solid rgba(214,167,84,.45); border-radius:6px; overflow:hidden; box-shadow:0 12px 30px rgba(0,0,0,.45);">
+          <div style="display:flex; align-items:center; gap:8px; padding:9px 14px; background:linear-gradient(180deg, rgba(217,164,65,.22), rgba(217,164,65,.05)); border-bottom:1px solid rgba(214,167,84,.35);"><span style="font-family:'Noto Serif TC',serif; font-weight:700; font-size:15px; white-space:nowrap; color:#f4ead2;">故障診斷 · 隨堂測驗</span></div>
+          <div style="padding:13px 14px;">
+            <div style="color:#f4ead2; font-size:14px; font-weight:700; line-height:1.5; margin-bottom:11px;">齒輪箱油溫持續升高，下列何者應「最先」排查？</div>
+            <sc-for list="{{ quizOpts }}" as="o" hint-placeholder-count="4">
+              <div onClick="{{ o.onClick }}" style="{{ o.style }}">{{ o.text }}</div>
+            </sc-for>
+            <div style="min-height:18px; margin-top:4px; font-size:12.5px; line-height:1.5; color:{{ quizFeedbackColor }};">{{ quizFeedback }}</div>
+          </div>
+        </div>
+
+        <!-- SOP checklist -->
+        <div style="flex:1; background:linear-gradient(180deg, rgba(20,50,63,.94), rgba(13,36,46,.96)); border:1px solid rgba(214,167,84,.45); border-radius:6px; overflow:hidden; box-shadow:0 12px 30px rgba(0,0,0,.45);">
+          <div style="display:flex; align-items:center; gap:8px; padding:9px 14px; background:linear-gradient(180deg, rgba(217,164,65,.22), rgba(217,164,65,.05)); border-bottom:1px solid rgba(214,167,84,.35);"><span style="font-family:'Noto Serif TC',serif; font-weight:700; font-size:15px; white-space:nowrap; color:#f4ead2;">維修 SOP 作業步驟</span></div>
+          <div style="padding:11px 14px;">
+            <div style="display:flex; align-items:center; gap:10px; padding:6px 0;"><span style="width:18px; height:18px; flex:none; border-radius:4px; background:#7fce8e; color:#0f2630; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:900;">✓</span><span style="font-size:13px; color:#8fb3bd; text-decoration:line-through;">確認天氣作業窗</span></div>
+            <div style="display:flex; align-items:center; gap:10px; padding:6px 0;"><span style="width:18px; height:18px; flex:none; border-radius:4px; background:#7fce8e; color:#0f2630; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:900;">✓</span><span style="font-size:13px; color:#8fb3bd; text-decoration:line-through;">登塔前 LOTO 能量隔離上鎖</span></div>
+            <div style="display:flex; align-items:center; gap:10px; padding:6px 0;"><span style="width:18px; height:18px; flex:none; border-radius:4px; background:rgba(217,164,65,.18); border:1px solid #d9a441; color:#f1d99a; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:900;">3</span><span style="font-size:13px; color:#f4ead2; font-weight:700;">檢查潤滑油位與油質</span></div>
+            <div style="display:flex; align-items:center; gap:10px; padding:6px 0;"><span style="width:18px; height:18px; flex:none; border-radius:4px; background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.2); color:#9fb9c2; display:flex; align-items:center; justify-content:center; font-size:11px;">4</span><span style="font-size:13px; color:#9fb9c2;">更換濾芯並補充齒輪油</span></div>
+            <div style="display:flex; align-items:center; gap:10px; padding:6px 0;"><span style="width:18px; height:18px; flex:none; border-radius:4px; background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.2); color:#9fb9c2; display:flex; align-items:center; justify-content:center; font-size:11px;">5</span><span style="font-size:13px; color:#9fb9c2;">復歸測試並回報 SCADA</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ SHARED TOP BAR ============ -->
+    <div style="position:absolute; left:0; right:0; top:0; height:72px; z-index:5; display:flex; align-items:center; padding:0 24px; background:linear-gradient(180deg, rgba(8,24,31,.95) 0%, rgba(8,24,31,.7) 70%, rgba(8,24,31,0) 100%);">
+      <!-- logo -->
+      <div style="display:flex; align-items:center; gap:12px;">
+        <div style="width:46px; height:46px; border-radius:50%; background:radial-gradient(circle at 50% 35%, #1d4d5d, #0c2731); border:2px solid {{accent}}; display:flex; align-items:center; justify-content:center; font-family:'Noto Serif TC',serif; font-size:24px; font-weight:900; color:#f1d99a; box-shadow:0 4px 12px rgba(0,0,0,.4);">風</div>
+        <div>
+          <div style="font-family:'Noto Serif TC',serif; font-weight:900; font-size:20px; color:#f4ead2; letter-spacing:.06em; line-height:1; text-shadow:0 1px 4px rgba(0,0,0,.5);">離岸風場 · 運維傳說</div>
+          <div style="font-family:'Cinzel',serif; font-size:11px; color:#d9a441; letter-spacing:.34em; margin-top:3px;">OFFSHORE O&amp;M LEGEND</div>
+        </div>
+      </div>
+
+      <!-- center tabs -->
+      <div style="position:absolute; left:50%; transform:translateX(-50%); display:flex; gap:4px; background:rgba(10,28,36,.7); border:1px solid rgba(214,167,84,.3); border-radius:6px; padding:4px;">
+        <div onClick="{{ goHub }}" style="position:relative; padding:8px 26px; border-radius:4px; cursor:pointer; white-space:nowrap; font-family:'Noto Serif TC',serif; font-size:15px; font-weight:700; color:#f4ead2;">母港大廳<div style="display:{{hubDisplay}}; position:absolute; left:16px; right:16px; bottom:2px; height:3px; border-radius:2px; background:{{accent}};"></div></div>
+        <div onClick="{{ goMarket }}" style="position:relative; padding:8px 26px; border-radius:4px; cursor:pointer; white-space:nowrap; font-family:'Noto Serif TC',serif; font-size:15px; font-weight:700; color:#f4ead2;">備品交易所<div style="display:{{marketDisplay}}; position:absolute; left:16px; right:16px; bottom:2px; height:3px; border-radius:2px; background:{{accent}};"></div></div>
+        <div onClick="{{ goSail }}" style="position:relative; padding:8px 26px; border-radius:4px; cursor:pointer; white-space:nowrap; font-family:'Noto Serif TC',serif; font-size:15px; font-weight:700; color:#f4ead2;">出海航行<div style="display:{{sailDisplay}}; position:absolute; left:16px; right:16px; bottom:2px; height:3px; border-radius:2px; background:{{accent}};"></div></div>
+        <div onClick="{{ goRepair }}" style="position:relative; padding:8px 26px; border-radius:4px; cursor:pointer; white-space:nowrap; font-family:'Noto Serif TC',serif; font-size:15px; font-weight:700; color:#f4ead2;">維修作業<div style="display:{{repairDisplay}}; position:absolute; left:16px; right:16px; bottom:2px; height:3px; border-radius:2px; background:{{accent}};"></div></div>
+      </div>
+
+      <!-- right resources -->
+      <div style="margin-left:auto; display:flex; align-items:center; gap:14px; white-space:nowrap;">
+        <div style="display:flex; align-items:center; gap:8px; padding:7px 13px; border-radius:20px; background:rgba(10,28,36,.7); border:1px solid rgba(214,167,84,.3);">
+          <span style="width:10px; height:10px; border-radius:50%; background:{{seaColor}}; box-shadow:0 0 8px {{seaColor}}; animation:shimmer 2.4s ease-in-out infinite;"></span>
+          <div style="line-height:1.15;"><div style="color:#f4ead2; font-size:13px; font-weight:700;">海象 {{ seaText }}</div><div style="color:#9fb9c2; font-size:10px;">浪 1.2m · 風 8m/s · ENE</div></div>
+        </div>
+        <div style="display:flex; align-items:center; gap:7px; padding:7px 13px; border-radius:20px; background:rgba(10,28,36,.7); border:1px solid rgba(214,167,84,.3);">
+          <span style="color:#d9a441;">◷</span><span style="color:#f4ead2; font-size:13px; font-weight:700;">Day 21 · 晴</span>
+        </div>
+        <div style="display:flex; align-items:center; gap:7px; padding:7px 13px; border-radius:20px; background:rgba(10,28,36,.7); border:1px solid rgba(214,167,84,.3);">
+          <span style="color:#9be0a8;">人</span><span style="color:#f4ead2; font-size:13px; font-weight:700;">技師 24/30</span>
+        </div>
+        <div style="display:flex; align-items:center; gap:7px; padding:7px 15px; border-radius:20px; background:linear-gradient(180deg, rgba(217,164,65,.22), rgba(217,164,65,.06)); border:1px solid rgba(214,167,84,.5);">
+          <span style="color:#d9a441; font-size:16px;">◎</span><span style="color:#f1d99a; font-size:15px; font-weight:900; font-variant-numeric:tabular-nums;">8,420 萬</span>
+        </div>
+        <div style="width:40px; height:40px; border-radius:50%; background:rgba(10,28,36,.7); border:1px solid rgba(214,167,84,.4); display:flex; align-items:center; justify-content:center; color:#f4ead2; cursor:pointer;">⚙</div>
+      </div>
+    </div>
+
+    <!-- minimap -->
+    <div style="position:absolute; right:26px; top:88px; z-index:4; width:118px; height:118px; border-radius:50%; background:radial-gradient(circle at 50% 40%, #2c6f7e, #123c49); border:3px solid rgba(214,167,84,.6); box-shadow:0 8px 22px rgba(0,0,0,.5), inset 0 2px 8px rgba(0,0,0,.4); overflow:hidden; display:none;">
+    </div>
+
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{
+  &quot;$preview&quot;: { &quot;width&quot;: 1600, &quot;height&quot;: 900 },
+  &quot;seaState&quot;: { &quot;editor&quot;: &quot;enum&quot;, &quot;options&quot;: [&quot;可作業&quot;, &quot;警戒&quot;, &quot;停航&quot;], &quot;default&quot;: &quot;可作業&quot;, &quot;tsType&quot;: &quot;string&quot; },
+  &quot;accent&quot;: { &quot;editor&quot;: &quot;color&quot;, &quot;default&quot;: &quot;#d9a441&quot;, &quot;tsType&quot;: &quot;string&quot; },
+  &quot;baseName&quot;: { &quot;editor&quot;: &quot;text&quot;, &quot;default&quot;: &quot;台中港 No.3&quot;, &quot;tsType&quot;: &quot;string&quot; },
+  &quot;showTurbines&quot;: { &quot;editor&quot;: &quot;boolean&quot;, &quot;default&quot;: true, &quot;tsType&quot;: &quot;boolean&quot; }
+}">
+class Component extends DCLogic {
+  state = { screen: 'hub', scale: 1, quiz: null };
+
+  componentDidMount() {
+    this._fit = () => {
+      const s = Math.min(window.innerWidth / 1600, window.innerHeight / 900, 1.2);
+      this.setState({ scale: s });
+    };
+    this._fit();
+    window.addEventListener('resize', this._fit);
+  }
+  componentWillUnmount() {
+    window.removeEventListener('resize', this._fit);
+  }
+
+  renderVals() {
+    const accent = this.props.accent ?? '#d9a441';
+    const baseName = this.props.baseName ?? '台中港 No.3';
+    const seaState = this.props.seaState ?? '可作業';
+    const showTurbines = this.props.showTurbines ?? true;
+    const seaMap = {
+      '可作業': { c: '#62c281', t: '可作業' },
+      '警戒':   { c: '#e3ad42', t: '警戒' },
+      '停航':   { c: '#dc6450', t: '停航' },
+    };
+    const sea = seaMap[seaState] || seaMap['可作業'];
+
+    const screen = this.state.screen;
+
+    const raw = [
+      { n: 'GFRP 葉片',    s: 3, num: 124, qty: 65,  price: '8,140' },
+      { n: '齒輪箱齒輪油', s: 2, num: 96,  qty: 68,  price: '258' },
+      { n: '變槳軸承',     s: 3, num: 122, qty: 65,  price: '1,055' },
+      { n: '偏航電機',     s: 2, num: 70,  qty: 0,   price: '202' },
+      { n: '發電機碳刷',   s: 1, num: 81,  qty: 0,   price: '169' },
+      { n: '變流器模組',   s: 3, num: 106, qty: 81,  price: '3,990' },
+      { n: '液壓油',       s: 2, num: 107, qty: 195, price: '1,036' },
+      { n: '螺栓組 M36',   s: 1, num: 103, qty: 73,  price: '445' },
+      { n: '海纜接頭',     s: 2, num: 105, qty: 243, price: '2,520' },
+    ];
+    const parts = raw.map(p => ({
+      n: p.n,
+      qty: p.qty,
+      price: p.price,
+      starStr: '★★★★★'.slice(0, p.s),
+      idxStr: p.num + '%',
+      idxColor: p.num >= 100 ? '#7fce8e' : '#e89a5b',
+    }));
+
+    const correct = 1;
+    const pick = this.state.quiz;
+    const quizRaw = [
+      'A. 變槳軸承潤滑脂量',
+      'B. 潤滑油油位與油質',
+      'C. 塔筒地腳螺栓扭力',
+      'D. 偏航煞車片間隙',
+    ];
+    const quizOpts = quizRaw.map((t, i) => {
+      let bd = 'rgba(214,167,84,.3)', bg = 'rgba(255,255,255,.04)', col = '#e4eef0';
+      if (pick !== null) {
+        if (i === correct) { bd = '#7fce8e'; bg = 'rgba(127,206,142,.16)'; col = '#cdeccf'; }
+        else if (i === pick) { bd = '#dc6450'; bg = 'rgba(220,100,80,.16)'; col = '#f0cbc4'; }
+        else { col = '#7f97a0'; }
+      }
+      return {
+        text: t,
+        onClick: () => this.setState({ quiz: i }),
+        style: { display: 'block', width: '100%', textAlign: 'left', padding: '10px 12px', marginBottom: '8px', borderRadius: '4px', border: '1px solid ' + bd, background: bg, color: col, fontSize: '13.5px', fontWeight: 500, cursor: 'pointer' },
+      };
+    });
+    let quizFeedback = '', quizFeedbackColor = '#9fb9c2';
+    if (pick !== null) {
+      if (pick === correct) { quizFeedback = '✓ 正確！油位過低或油質劣化使潤滑與散熱下降，是齒輪箱油溫升高的首要排查項。'; quizFeedbackColor = '#7fce8e'; }
+      else { quizFeedback = '✗ 再想想：齒輪箱油溫異常，應先從潤滑與散熱系統著手。'; quizFeedbackColor = '#e89a5b'; }
+    }
+
+    return {
+      scale: this.state.scale,
+      accent,
+      baseName,
+      seaColor: sea.c,
+      seaText: sea.t,
+      primaryBg: 'linear-gradient(180deg, ' + accent + ' 0%, #b07d2a 100%)',
+      turbineDisplay: showTurbines ? 'block' : 'none',
+      hubDisplay: screen === 'hub' ? 'block' : 'none',
+      marketDisplay: screen === 'market' ? 'block' : 'none',
+      sailDisplay: screen === 'sail' ? 'block' : 'none',
+      repairDisplay: screen === 'repair' ? 'block' : 'none',
+      goHub: () => this.setState({ screen: 'hub' }),
+      goMarket: () => this.setState({ screen: 'market' }),
+      goSail: () => this.setState({ screen: 'sail' }),
+      goRepair: () => this.setState({ screen: 'repair' }),
+      parts,
+      quizOpts,
+      quizFeedback,
+      quizFeedbackColor,
+    };
+  }
+}
+</script>
+</body>
+</html>

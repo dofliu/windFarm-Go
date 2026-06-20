@@ -1,0 +1,28 @@
+[
+  {
+    "id": "yaw_misalignment",
+    "name": { "zh": "偏航失準告警", "en": "Yaw Misalignment Alarm" },
+    "category": "mechanical",
+    "severity": 100,
+    "alarm_code": "YAW-POS-ERR",
+    "scada_hint": {
+      "zh": "風向標讀數正常，但偏航位置回授與指令偏差 +12°。問題不在感測。",
+      "en": "Wind vane normal, but yaw position feedback deviates +12° from command. Not the sensor."
+    },
+    "root_cause": "brake_not_released",
+    "root_cause_label": {
+      "zh": "偏航煞車未完全釋放，齒盤輕微卡滯",
+      "en": "Yaw brake not fully released; ring gear slightly stuck"
+    },
+    "weakness_tool": "tool_alignment",
+    "correct_sop": "sop_yaw_brake",
+    "distractors": ["sop_anemometer", "sop_pitch_calib"],
+    "region": "nearshore",
+    "knowledge_point": "yaw_brake_release",
+    "knowledge_tip": {
+      "zh": "偏航位置回授偏差 ≠ 感測器故障；應優先檢查偏航煞車與齒盤定位。",
+      "en": "Yaw feedback deviation ≠ sensor fault; check the yaw brake and ring-gear alignment first."
+    },
+    "reward": { "exp": 40, "budget": 200, "unlock": "tool_multimeter" }
+  }
+]

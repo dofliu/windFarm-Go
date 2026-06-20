@@ -1,0 +1,17 @@
+[
+  {
+    "id": "dlg_port_intro",
+    "speaker": { "zh": "場長", "en": "Site Manager" },
+    "lines": [
+      {
+        "zh": "見習騎士，亂流氣旋讓近岸 7 號巨神塔停機了。",
+        "en": "Apprentice — the Turbulence Cyclone halted nearshore Titan #7."
+      },
+      {
+        "zh": "偏航系統卡死，它無法迎風。趁天氣窗去修好它。",
+        "en": "The yaw is jammed; it can't face the wind. Fix it before the window shuts."
+      }
+    ],
+    "triggers": "quest_yaw"
+  }
+]

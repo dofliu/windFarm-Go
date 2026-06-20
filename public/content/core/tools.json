@@ -1,0 +1,58 @@
+[
+  {
+    "id": "tool_torque_wrench",
+    "name": { "zh": "基礎扭力扳手", "en": "Torque Wrench" },
+    "type": "physical",
+    "power": 20,
+    "desc": { "zh": "基礎物理修復，穩定但量小。", "en": "Basic physical repair, steady but small." }
+  },
+  {
+    "id": "tool_scada_trend",
+    "name": { "zh": "SCADA 趨勢分析", "en": "SCADA Trend Analysis" },
+    "type": "diagnostic",
+    "power": 0,
+    "desc": { "zh": "讀取趨勢數據，縮小故障範圍。", "en": "Read trends to narrow the fault." }
+  },
+  {
+    "id": "tool_alignment",
+    "name": { "zh": "對心儀", "en": "Alignment Tool" },
+    "type": "diagnostic",
+    "power": 0,
+    "reveals_category": "mechanical",
+    "desc": { "zh": "檢測機械定位，可命中機械類弱點。", "en": "Detects mechanical alignment; hits mechanical weakness." }
+  },
+  {
+    "id": "tool_thermal",
+    "name": { "zh": "熱顯像儀", "en": "Thermal Imaging Camera" },
+    "type": "diagnostic",
+    "power": 0,
+    "reveals_category": "mechanical",
+    "desc": { "zh": "感測溫度異常，找出過熱熱點。", "en": "Senses thermal anomalies / hotspots." }
+  },
+  {
+    "id": "tool_multimeter",
+    "name": { "zh": "高階萬用電表", "en": "Multimeter" },
+    "type": "diagnostic",
+    "power": 0,
+    "reveals_category": "electrical",
+    "desc": { "zh": "量測電氣參數，看穿電氣類弱點。", "en": "Measures electrical params; reveals electrical weakness." }
+  },
+  {
+    "id": "skill_foresight",
+    "name": { "zh": "預測防禦 (CMS)", "en": "Foresight (CMS)" },
+    "type": "ai_skill",
+    "power": 0,
+    "mp_cost": 8,
+    "desc": { "zh": "狀態監測：揭露故障屬性與真因方向。", "en": "Condition monitoring: reveals category & root-cause direction." }
+  },
+  {
+    "id": "skill_wind_rag",
+    "name": { "zh": "終極禁咒：Wind-RAG", "en": "Oracle: Wind-RAG" },
+    "type": "ai_skill",
+    "power": 100,
+    "mp_cost": 50,
+    "uses_per_battle": 1,
+    "requires": ["manual_fragment"],
+    "desc": { "zh": "需手冊碎片。檢索正解，造成巨大修復。", "en": "Needs a manual fragment. Retrieves the fix for huge repair." }
+  }
+]

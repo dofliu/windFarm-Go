@@ -1,0 +1,48 @@
+{
+  "name": "windfarm-go",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "離岸風場・運維傳說 — Offshore O&M Legend: an educational, Uncharted-Waters-style game for offshore wind operations & maintenance.",
+  "license": "MIT",
+  "author": "Juihung Liu (劉瑞弘) <moredof@gmail.com> (DOF Lab, NCUT)",
+  "homepage": "https://github.com/dofliu/windFarm-Go#readme",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/dofliu/windFarm-Go.git"
+  },
+  "bugs": {
+    "url": "https://github.com/dofliu/windFarm-Go/issues"
+  },
+  "keywords": [
+    "offshore-wind",
+    "wind-energy",
+    "o-and-m",
+    "education",
+    "edtech",
+    "game",
+    "react",
+    "typescript",
+    "vite"
+  ],
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.4",
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.4.49",
+    "tailwindcss": "^3.4.17",
+    "typescript": "^5.6.3",
+    "vite": "^6.0.5"
+  }
+}

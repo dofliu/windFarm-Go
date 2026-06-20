@@ -1,0 +1,18 @@
+[
+  {
+    "id": "quest_yaw",
+    "title": { "zh": "偏航之謎", "en": "Yaw System Maze" },
+    "giver": "npc_site_manager",
+    "brief": {
+      "zh": "近岸 7 號巨神塔偏航卡死、無法迎風。趁天氣窗登塔排除故障。",
+      "en": "Nearshore Titan #7 yaw is jammed and can't face the wind. Board and repair within the weather window."
+    },
+    "objectives": [
+      { "zh": "登上 7 號塔偏航層", "en": "Reach Titan #7 yaw deck" },
+      { "zh": "排除偏航失準告警", "en": "Repair the Yaw Misalignment Alarm" }
+    ],
+    "target_fault": "yaw_misalignment",
+    "weather_window": 30,
+    "reward": { "exp": 100, "budget": 500, "unlock": "skill_foresight" }
+  }
+]

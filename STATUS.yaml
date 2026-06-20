@@ -1,0 +1,19 @@
+name: Wind Knights - Offshore Guardians
+name_zh: 風電勇者：離岸守護者
+category: edtech
+progress: 52
+status: active
+last_updated: "2026-06-20"
+next_milestone: "依設計稿補互動：採購結算、出海航行流程、工單/任務系統、人物表情集與對話腳本"
+technologies:
+  - React
+  - TypeScript
+  - Vite
+  - Tailwind CSS
+outputs:
+  - tool
+  - course
+  - presentation
+description: "A Dragon-Quest-style maze RPG reskinned for offshore wind O&M training."
+description_zh: "復刻勇者鬥惡龍風格、以離岸風電運維為劇情的迷宮 RPG 教學遊戲。"
+key_metrics: "大航海時代式UI四畫面(母港/交易所/出海/維修)、金色×深海設計系統、故障診斷隨堂測驗、1600×900等比舞台、中英雙語"

@@ -1,0 +1,10 @@
+[
+  {
+    "id": "nearshore",
+    "name": { "zh": "近岸示範風場", "en": "Nearshore Demo Farm" },
+    "foundation": "monopile",
+    "weather": ["calm"],
+    "difficulty": 1,
+    "act": 1
+  }
+]
