@@ -6,16 +6,15 @@ import HubScreen from "./ui/screens/HubScreen";
 import MarketScreen from "./ui/screens/MarketScreen";
 import SailScreen from "./ui/screens/SailScreen";
 import RepairScreen from "./ui/screens/RepairScreen";
+import { GameProvider } from "./state/GameContext";
 
 export type Screen = "hub" | "market" | "sail" | "repair";
-export type SeaState = "workable" | "caution" | "closed";
 
 const accent = C.gold;
 
 export default function App() {
   const [screen, setScreen] = useState<Screen>("hub");
   const [scale, setScale] = useState(1);
-  const seaState: SeaState = "workable";
 
   // 1600×900 舞台等比縮放置中
   useEffect(() => {
@@ -25,44 +24,45 @@ export default function App() {
     return () => window.removeEventListener("resize", fit);
   }, []);
 
-  // sail / repair 有自己的整面背景，會蓋住共用場景
   const showSharedBg = screen === "hub" || screen === "market";
 
   return (
-    <div
-      style={{
-        position: "fixed",
-        inset: 0,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        background: "radial-gradient(circle at 50% 40%, #14242d, #070d11 80%)",
-        overflow: "hidden",
-        fontFamily: "'Noto Sans TC', sans-serif",
-      }}
-    >
+    <GameProvider>
       <div
         style={{
-          position: "relative",
-          width: 1600,
-          height: 900,
-          flex: "none",
-          transform: `scale(${scale})`,
-          transformOrigin: "center center",
-          boxShadow: "0 40px 110px rgba(0,0,0,.7)",
-          borderRadius: 6,
+          position: "fixed",
+          inset: 0,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          background: "radial-gradient(circle at 50% 40%, #14242d, #070d11 80%)",
           overflow: "hidden",
+          fontFamily: "'Noto Sans TC', sans-serif",
         }}
       >
-        {showSharedBg && <SceneBackground />}
+        <div
+          style={{
+            position: "relative",
+            width: 1600,
+            height: 900,
+            flex: "none",
+            transform: `scale(${scale})`,
+            transformOrigin: "center center",
+            boxShadow: "0 40px 110px rgba(0,0,0,.7)",
+            borderRadius: 6,
+            overflow: "hidden",
+          }}
+        >
+          {showSharedBg && <SceneBackground />}
 
-        {screen === "hub" && <HubScreen setScreen={setScreen} accent={accent} />}
-        {screen === "market" && <MarketScreen accent={accent} />}
-        {screen === "sail" && <SailScreen setScreen={setScreen} accent={accent} />}
-        {screen === "repair" && <RepairScreen />}
+          {screen === "hub" && <HubScreen setScreen={setScreen} accent={accent} />}
+          {screen === "market" && <MarketScreen accent={accent} />}
+          {screen === "sail" && <SailScreen setScreen={setScreen} accent={accent} />}
+          {screen === "repair" && <RepairScreen setScreen={setScreen} />}
 
-        <TopBar screen={screen} setScreen={setScreen} accent={accent} seaState={seaState} />
+          <TopBar screen={screen} setScreen={setScreen} accent={accent} />
+        </div>
       </div>
-    </div>
+    </GameProvider>
   );
 }

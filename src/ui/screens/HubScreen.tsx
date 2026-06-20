@@ -4,18 +4,19 @@ import { t } from "../../game/systems/i18n";
 import { useLang } from "../useLang";
 import { AdvisorPopup } from "../Portrait";
 import { exprUrl, NARRATOR_EXPR } from "../characters";
+import { useGame } from "../../state/GameContext";
+import { ACTIVE_QUEST } from "../faults";
 import type { I18n } from "../../game/systems/types";
+import type { QuestStage } from "../../state/game";
 import type { Screen } from "../../App";
 
-// 對應 NARRATOR_EXPR 順序：smile / happy / surprise / thinking / worried / wink
-const NARRATOR_LINES: I18n[] = [
-  { zh: "歡迎回到母港，船長！", en: "Welcome back to port, Captain!" },
-  { zh: "CH-12 號機組有新工單囉～準備好就點「出海作業」吧！", en: "New work order on Unit CH-12 — hit SET SAIL when you're ready!" },
-  { zh: "咦？海象好像有變化，注意作業窗！", en: "Huh? The sea state's shifting — mind the work window!" },
-  { zh: "嗯…這趟維修要帶足備品才行。", en: "Hmm… we should stock up on parts for this trip." },
-  { zh: "颱風季快到了，天氣窗要抓緊喔…", en: "Typhoon season is near — watch the weather window…" },
-  { zh: "導航交給我，包在身上！（點我換表情）", en: "Leave the navigation to me! (click to change mood)" },
-];
+// C1：莉莉台詞依工單階段
+const STAGE_LINE: Record<QuestStage, I18n> = {
+  available: { zh: "船長！CH-12 有新工單，先到左下角『接單』吧！", en: "Captain! New order on CH-12 — tap ACCEPT at the bottom-left!" },
+  active: { zh: "工單進行中～點『出海作業』前往 CH-12！", en: "Order in progress — hit SET SAIL to reach CH-12!" },
+  done: { zh: "幹得好，船長！工單完成 🎉（點我換表情）", en: "Well done, Captain! Order complete 🎉 (click me)" },
+};
+const STAGE_EXPR: Record<QuestStage, number> = { available: 0, active: 1, done: 5 };
 
 const labelChip: CSSProperties = {
   display: "inline-block",
@@ -95,9 +96,12 @@ function TickerRow({ stars, name, price, farm, pct, onClick }: { stars: string; 
 
 export default function HubScreen({ setScreen, accent }: { setScreen: (s: Screen) => void; accent: string }) {
   useLang();
+  const { data, dispatch } = useGame();
+  const stage = data.questStage;
   const goMarket = () => setScreen("market");
   const goSail = () => setScreen("sail");
-  const [ei, setEi] = useState(1); // 解說員表情索引（預設 happy）
+  const [ei, setEi] = useState<number | null>(null); // null = 跟隨階段表情
+  const exprIdx = ei ?? STAGE_EXPR[stage];
 
   return (
     <div style={{ position: "absolute", inset: 0, zIndex: 2 }}>
@@ -149,24 +153,35 @@ export default function HubScreen({ setScreen, accent }: { setScreen: (s: Screen
         <RailBtn char="榜" label={{ zh: "排行", en: "Ranking" }} />
       </div>
 
-      {/* BOTTOM-LEFT: quest card */}
+      {/* BOTTOM-LEFT: quest card（依工單階段動態） */}
       <div style={{ ...panel, position: "absolute", left: 28, bottom: 26, width: 372, boxShadow: "0 12px 30px rgba(0,0,0,.4)" }}>
         <div style={panelHeader}>
-          <span style={panelTitle}>{t({ zh: "進行中工單", en: "Active Work Order" })}</span>
-          <span style={{ marginLeft: "auto", fontSize: 12, color: C.mist2 }}>3 / 5</span>
+          <span style={panelTitle}>{t({ zh: "工單", en: "Work Order" })}</span>
+          <span style={{ marginLeft: "auto", fontSize: 12, color: stage === "done" ? C.green : C.mist2 }}>
+            {t(stage === "available" ? { zh: "可接", en: "Available" } : stage === "active" ? { zh: "進行中", en: "Active" } : { zh: "已完成", en: "Done" })}
+          </span>
         </div>
         <div style={{ padding: "12px 14px" }}>
-          <div style={{ color: C.cream, fontSize: 15, fontWeight: 700, marginBottom: 4 }}>{t({ zh: "更換偏航電機 · CH-12 號機組", en: "Replace Yaw Motor · Unit CH-12" })}</div>
-          <div style={{ color: C.mist, fontSize: 12.5, lineHeight: 1.5 }}>{t({ zh: "前往「彰化外海・CH-12」，於浪高 1.5m 內完成偏航電機更換並回報 SCADA。", en: "Sail to Changhua Offshore CH-12; replace the yaw motor within 1.5m wave height and report to SCADA." })}</div>
+          <div style={{ color: C.cream, fontSize: 15, fontWeight: 700, marginBottom: 4 }}>{t(ACTIVE_QUEST.title)}</div>
+          <div style={{ color: C.mist, fontSize: 12.5, lineHeight: 1.5 }}>{t(ACTIVE_QUEST.brief)}</div>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 10 }}>
             <div style={{ flex: 1, height: 7, borderRadius: 4, background: "rgba(255,255,255,.1)", overflow: "hidden" }}>
-              <div style={{ width: "35%", height: "100%", background: "linear-gradient(90deg,#e8c074,#d9a441)" }} />
+              <div style={{ width: stage === "available" ? "0%" : stage === "done" ? "100%" : data.repairDone ? "100%" : "50%", height: "100%", background: "linear-gradient(90deg,#e8c074,#d9a441)" }} />
             </div>
-            <span style={{ fontSize: 12, color: "#cfe0e6", fontVariantNumeric: "tabular-nums" }}>0 / 1</span>
+            <span style={{ fontSize: 12, color: "#cfe0e6", fontVariantNumeric: "tabular-nums" }}>{stage === "done" ? "1 / 1" : "0 / 1"}</span>
           </div>
-          <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 12 }}>
             <span style={{ padding: "4px 10px", borderRadius: 3, background: "rgba(217,164,65,.14)", border: "1px solid rgba(214,167,84,.4)", color: C.goldText, fontSize: 12 }}>{t({ zh: "預算 +18 萬", en: "Budget +180k" })}</span>
             <span style={{ padding: "4px 10px", borderRadius: 3, background: "rgba(127,206,142,.12)", border: "1px solid rgba(127,206,142,.35)", color: C.greenLight, fontSize: 12 }}>{t({ zh: "資歷 +120", en: "XP +120" })}</span>
+            {stage === "available" && (
+              <button
+                onClick={() => dispatch({ type: "ACCEPT_QUEST" })}
+                style={{ marginLeft: "auto", padding: "5px 16px", borderRadius: 4, border: "1px solid rgba(255,236,196,.6)", background: primaryBg(accent), color: C.ink, fontFamily: FONT_SERIF, fontWeight: 900, fontSize: 13, cursor: "pointer" }}
+              >
+                {t({ zh: "接單", en: "Accept" })}
+              </button>
+            )}
+            {stage === "done" && <span style={{ marginLeft: "auto", color: C.green, fontWeight: 700, fontSize: 13 }}>✅</span>}
           </div>
         </div>
       </div>
@@ -183,12 +198,12 @@ export default function HubScreen({ setScreen, accent }: { setScreen: (s: Screen
       {/* 解說員少女：任務引導（點擊換表情/台詞） */}
       <AdvisorPopup
         id="narrator_girl"
-        src={exprUrl("narrator_girl", NARRATOR_EXPR[ei])}
-        line={NARRATOR_LINES[ei]}
+        src={exprUrl("narrator_girl", NARRATOR_EXPR[exprIdx])}
+        line={STAGE_LINE[stage]}
         style={{ left: 1300, bottom: 6 }}
         portraitH={260}
         bubbleSide="left"
-        onClick={() => setEi((ei + 1) % NARRATOR_EXPR.length)}
+        onClick={() => setEi((exprIdx + 1) % NARRATOR_EXPR.length)}
       />
     </div>
   );

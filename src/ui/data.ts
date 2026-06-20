@@ -2,24 +2,28 @@ import type { I18n } from "../game/systems/types";
 
 // 備品交易所：零件行情（行情百分比 ≥100 綠、<100 橘）
 export interface Part {
+  id: string;
   n: I18n;
   stars: number;
   idx: number; // 行情百分比
   qty: number;
-  price: string;
+  price: string; // 顯示用；數值見 priceNum()
 }
 
 export const PARTS: Part[] = [
-  { n: { zh: "GFRP 葉片", en: "GFRP Blade" }, stars: 3, idx: 124, qty: 65, price: "8,140" },
-  { n: { zh: "齒輪箱齒輪油", en: "Gearbox Oil" }, stars: 2, idx: 96, qty: 68, price: "258" },
-  { n: { zh: "變槳軸承", en: "Pitch Bearing" }, stars: 3, idx: 122, qty: 65, price: "1,055" },
-  { n: { zh: "偏航電機", en: "Yaw Motor" }, stars: 2, idx: 70, qty: 0, price: "202" },
-  { n: { zh: "發電機碳刷", en: "Generator Brush" }, stars: 1, idx: 81, qty: 0, price: "169" },
-  { n: { zh: "變流器模組", en: "Converter Module" }, stars: 3, idx: 106, qty: 81, price: "3,990" },
-  { n: { zh: "液壓油", en: "Hydraulic Oil" }, stars: 2, idx: 107, qty: 195, price: "1,036" },
-  { n: { zh: "螺栓組 M36", en: "Bolt Set M36" }, stars: 1, idx: 103, qty: 73, price: "445" },
-  { n: { zh: "海纜接頭", en: "Subsea Cable Joint" }, stars: 2, idx: 105, qty: 243, price: "2,520" },
+  { id: "gfrp_blade", n: { zh: "GFRP 葉片", en: "GFRP Blade" }, stars: 3, idx: 124, qty: 65, price: "8,140" },
+  { id: "gearbox_oil", n: { zh: "齒輪箱齒輪油", en: "Gearbox Oil" }, stars: 2, idx: 96, qty: 68, price: "258" },
+  { id: "pitch_bearing", n: { zh: "變槳軸承", en: "Pitch Bearing" }, stars: 3, idx: 122, qty: 65, price: "1,055" },
+  { id: "yaw_motor", n: { zh: "偏航電機", en: "Yaw Motor" }, stars: 2, idx: 70, qty: 0, price: "202" },
+  { id: "gen_brush", n: { zh: "發電機碳刷", en: "Generator Brush" }, stars: 1, idx: 81, qty: 0, price: "169" },
+  { id: "converter", n: { zh: "變流器模組", en: "Converter Module" }, stars: 3, idx: 106, qty: 81, price: "3,990" },
+  { id: "hydraulic_oil", n: { zh: "液壓油", en: "Hydraulic Oil" }, stars: 2, idx: 107, qty: 195, price: "1,036" },
+  { id: "bolt_m36", n: { zh: "螺栓組 M36", en: "Bolt Set M36" }, stars: 1, idx: 103, qty: 73, price: "445" },
+  { id: "cable_joint", n: { zh: "海纜接頭", en: "Subsea Cable Joint" }, stars: 2, idx: 105, qty: 243, price: "2,520" },
 ];
+
+export const priceNum = (p: Part) => Number(p.price.replace(/,/g, ""));
+export const fmt = (n: number) => n.toLocaleString();
 
 export function stars(n: number): string {
   return "★★★★★".slice(0, n);

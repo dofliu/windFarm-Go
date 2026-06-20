@@ -1,60 +1,50 @@
 import { useState, type CSSProperties } from "react";
-import { C, FONT_SERIF, panel, panelHeader, panelTitle } from "../tokens";
+import { C, FONT_SERIF, primaryBg, panel, panelHeader, panelTitle } from "../tokens";
 import { t } from "../../game/systems/i18n";
 import { useLang } from "../useLang";
-import { REPAIR_QUIZ } from "../data";
 import { AdvisorPopup } from "../Portrait";
+import { useGame } from "../../state/GameContext";
+import { ACTIVE_QUEST, FAULTS } from "../faults";
+import type { Screen } from "../../App";
 
 function Hotspot({ left, top, label, color, alarm }: { left: number; top: number; label: { zh: string; en: string }; color: string; alarm?: boolean }) {
-  const dot = (
-    <span
-      style={{
-        width: alarm ? 13 : 11,
-        height: alarm ? 13 : 11,
-        borderRadius: "50%",
-        background: color,
-        boxShadow: `0 0 6px ${color}`,
-        animation: alarm ? "shimmer 1.2s ease-in-out infinite" : undefined,
-      }}
-    />
-  );
+  const dot = <span style={{ width: alarm ? 13 : 11, height: alarm ? 13 : 11, borderRadius: "50%", background: color, boxShadow: `0 0 6px ${color}`, animation: alarm ? "shimmer 1.2s ease-in-out infinite" : undefined }} />;
   const tag = (
-    <div
-      style={{
-        padding: "3px 9px",
-        borderRadius: 3,
-        background: alarm ? "rgba(40,16,14,.92)" : "rgba(12,30,38,.9)",
-        border: `1px solid ${color}`,
-        color: alarm ? C.redText : color === C.green ? "#cdeccf" : color === C.amber ? "#f4e0b4" : "#cdeccf",
-        fontSize: 11,
-        fontWeight: alarm ? 700 : 400,
-        whiteSpace: "nowrap",
-      }}
-    >
+    <div style={{ padding: "3px 9px", borderRadius: 3, background: alarm ? "rgba(40,16,14,.92)" : "rgba(12,30,38,.9)", border: `1px solid ${color}`, color: alarm ? C.redText : color === C.green ? "#cdeccf" : color === C.amber ? "#f4e0b4" : "#cdeccf", fontSize: 11, fontWeight: alarm ? 700 : 400, whiteSpace: "nowrap" }}>
       {t(label)}
     </div>
   );
   return (
     <div style={{ position: "absolute", left, top, display: "flex", alignItems: "center", gap: 6, zIndex: 3 }}>
-      {alarm ? (
-        <>
-          {dot}
-          {tag}
-        </>
-      ) : (
-        <>
-          {tag}
-          {dot}
-        </>
-      )}
+      {alarm ? (<>{dot}{tag}</>) : (<>{tag}{dot}</>)}
     </div>
   );
 }
 
-export default function RepairScreen() {
+export default function RepairScreen({ setScreen }: { setScreen: (s: Screen) => void }) {
   useLang();
+  const { data, dispatch } = useGame();
+  const quest = ACTIVE_QUEST;
+  const fault = FAULTS[quest.targetFault];
+  const q = fault.quiz;
+
   const [pick, setPick] = useState<number | null>(null);
-  const q = REPAIR_QUIZ;
+  // 前兩步預設完成；步驟 3~5 可點擊完成
+  const [steps, setSteps] = useState<boolean[]>(fault.sop.map((_, i) => i < 2));
+
+  const quizCorrect = pick === q.correct;
+  const allSteps = steps.every(Boolean);
+  const ready = quizCorrect && allSteps && data.questStage === "active" && !data.repairDone;
+
+  const toggleStep = (i: number) => {
+    if (i < 2) return; // 前兩步固定完成
+    setSteps((s) => s.map((v, idx) => (idx === i ? !v : v)));
+  };
+
+  const finish = () => {
+    dispatch({ type: "FINISH_REPAIR", quest });
+    setScreen("hub");
+  };
 
   return (
     <div style={{ position: "absolute", inset: 0, zIndex: 2 }}>
@@ -78,9 +68,8 @@ export default function RepairScreen() {
             <div key={d} style={{ position: "absolute", left: -8, top: 0, width: 16, height: 160, background: "linear-gradient(180deg,#eef3f4,#aebbc0)", clipPath: "polygon(22% 0,78% 0,56% 100%,44% 100%)", transformOrigin: "8px 0", transform: `rotate(${d}deg)` }} />
           ))}
         </div>
-
         <Hotspot left={96} top={128} label={{ zh: "變槳系統 · 正常", en: "Pitch · OK" }} color={C.green} />
-        <Hotspot left={286} top={118} label={{ zh: "齒輪箱 · 油溫過高", en: "Gearbox · Overheat" }} color={C.red} alarm />
+        <Hotspot left={286} top={118} label={fault.name} color={C.red} alarm />
         <Hotspot left={286} top={152} label={{ zh: "發電機 · 注意", en: "Generator · Watch" }} color={C.amber} />
         <Hotspot left={262} top={196} label={{ zh: "偏航系統 · 正常", en: "Yaw · OK" }} color={C.green} />
         <Hotspot left={262} top={320} label={{ zh: "塔筒結構 · 正常", en: "Tower · OK" }} color={C.green} />
@@ -92,10 +81,10 @@ export default function RepairScreen() {
         <div style={{ ...panel, flex: 1, padding: "12px 14px", borderRadius: 6 }}>
           <div style={{ fontSize: 11, color: C.mist }}>{t({ zh: "機組妥善率", en: "Availability" })}</div>
           <div style={{ fontSize: 30, fontWeight: 900, color: C.amber2, fontFamily: FONT_SERIF, lineHeight: 1.1 }}>
-            86<span style={{ fontSize: 15 }}>%</span>
+            {data.availability}<span style={{ fontSize: 15 }}>%</span>
           </div>
           <div style={{ marginTop: 6, height: 6, borderRadius: 4, background: "rgba(255,255,255,.1)", overflow: "hidden" }}>
-            <div style={{ width: "86%", height: "100%", background: "linear-gradient(90deg,#e89a5b,#cf6b3a)" }} />
+            <div style={{ width: `${data.availability}%`, height: "100%", background: "linear-gradient(90deg,#e89a5b,#cf6b3a)" }} />
           </div>
         </div>
         <div style={{ ...panel, flex: 1, padding: "12px 14px", borderRadius: 6 }}>
@@ -115,16 +104,17 @@ export default function RepairScreen() {
           <div style={{ ...panelHeader, background: "linear-gradient(180deg, rgba(220,100,80,.25), rgba(220,100,80,.06))", borderBottom: "1px solid rgba(220,100,80,.4)" }}>
             <span style={{ width: 9, height: 9, borderRadius: "50%", background: C.red, boxShadow: `0 0 8px ${C.red}`, animation: "shimmer 1.2s ease-in-out infinite" }} />
             <span style={panelTitle}>{t({ zh: "SCADA 即時告警", en: "SCADA Live Alarms" })}</span>
-            <span style={{ marginLeft: "auto", fontSize: 11, color: C.mist }}>CH-12 · 14:32</span>
+            <span style={{ marginLeft: "auto", fontSize: 11, color: C.mist }}>{quest.unit} · 14:32</span>
           </div>
           <div style={{ padding: "11px 14px" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
               <span style={{ padding: "3px 8px", borderRadius: 3, background: C.red, color: "#fff", fontSize: 11, fontWeight: 700 }}>{t({ zh: "嚴重", en: "CRIT" })}</span>
-              <span style={{ color: C.cream, fontSize: 14, fontWeight: 700 }}>{t({ zh: "齒輪箱油溫過高 78°C", en: "Gearbox oil temp 78°C" })}</span>
+              <span style={{ color: C.cream, fontSize: 14, fontWeight: 700 }}>{t(fault.severityTemp)}</span>
             </div>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 9 }}>
-              <span style={{ padding: "3px 8px", borderRadius: 3, background: "rgba(227,173,66,.16)", border: "1px solid rgba(227,173,66,.4)", color: "#f4e0b4", fontSize: 11, whiteSpace: "nowrap" }}>{t({ zh: "警戒 · 發電機振動", en: "Warn · Gen vibration" })}</span>
-              <span style={{ padding: "3px 8px", borderRadius: 3, background: "rgba(227,173,66,.16)", border: "1px solid rgba(227,173,66,.4)", color: "#f4e0b4", fontSize: 11, whiteSpace: "nowrap" }}>{t({ zh: "警戒 · 濾芯壓差", en: "Warn · Filter ΔP" })}</span>
+              {fault.warns.map((w, i) => (
+                <span key={i} style={{ padding: "3px 8px", borderRadius: 3, background: "rgba(227,173,66,.16)", border: "1px solid rgba(227,173,66,.4)", color: "#f4e0b4", fontSize: 11, whiteSpace: "nowrap" }}>{t(w)}</span>
+              ))}
             </div>
           </div>
         </div>
@@ -137,46 +127,55 @@ export default function RepairScreen() {
           <div style={{ padding: "13px 14px" }}>
             <div style={{ color: C.cream, fontSize: 14, fontWeight: 700, lineHeight: 1.5, marginBottom: 11 }}>{t(q.question)}</div>
             {q.options.map((opt, i) => {
-              let bd = "rgba(214,167,84,.3)";
-              let bg = "rgba(255,255,255,.04)";
-              let col = "#e4eef0";
+              let bd = "rgba(214,167,84,.3)", bg = "rgba(255,255,255,.04)", col = "#e4eef0";
               if (pick !== null) {
-                if (i === q.correct) {
-                  bd = C.green;
-                  bg = "rgba(127,206,142,.16)";
-                  col = "#cdeccf";
-                } else if (i === pick) {
-                  bd = C.red;
-                  bg = "rgba(220,100,80,.16)";
-                  col = C.redText;
-                } else {
-                  col = "#7f97a0";
-                }
+                if (i === q.correct) { bd = C.green; bg = "rgba(127,206,142,.16)"; col = "#cdeccf"; }
+                else if (i === pick) { bd = C.red; bg = "rgba(220,100,80,.16)"; col = C.redText; }
+                else { col = "#7f97a0"; }
               }
               const s: CSSProperties = { display: "block", width: "100%", textAlign: "left", padding: "10px 12px", marginBottom: 8, borderRadius: 4, border: `1px solid ${bd}`, background: bg, color: col, fontSize: 13.5, fontWeight: 500, cursor: "pointer" };
-              return (
-                <div key={i} onClick={() => setPick(i)} style={s}>
-                  {t(opt)}
-                </div>
-              );
+              return (<div key={i} onClick={() => setPick(i)} style={s}>{t(opt)}</div>);
             })}
-            <div style={{ minHeight: 18, marginTop: 4, fontSize: 12.5, lineHeight: 1.5, color: pick === null ? C.mist : pick === q.correct ? C.green : C.amber2 }}>
-              {pick === null ? "" : t(pick === q.correct ? q.feedbackOk : q.feedbackNo)}
+            <div style={{ minHeight: 18, marginTop: 4, fontSize: 12.5, lineHeight: 1.5, color: pick === null ? C.mist : quizCorrect ? C.green : C.amber2 }}>
+              {pick === null ? "" : t(quizCorrect ? q.ok : q.no)}
             </div>
           </div>
         </div>
 
-        {/* SOP checklist */}
-        <div style={{ ...panel, flex: 1, boxShadow: "0 12px 30px rgba(0,0,0,.45)" }}>
+        {/* SOP checklist (interactive) */}
+        <div style={{ ...panel, flex: 1, boxShadow: "0 12px 30px rgba(0,0,0,.45)", display: "flex", flexDirection: "column" }}>
           <div style={panelHeader}>
             <span style={panelTitle}>{t({ zh: "維修 SOP 作業步驟", en: "Repair SOP Steps" })}</span>
+            <span style={{ marginLeft: "auto", fontSize: 11, color: C.mist }}>{steps.filter(Boolean).length}/{steps.length}</span>
           </div>
-          <div style={{ padding: "11px 14px" }}>
-            <SopStep state="done" text={t({ zh: "確認天氣作業窗", en: "Confirm weather window" })} />
-            <SopStep state="done" text={t({ zh: "登塔前 LOTO 能量隔離上鎖", en: "LOTO energy isolation before climb" })} />
-            <SopStep state="active" num={3} text={t({ zh: "檢查潤滑油位與油質", en: "Check lube oil level & quality" })} />
-            <SopStep state="todo" num={4} text={t({ zh: "更換濾芯並補充齒輪油", en: "Replace filter & top up gear oil" })} />
-            <SopStep state="todo" num={5} text={t({ zh: "復歸測試並回報 SCADA", en: "Reset test & report to SCADA" })} />
+          <div style={{ padding: "9px 14px", flex: 1 }}>
+            {fault.sop.map((step, i) => {
+              const done = steps[i];
+              const fixed = i < 2;
+              const box = done
+                ? { background: C.green, color: "#0f2630", border: "none" as const, content: "✓" }
+                : { background: "rgba(255,255,255,.08)", color: C.mist, border: "1px solid rgba(255,255,255,.2)", content: String(i + 1) };
+              return (
+                <div key={i} onClick={() => toggleStep(i)} style={{ display: "flex", alignItems: "center", gap: 10, padding: "6px 0", cursor: fixed ? "default" : "pointer" }}>
+                  <span style={{ width: 18, height: 18, flex: "none", borderRadius: 4, background: box.background, color: box.color, border: box.border, display: "flex", alignItems: "center", justifyContent: "center", fontSize: done ? 12 : 11, fontWeight: 900 }}>{box.content}</span>
+                  <span style={{ fontSize: 13, color: done ? C.mist3 : C.cream, fontWeight: done ? 400 : 700, textDecoration: done ? "line-through" : "none" }}>{t(step)}</span>
+                </div>
+              );
+            })}
+          </div>
+          {/* 完成/結算按鈕（A3） */}
+          <div style={{ padding: "0 14px 14px" }}>
+            {data.questStage !== "active" ? (
+              <div style={{ textAlign: "center", fontSize: 12, color: C.mist }}>{t({ zh: "（請先在母港接單）", en: "(Accept an order in port first)" })}</div>
+            ) : (
+              <button
+                disabled={!ready}
+                onClick={finish}
+                style={{ width: "100%", padding: "11px 0", borderRadius: 6, border: "1px solid rgba(255,236,196,.6)", background: ready ? primaryBg() : "rgba(255,255,255,.08)", color: ready ? C.ink : C.mist, fontFamily: FONT_SERIF, fontWeight: 900, fontSize: 15, letterSpacing: ".08em", cursor: ready ? "pointer" : "not-allowed" }}
+              >
+                {t({ zh: "回報 SCADA · 完成維修", en: "Report SCADA · Finish" })}
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -184,30 +183,11 @@ export default function RepairScreen() {
       {/* 維修工程師側邊跳出告警 */}
       <AdvisorPopup
         id="repair_eng"
-        line={{ zh: "主機有異常震動！齒輪箱油溫也飆高，需要立即檢修！", en: "Abnormal main-shaft vibration and rising gearbox oil temp — inspect now!" }}
+        line={{ zh: "主機有異常震動！先答對診斷題、完成 SOP 再回報！", en: "Abnormal vibration! Answer the quiz, finish the SOP, then report!" }}
         style={{ left: 372, bottom: 12 }}
         portraitH={300}
         bubbleSide="left"
       />
-    </div>
-  );
-}
-
-function SopStep({ state, num, text }: { state: "done" | "active" | "todo"; num?: number; text: string }) {
-  const box =
-    state === "done"
-      ? { background: C.green, color: "#0f2630", border: "none" as const, content: "✓" }
-      : state === "active"
-        ? { background: "rgba(217,164,65,.18)", color: C.goldText, border: "1px solid #d9a441", content: String(num) }
-        : { background: "rgba(255,255,255,.08)", color: C.mist, border: "1px solid rgba(255,255,255,.2)", content: String(num) };
-  return (
-    <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "6px 0" }}>
-      <span style={{ width: 18, height: 18, flex: "none", borderRadius: 4, background: box.background, color: box.color, border: box.border, display: "flex", alignItems: "center", justifyContent: "center", fontSize: state === "done" ? 12 : 11, fontWeight: 900 }}>
-        {box.content}
-      </span>
-      <span style={{ fontSize: 13, color: state === "active" ? C.cream : C.mist3, fontWeight: state === "active" ? 700 : 400, textDecoration: state === "done" ? "line-through" : "none" }}>
-        {text}
-      </span>
     </div>
   );
 }

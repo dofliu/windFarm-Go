@@ -3,7 +3,9 @@ import { C, FONT_SERIF, FONT_CINZEL, chip } from "./tokens";
 import { t } from "../game/systems/i18n";
 import { getLang, toggleLang } from "../game/systems/i18n";
 import { useLang } from "./useLang";
-import type { Screen, SeaState } from "../App";
+import { useGame } from "../state/GameContext";
+import { toWan, type SeaState } from "../state/game";
+import type { Screen } from "../App";
 
 const TABS: { key: Screen; label: { zh: string; en: string } }[] = [
   { key: "hub", label: { zh: "母港大廳", en: "Home Port" } },
@@ -22,15 +24,14 @@ export default function TopBar({
   screen,
   setScreen,
   accent,
-  seaState,
 }: {
   screen: Screen;
   setScreen: (s: Screen) => void;
   accent: string;
-  seaState: SeaState;
 }) {
   useLang();
-  const sea = SEA[seaState];
+  const { data } = useGame();
+  const sea = SEA[data.seaState as SeaState];
 
   return (
     <div
@@ -143,12 +144,14 @@ export default function TopBar({
         </div>
         <div style={chip}>
           <span style={{ color: C.greenLight }}>人</span>
-          <span style={{ color: C.cream, fontSize: 13, fontWeight: 700 }}>{t({ zh: "技師 24/30", en: "Techs 24/30" })}</span>
+          <span style={{ color: C.cream, fontSize: 13, fontWeight: 700 }}>
+            {t({ zh: "技師", en: "Techs" })} {data.techAvail}/{data.techTotal}
+          </span>
         </div>
         <div style={{ ...chip, background: "linear-gradient(180deg, rgba(217,164,65,.22), rgba(217,164,65,.06))", border: "1px solid rgba(214,167,84,.5)" }}>
           <span style={{ color: C.gold, fontSize: 16 }}>◎</span>
           <span style={{ color: C.goldText, fontSize: 15, fontWeight: 900, fontVariantNumeric: "tabular-nums" }}>
-            8,420 {t({ zh: "萬", en: "M" })}
+            {toWan(data.budget)} {t({ zh: "萬", en: "M" })}
           </span>
         </div>
         <Btn onClick={() => toggleLang()}>{getLang() === "zh" ? "中" : "EN"}</Btn>
