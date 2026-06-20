@@ -1,5 +1,6 @@
-import type { CSSProperties, ReactNode } from "react";
+import { useState, type CSSProperties, type ReactNode } from "react";
 import { C, FONT_SERIF, FONT_CINZEL, chip } from "./tokens";
+import { Sfx } from "../audio/sfx";
 import { t } from "../game/systems/i18n";
 import { getLang, toggleLang } from "../game/systems/i18n";
 import { useLang } from "./useLang";
@@ -108,7 +109,10 @@ export default function TopBar({
         {TABS.map((tab) => (
           <div
             key={tab.key}
-            onClick={() => setScreen(tab.key)}
+            onClick={() => {
+              Sfx.click();
+              setScreen(tab.key);
+            }}
             style={{
               position: "relative",
               padding: "8px 26px",
@@ -157,10 +161,16 @@ export default function TopBar({
           </span>
         </div>
         <Btn onClick={() => toggleLang()}>{getLang() === "zh" ? "中" : "EN"}</Btn>
+        <MuteBtn />
         <Btn>⚙</Btn>
       </div>
     </div>
   );
+}
+
+function MuteBtn() {
+  const [m, setM] = useState(Sfx.isMuted());
+  return <Btn onClick={() => setM(Sfx.toggle())}>{m ? "🔇" : "🔊"}</Btn>;
 }
 
 function Btn({ children, onClick }: { children: ReactNode; onClick?: () => void }) {

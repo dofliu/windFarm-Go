@@ -7,6 +7,7 @@ import { Portrait } from "../Portrait";
 import { useGame } from "../../state/GameContext";
 import { useDialogue } from "../../state/DialogueContext";
 import { S } from "../../i18n/strings";
+import { Sfx } from "../../audio/sfx";
 
 const TAX = 0.12;
 
@@ -21,8 +22,12 @@ export default function MarketScreen({ accent }: { accent: string }) {
   const count = Object.values(cart).reduce((a, b) => a + b, 0);
   const canBuy = count > 0 && total <= data.budget;
 
-  const add = (id: string) => setCart((c) => ({ ...c, [id]: (c[id] ?? 0) + 1 }));
+  const add = (id: string) => {
+    Sfx.click();
+    setCart((c) => ({ ...c, [id]: (c[id] ?? 0) + 1 }));
+  };
   const confirm = () => {
+    Sfx.cash();
     for (const p of PARTS) {
       const qty = cart[p.id] ?? 0;
       if (qty > 0) dispatch({ type: "BUY", partId: p.id, qty, cost: Math.round(priceNum(p) * qty * (1 + TAX)) });

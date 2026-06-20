@@ -6,6 +6,7 @@ import { AdvisorPopup, Avatar } from "../Portrait";
 import { useGame } from "../../state/GameContext";
 import { useDialogue } from "../../state/DialogueContext";
 import { S } from "../../i18n/strings";
+import { Sfx } from "../../audio/sfx";
 import { exprUrl } from "../characters";
 import { questAt, FAULTS } from "../faults";
 import type { Screen } from "../../App";
@@ -46,6 +47,7 @@ export default function RepairScreen({ setScreen }: { setScreen: (s: Screen) => 
   };
 
   const finish = () => {
+    Sfx.success();
     dispatch({ type: "FINISH_REPAIR", quest });
     say([
       { speaker: "repair_eng", expr: "confident", line: { zh: `${quest.unit} 修復完成、已回報 SCADA，幹得漂亮！`, en: `${quest.unit} repaired and reported to SCADA — nicely done!` } },
@@ -147,7 +149,18 @@ export default function RepairScreen({ setScreen }: { setScreen: (s: Screen) => 
                 else { col = "#7f97a0"; }
               }
               const s: CSSProperties = { display: "block", width: "100%", textAlign: "left", padding: "10px 12px", marginBottom: 8, borderRadius: 4, border: `1px solid ${bd}`, background: bg, color: col, fontSize: 13.5, fontWeight: 500, cursor: "pointer" };
-              return (<div key={i} onClick={() => setPick(i)} style={s}>{t(opt)}</div>);
+              return (
+                <div
+                  key={i}
+                  onClick={() => {
+                    if (pick === null) (i === q.correct ? Sfx.success : Sfx.error)();
+                    setPick(i);
+                  }}
+                  style={s}
+                >
+                  {t(opt)}
+                </div>
+              );
             })}
             <div style={{ minHeight: 18, marginTop: 4, fontSize: 12.5, lineHeight: 1.5, color: pick === null ? C.mist : quizCorrect ? C.green : C.amber2 }}>
               {pick === null ? "" : t(quizCorrect ? q.ok : q.no)}

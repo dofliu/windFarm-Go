@@ -7,6 +7,7 @@ import { exprUrl, NARRATOR_EXPR } from "../characters";
 import { useGame } from "../../state/GameContext";
 import { useDialogue } from "../../state/DialogueContext";
 import { S } from "../../i18n/strings";
+import { Sfx } from "../../audio/sfx";
 import { QUEST_POOL, questAt } from "../faults";
 import type { I18n } from "../../game/systems/types";
 import type { QuestStage } from "../../state/game";
@@ -181,6 +182,7 @@ export default function HubScreen({ setScreen, accent }: { setScreen: (s: Screen
             {stage === "available" && (
               <button
                 onClick={() => {
+                  Sfx.click();
                   dispatch({ type: "ACCEPT_QUEST" });
                   say({ speaker: "narrator_girl", expr: "happy", line: { zh: `工單已接下！駕乘風號前往 ${quest.unit}，從上方「出海航行」出發吧！`, en: `Order accepted! Sail the Windrider to ${quest.unit} — use "Set Sail" above!` } });
                 }}
@@ -192,6 +194,7 @@ export default function HubScreen({ setScreen, accent }: { setScreen: (s: Screen
             {stage === "done" && (
               <button
                 onClick={() => {
+                  Sfx.click();
                   dispatch({ type: "NEXT_QUEST", poolSize: QUEST_POOL.length });
                   say({ speaker: "narrator_girl", expr: "smile", line: { zh: "新的一天，新的工單～看看這次是哪座機組出狀況！", en: "New day, new order — let's see which unit needs us!" } });
                 }}
