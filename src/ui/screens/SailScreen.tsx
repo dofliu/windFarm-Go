@@ -8,6 +8,7 @@ import { exprUrl } from "../characters";
 import { S } from "../../i18n/strings";
 import { useGame } from "../../state/GameContext";
 import { Sfx } from "../../audio/sfx";
+import { toast, SOON } from "../toast";
 import type { Screen } from "../../App";
 
 function CtvShip({ left, top, scale, opacity, wakeH, hullW, hullH, cabinW, cabinH }: { left: string; top: number; scale: number; opacity: number; wakeH: number; hullW: number; hullH: number; cabinW: number; cabinH: number }) {
@@ -122,10 +123,10 @@ export default function SailScreen({ setScreen, accent }: { setScreen: (s: Scree
 
       {/* command bar */}
       <div style={{ position: "absolute", left: 40, bottom: 28, display: "flex", gap: 10 }}>
-        <div style={cmdBtn}>{t(S.btn.routeMap)}</div>
-        <div style={cmdBtn}>{t({ zh: "甲板", en: "Deck" })}</div>
-        <div style={cmdBtn}>{t({ zh: "海象", en: "Sea" })}</div>
-        <div style={cmdBtn}>{t({ zh: "派工", en: "Assign" })}</div>
+        <div style={cmdBtn} onClick={() => { Sfx.click(); toast(SOON); }}>{t(S.btn.routeMap)}</div>
+        <div style={cmdBtn} onClick={() => { Sfx.click(); toast(SOON); }}>{t({ zh: "甲板", en: "Deck" })}</div>
+        <div style={cmdBtn} onClick={() => { Sfx.click(); toast({ zh: `海象：${data.seaState === "workable" ? "可作業" : data.seaState === "caution" ? "警戒" : "停航"}`, en: `Sea: ${data.seaState}` }); }}>{t({ zh: "海象", en: "Sea" })}</div>
+        <div style={cmdBtn} onClick={() => { Sfx.click(); toast(SOON); }}>{t({ zh: "派工", en: "Assign" })}</div>
         <div
           onClick={() => {
             if (closed) { Sfx.error(); return; }

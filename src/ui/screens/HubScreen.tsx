@@ -8,6 +8,7 @@ import { useGame } from "../../state/GameContext";
 import { useDialogue } from "../../state/DialogueContext";
 import { S } from "../../i18n/strings";
 import { Sfx } from "../../audio/sfx";
+import { toast, SOON } from "../toast";
 import { QUEST_POOL, questAt } from "../faults";
 import type { I18n } from "../../game/systems/types";
 import type { QuestStage } from "../../state/game";
@@ -69,10 +70,10 @@ function Marker({
   );
 }
 
-function RailBtn({ char, label }: { char: string; label: { zh: string; en: string } }) {
+function RailBtn({ char, label, onClick }: { char: string; label: { zh: string; en: string }; onClick?: () => void }) {
   useLang();
   return (
-    <div style={{ textAlign: "center", cursor: "pointer" }}>
+    <div onClick={onClick} style={{ textAlign: "center", cursor: "pointer" }}>
       <div style={{ ...circle(56, 24), border: "2px solid rgba(214,167,84,.7)", boxShadow: "0 5px 14px rgba(0,0,0,.4)", background: "radial-gradient(circle at 50% 35%, #20586a, #0f3140)" }}>
         {char}
       </div>
@@ -151,11 +152,11 @@ export default function HubScreen({ setScreen, accent }: { setScreen: (s: Screen
 
       {/* RIGHT: action rail */}
       <div style={{ position: "absolute", right: 26, top: 108, display: "flex", flexDirection: "column", gap: 14, alignItems: "center" }}>
-        <RailBtn char="任" label={{ zh: "任務", en: "Quests" }} />
-        <RailBtn char="船" label={{ zh: "船隊", en: "Fleet" }} />
-        <RailBtn char="倉" label={{ zh: "倉庫", en: "Storage" }} />
-        <RailBtn char="鑑" label={{ zh: "圖鑑", en: "Codex" }} />
-        <RailBtn char="榜" label={{ zh: "排行", en: "Ranking" }} />
+        <RailBtn char="任" label={{ zh: "任務", en: "Quests" }} onClick={() => { Sfx.click(); toast(SOON); }} />
+        <RailBtn char="船" label={{ zh: "船隊", en: "Fleet" }} onClick={() => { Sfx.click(); toast(SOON); }} />
+        <RailBtn char="倉" label={{ zh: "倉庫", en: "Storage" }} onClick={() => { Sfx.click(); setScreen("market"); toast({ zh: "切到交易所「賣出」分頁可檢視庫存", en: "See inventory under the Market 'Sell' tab" }); }} />
+        <RailBtn char="鑑" label={{ zh: "圖鑑", en: "Codex" }} onClick={() => { Sfx.click(); toast(SOON); }} />
+        <RailBtn char="榜" label={{ zh: "排行", en: "Ranking" }} onClick={() => { Sfx.click(); toast(SOON); }} />
       </div>
 
       {/* BOTTOM-LEFT: quest card（依工單階段動態） */}
@@ -209,7 +210,7 @@ export default function HubScreen({ setScreen, accent }: { setScreen: (s: Screen
 
       {/* BOTTOM-CENTER: primary actions */}
       <div style={{ position: "absolute", left: "50%", bottom: 34, transform: "translateX(-50%)", display: "flex", gap: 16, alignItems: "center" }}>
-        <SecBtn icon="◷" label={t(S.btn.routeMap)} />
+        <SecBtn icon="◷" label={t(S.btn.routeMap)} onClick={() => { Sfx.click(); toast(SOON); }} />
         <div onClick={() => { Sfx.click(); goSail(); }} style={{ padding: "16px 46px", borderRadius: 6, background: primaryBg(accent), border: "1px solid rgba(255,236,196,.6)", color: C.ink, fontFamily: FONT_SERIF, fontSize: 21, fontWeight: 900, letterSpacing: ".1em", whiteSpace: "nowrap", cursor: "pointer", boxShadow: "0 8px 22px rgba(217,164,65,.35), inset 0 1px 0 rgba(255,255,255,.4)" }}>
           {t(S.btn.setSail)}
         </div>

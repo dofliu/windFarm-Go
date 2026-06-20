@@ -51,6 +51,7 @@ export const INITIAL: GameData = {
 export type Action =
   | { type: "ACCEPT_QUEST" }
   | { type: "BUY"; partId: string; qty: number; cost: number }
+  | { type: "SELL"; partId: string; gain: number } // 賣出 1 件（#18）
   | { type: "FINISH_REPAIR"; quest: Quest } // 維修完成 → 結算（A3）
   | { type: "FAIL_REPAIR" } // 天氣窗關閉、撤離（#17）
   | { type: "REST" } // 靠港休整：進日 + 重新擲海象（#18）
@@ -76,6 +77,11 @@ export function reducer(s: GameData, a: Action): GameData {
       if (a.cost > s.budget) return s;
       const inv = { ...s.inventory, [a.partId]: (s.inventory[a.partId] ?? 0) + a.qty };
       return { ...s, budget: s.budget - a.cost, inventory: inv, cargoUsed: Math.min(s.cargoCap, s.cargoUsed + a.qty) };
+    }
+    case "SELL": {
+      const have = s.inventory[a.partId] ?? 0;
+      if (have <= 0) return s;
+      return { ...s, budget: s.budget + a.gain, inventory: { ...s.inventory, [a.partId]: have - 1 }, cargoUsed: Math.max(0, s.cargoUsed - 1) };
     }
     case "FINISH_REPAIR":
       if (s.questStage !== "active") return s;

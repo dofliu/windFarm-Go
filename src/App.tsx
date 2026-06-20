@@ -8,6 +8,7 @@ import SailScreen from "./ui/screens/SailScreen";
 import RepairScreen from "./ui/screens/RepairScreen";
 import DialogueLayer from "./ui/DialogueLayer";
 import CourseModal from "./ui/CourseModal";
+import Toaster from "./ui/Toaster";
 import { GameProvider } from "./state/GameContext";
 import { DialogueProvider } from "./state/DialogueContext";
 
@@ -68,6 +69,7 @@ export default function App() {
           <TopBar screen={screen} setScreen={setScreen} accent={accent} onGear={() => setShowCourse(true)} />
           <DialogueLayer />
           <CourseModal open={showCourse} onClose={() => setShowCourse(false)} />
+          <Toaster />
         </div>
       </div>
       </DialogueProvider>
