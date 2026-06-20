@@ -4,6 +4,7 @@ import { t } from "../../game/systems/i18n";
 import { useLang } from "../useLang";
 import { SailTurbines } from "../Turbine";
 import { AdvisorPopup, Avatar } from "../Portrait";
+import { exprUrl } from "../characters";
 import { S } from "../../i18n/strings";
 import type { Screen } from "../../App";
 
@@ -77,7 +78,7 @@ export default function SailScreen({ setScreen, accent }: { setScreen: (s: Scree
       {/* ship status panel */}
       <div style={{ position: "absolute", right: 26, top: 92, width: 288, background: "linear-gradient(180deg, rgba(20,50,63,.94), rgba(13,36,46,.96))", border: "1px solid rgba(214,167,84,.5)", borderRadius: 6, boxShadow: "0 14px 36px rgba(0,0,0,.5)" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "7px 10px", background: "linear-gradient(180deg,#e8c074,#cf9a35)", borderRadius: "6px 6px 0 0" }}>
-          <Avatar id="captain" size={32} />
+          <Avatar id="captain" src={exprUrl("captain", "neutral")} size={32} headShot />
           <span style={{ flex: 1, textAlign: "center", color: C.ink, fontFamily: FONT_SERIF, fontWeight: 900, fontSize: 16, letterSpacing: ".06em" }}>{t({ zh: "海昌一號 · CTV", en: "Haichang-1 · CTV" })}</span>
           <div style={{ width: 32 }} />
         </div>

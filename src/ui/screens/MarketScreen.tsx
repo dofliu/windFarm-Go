@@ -28,7 +28,7 @@ export default function MarketScreen({ accent }: { accent: string }) {
       if (qty > 0) dispatch({ type: "BUY", partId: p.id, qty, cost: Math.round(priceNum(p) * qty * (1 + TAX)) });
     }
     setCart({});
-    say({ speaker: "owner", line: { zh: "採購完成，備品已入貨艙。祝你維運順利、準時併網。", en: "Purchase done — parts loaded. May your O&M run smooth and on-grid." } });
+    say({ speaker: "owner", expr: "confident", line: { zh: "採購完成，備品已入貨艙。祝你維運順利、準時併網。", en: "Purchase done — parts loaded. May your O&M run smooth and on-grid." } });
   };
 
   return (

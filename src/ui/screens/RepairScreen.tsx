@@ -6,6 +6,7 @@ import { AdvisorPopup, Avatar } from "../Portrait";
 import { useGame } from "../../state/GameContext";
 import { useDialogue } from "../../state/DialogueContext";
 import { S } from "../../i18n/strings";
+import { exprUrl } from "../characters";
 import { questAt, FAULTS } from "../faults";
 import type { Screen } from "../../App";
 
@@ -47,7 +48,7 @@ export default function RepairScreen({ setScreen }: { setScreen: (s: Screen) => 
   const finish = () => {
     dispatch({ type: "FINISH_REPAIR", quest });
     say([
-      { speaker: "repair_eng", line: { zh: `${quest.unit} 修復完成、已回報 SCADA，幹得漂亮！`, en: `${quest.unit} repaired and reported to SCADA — nicely done!` } },
+      { speaker: "repair_eng", expr: "confident", line: { zh: `${quest.unit} 修復完成、已回報 SCADA，幹得漂亮！`, en: `${quest.unit} repaired and reported to SCADA — nicely done!` } },
       { speaker: "narrator_girl", expr: "wink", line: { zh: "工單完成！預算與妥善率都進帳囉，要不要再接下一筆？", en: "Order complete! Budget and availability are up — fancy another?" } },
     ]);
     setScreen("hub");
@@ -96,7 +97,7 @@ export default function RepairScreen({ setScreen }: { setScreen: (s: Screen) => 
         </div>
         <div style={{ ...panel, flex: 1, padding: "12px 14px", borderRadius: 6 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <Avatar id="safety_officer" size={22} />
+            <Avatar id="safety_officer" src={exprUrl("safety_officer", "neutral")} size={22} headShot />
             <span style={{ fontSize: 11, color: C.mist }}>{t(S.panel.workWindow)}</span>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 7, marginTop: 6 }}>
@@ -112,7 +113,7 @@ export default function RepairScreen({ setScreen }: { setScreen: (s: Screen) => 
         {/* SCADA alarm */}
         <div style={{ ...panel, border: "1px solid rgba(220,100,80,.5)", boxShadow: "0 12px 30px rgba(0,0,0,.45)" }}>
           <div style={{ ...panelHeader, background: "linear-gradient(180deg, rgba(220,100,80,.25), rgba(220,100,80,.06))", borderBottom: "1px solid rgba(220,100,80,.4)" }}>
-            <Avatar id="scada_eng" size={26} />
+            <Avatar id="scada_eng" src={exprUrl("scada_eng", "neutral")} size={26} headShot />
             <span style={{ width: 9, height: 9, borderRadius: "50%", background: C.red, boxShadow: `0 0 8px ${C.red}`, animation: "shimmer 1.2s ease-in-out infinite" }} />
             <span style={panelTitle}>{t(S.panel.scada)}</span>
             <span style={{ marginLeft: "auto", fontSize: 11, color: C.mist }}>{quest.unit} · 14:32</span>
@@ -133,7 +134,7 @@ export default function RepairScreen({ setScreen }: { setScreen: (s: Screen) => 
         {/* quiz */}
         <div style={{ ...panel, boxShadow: "0 12px 30px rgba(0,0,0,.45)" }}>
           <div style={panelHeader}>
-            <Avatar id="elec_eng" size={26} />
+            <Avatar id="elec_eng" src={exprUrl("elec_eng", "neutral")} size={26} headShot />
             <span style={panelTitle}>{t(S.panel.quiz)}</span>
           </div>
           <div style={{ padding: "13px 14px" }}>

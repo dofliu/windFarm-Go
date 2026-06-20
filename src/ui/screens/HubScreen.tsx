@@ -160,7 +160,7 @@ export default function HubScreen({ setScreen, accent }: { setScreen: (s: Screen
       {/* BOTTOM-LEFT: quest card（依工單階段動態） */}
       <div style={{ ...panel, position: "absolute", left: 28, bottom: 26, width: 372, boxShadow: "0 12px 30px rgba(0,0,0,.4)" }}>
         <div style={panelHeader}>
-          <Avatar id="manager" size={28} />
+          <Avatar id="manager" src={exprUrl("manager", "neutral")} size={28} headShot />
           <span style={panelTitle}>{t(S.panel.workOrder)}</span>
           <span style={{ marginLeft: "auto", fontSize: 12, color: stage === "done" ? C.green : C.mist2 }}>
             {t(stage === "available" ? S.status.available : stage === "active" ? S.status.active : S.status.done)}
