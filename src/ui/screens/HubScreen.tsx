@@ -9,7 +9,7 @@ import { useDialogue } from "../../state/DialogueContext";
 import { S } from "../../i18n/strings";
 import { Sfx } from "../../audio/sfx";
 import { toast, SOON } from "../toast";
-import { QUEST_POOL, questAt } from "../faults";
+import { CAMPAIGN, missionAt } from "../campaign";
 import type { I18n } from "../../game/systems/types";
 import type { QuestStage } from "../../state/game";
 import type { Screen } from "../../App";
@@ -103,7 +103,8 @@ export default function HubScreen({ setScreen, accent }: { setScreen: (s: Screen
   const { data, dispatch } = useGame();
   const { say } = useDialogue();
   const stage = data.questStage;
-  const quest = data.customQuest ?? questAt(data.questIndex);
+  const mission = missionAt(data.campaignIndex);
+  const quest = data.customQuest ?? mission;
   const goMarket = () => setScreen("market");
   const goSail = () => setScreen("sail");
   const [ei, setEi] = useState<number | null>(null); // null = 跟隨階段表情
@@ -169,6 +170,7 @@ export default function HubScreen({ setScreen, accent }: { setScreen: (s: Screen
           </span>
         </div>
         <div style={{ padding: "12px 14px" }}>
+          {!data.customQuest && <div style={{ fontSize: 11, color: C.goldText, fontFamily: FONT_SERIF, marginBottom: 3 }}>{t(mission.chapter)}</div>}
           <div style={{ color: C.cream, fontSize: 15, fontWeight: 700, marginBottom: 4 }}>{t(quest.title)}</div>
           <div style={{ color: C.mist, fontSize: 12.5, lineHeight: 1.5 }}>{t(quest.brief)}</div>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 10 }}>
@@ -178,32 +180,31 @@ export default function HubScreen({ setScreen, accent }: { setScreen: (s: Screen
             <span style={{ fontSize: 12, color: "#cfe0e6", fontVariantNumeric: "tabular-nums" }}>{stage === "done" ? "1 / 1" : "0 / 1"}</span>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 12 }}>
-            <span style={{ padding: "4px 10px", borderRadius: 3, background: "rgba(217,164,65,.14)", border: "1px solid rgba(214,167,84,.4)", color: C.goldText, fontSize: 12 }}>{t({ zh: "預算 +18 萬", en: "Budget +180k" })}</span>
-            <span style={{ padding: "4px 10px", borderRadius: 3, background: "rgba(127,206,142,.12)", border: "1px solid rgba(127,206,142,.35)", color: C.greenLight, fontSize: 12 }}>{t({ zh: "資歷 +120", en: "XP +120" })}</span>
+            <span style={{ padding: "4px 10px", borderRadius: 3, background: "rgba(217,164,65,.14)", border: "1px solid rgba(214,167,84,.4)", color: C.goldText, fontSize: 12 }}>{t({ zh: "預算", en: "Budget" })} +{Math.round(quest.rewardBudget / 10000)} {t({ zh: "萬", en: "M" })}</span>
+            <span style={{ padding: "4px 10px", borderRadius: 3, background: "rgba(127,206,142,.12)", border: "1px solid rgba(127,206,142,.35)", color: C.greenLight, fontSize: 12 }}>{t({ zh: "資歷", en: "XP" })} +{quest.rewardXp}</span>
             {stage === "available" && (
               <button
                 onClick={() => {
                   Sfx.click();
                   dispatch({ type: "ACCEPT_QUEST" });
-                  say({ speaker: "narrator_girl", expr: "happy", line: { zh: `工單已接下！駕乘風號前往 ${quest.unit}，從上方「出海航行」出發吧！`, en: `Order accepted! Sail the Windrider to ${quest.unit} — use "Set Sail" above!` } });
+                  if (data.customQuest) say({ speaker: "narrator_girl", expr: "happy", line: { zh: `工單已接下！前往 ${quest.unit}，從上方「出海航行」出發！`, en: `Accepted! Head to ${quest.unit} via "Set Sail".` } });
+                  else say(mission.intro);
                 }}
                 style={{ marginLeft: "auto", padding: "5px 16px", borderRadius: 4, border: "1px solid rgba(255,236,196,.6)", background: primaryBg(accent), color: C.ink, fontFamily: FONT_SERIF, fontWeight: 900, fontSize: 13, cursor: "pointer" }}
               >
                 {t(S.btn.accept)}
               </button>
             )}
-            {stage === "done" && (
-              <button
-                onClick={() => {
-                  Sfx.click();
-                  dispatch({ type: "NEXT_QUEST", poolSize: QUEST_POOL.length });
-                  say({ speaker: "narrator_girl", expr: "smile", line: { zh: "新的一天，新的工單～看看這次是哪座機組出狀況！", en: "New day, new order — let's see which unit needs us!" } });
-                }}
-                style={{ marginLeft: "auto", padding: "5px 14px", borderRadius: 4, border: "1px solid rgba(214,167,84,.5)", background: "rgba(15,40,50,.82)", color: C.cream, fontFamily: FONT_SERIF, fontWeight: 700, fontSize: 13, cursor: "pointer" }}
-              >
-                ✅ {t(S.btn.nextOrder)}
-              </button>
-            )}
+            {stage === "done" &&
+              (data.campaignDone ? (
+                <button onClick={() => { Sfx.success(); dispatch({ type: "RESTART_CAMPAIGN" }); }} style={{ marginLeft: "auto", padding: "5px 14px", borderRadius: 4, border: "1px solid rgba(255,236,196,.6)", background: primaryBg(accent), color: C.ink, fontFamily: FONT_SERIF, fontWeight: 900, fontSize: 13, cursor: "pointer" }}>
+                  🎉 {t({ zh: "戰役完成 · 重玩", en: "Clear · Replay" })}
+                </button>
+              ) : (
+                <button onClick={() => { Sfx.click(); dispatch({ type: "NEXT_QUEST", poolSize: CAMPAIGN.length }); }} style={{ marginLeft: "auto", padding: "5px 14px", borderRadius: 4, border: "1px solid rgba(214,167,84,.5)", background: "rgba(15,40,50,.82)", color: C.cream, fontFamily: FONT_SERIF, fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
+                  ✅ {t(S.btn.nextOrder)}
+                </button>
+              ))}
           </div>
         </div>
       </div>

@@ -23,8 +23,10 @@ export interface GameData {
   availability: number; // 機組妥善率 %
   seaState: SeaState;
   questStage: QuestStage;
-  questIndex: number; // 工單池索引（#4 多故障輪替）
-  customQuest: Quest | null; // 課程模式臨時指派的任務（#6），非 null 時覆蓋工單池
+  questIndex: number; // 舊：工單池索引（保留相容）
+  campaignIndex: number; // 主線戰役關卡索引（#20）
+  campaignDone: boolean; // 戰役是否通關
+  customQuest: Quest | null; // 課程模式臨時指派的任務（#6），非 null 時覆蓋主線
   repairDone: boolean; // 本工單維修是否完成
   cargoUsed: number;
   cargoCap: number;
@@ -41,6 +43,8 @@ export const INITIAL: GameData = {
   seaState: "workable",
   questStage: "available",
   questIndex: 0,
+  campaignIndex: 0,
+  campaignDone: false,
   customQuest: null,
   repairDone: false,
   cargoUsed: 620,
@@ -55,7 +59,8 @@ export type Action =
   | { type: "FINISH_REPAIR"; quest: Quest } // 維修完成 → 結算（A3）
   | { type: "FAIL_REPAIR" } // 天氣窗關閉、撤離（#17）
   | { type: "REST" } // 靠港休整：進日 + 重新擲海象（#18）
-  | { type: "NEXT_QUEST"; poolSize: number } // 下一筆工單（#4 輪替到新故障）
+  | { type: "NEXT_QUEST"; poolSize: number } // 下一關（#20 主線推進）
+  | { type: "RESTART_CAMPAIGN" } // 重玩戰役（#20）
   | { type: "ASSIGN_QUEST"; quest: Quest } // 課程模式臨時指派（#6）
   | { type: "RESET" };
 
@@ -93,9 +98,14 @@ export function reducer(s: GameData, a: Action): GameData {
         xp: s.xp + a.quest.rewardXp,
         availability: Math.min(100, s.availability + 8),
       };
-    case "NEXT_QUEST":
+    case "NEXT_QUEST": {
       if (s.questStage !== "done") return s;
-      return { ...s, customQuest: null, questIndex: (s.questIndex + 1) % a.poolSize, questStage: "available", repairDone: false, day: s.day + 1, seaState: rollSea() };
+      const last = a.poolSize - 1;
+      if (s.campaignIndex >= last) return { ...s, campaignDone: true, customQuest: null };
+      return { ...s, customQuest: null, campaignIndex: s.campaignIndex + 1, questStage: "available", repairDone: false, day: s.day + 1, seaState: rollSea() };
+    }
+    case "RESTART_CAMPAIGN":
+      return { ...s, campaignIndex: 0, campaignDone: false, customQuest: null, questStage: "available", repairDone: false };
     case "ASSIGN_QUEST":
       return { ...s, customQuest: a.quest, questStage: "available", repairDone: false, seaState: rollSea() };
     case "RESET":

@@ -20,6 +20,8 @@ An educational, *Uncharted-Waters*-style game that reframes offshore **wind-farm
 
 ## Features
 - **Four interconnected screens**: Home Port, Parts Market, Set Sail, Repair.
+- **7-mission story campaign** (4 acts) — escalating faults reveal a shared firmware root cause, told through character dialogue.
+- **Weather-window mechanic** — dynamic sea state; a work-window countdown in repair that wrong answers/steps deplete (retreat if it closes).
 - **Diagnosis quiz** as the teaching core — SCADA alarm → choose the correct first check → instant feedback.
 - **Character / dialogue system** with painterly portraits, speech bubbles and switchable facial expressions.
 - **Bilingual (繁中 / English)** — every UI string toggles live.

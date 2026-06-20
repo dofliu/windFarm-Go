@@ -4,7 +4,7 @@ category: edtech
 progress: 96
 status: active
 last_updated: "2026-06-21"
-next_milestone: "Phase 進行中：天氣窗(done)→啟用按鈕(#18)→BGM(#19)→精簡主線(#20)"
+next_milestone: "全部 20 issues 完成；後續：playtest 平衡、更多關卡/故障、CC0 實體音樂(選)"
 technologies:
   - React
   - TypeScript

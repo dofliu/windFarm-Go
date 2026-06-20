@@ -8,7 +8,8 @@ import { useDialogue } from "../../state/DialogueContext";
 import { S } from "../../i18n/strings";
 import { Sfx } from "../../audio/sfx";
 import { exprUrl } from "../characters";
-import { questAt, FAULTS } from "../faults";
+import { FAULTS } from "../faults";
+import { missionAt } from "../campaign";
 import type { Screen } from "../../App";
 
 function Hotspot({ left, top, label, color, alarm }: { left: number; top: number; label: { zh: string; en: string }; color: string; alarm?: boolean }) {
@@ -29,7 +30,7 @@ export default function RepairScreen({ setScreen }: { setScreen: (s: Screen) => 
   useLang();
   const { data, dispatch } = useGame();
   const { say } = useDialogue();
-  const quest = data.customQuest ?? questAt(data.questIndex);
+  const quest = data.customQuest ?? missionAt(data.campaignIndex);
   const fault = FAULTS[quest.targetFault] ?? FAULTS.gearbox_overheat;
   const q = fault.quiz;
 
@@ -64,10 +65,15 @@ export default function RepairScreen({ setScreen }: { setScreen: (s: Screen) => 
   const finish = () => {
     Sfx.success();
     dispatch({ type: "FINISH_REPAIR", quest });
-    say([
-      { speaker: "repair_eng", expr: "confident", line: { zh: `${quest.unit} 修復完成、已回報 SCADA，幹得漂亮！`, en: `${quest.unit} repaired and reported to SCADA — nicely done!` } },
-      { speaker: "narrator_girl", expr: "wink", line: { zh: "工單完成！預算與妥善率都進帳囉，要不要再接下一筆？", en: "Order complete! Budget and availability are up — fancy another?" } },
-    ]);
+    const m = data.customQuest ? null : missionAt(data.campaignIndex);
+    say(
+      m
+        ? m.outro
+        : [
+            { speaker: "repair_eng", expr: "confident", line: { zh: `${quest.unit} 修復完成、已回報 SCADA，幹得漂亮！`, en: `${quest.unit} repaired and reported to SCADA — nicely done!` } },
+            { speaker: "narrator_girl", expr: "wink", line: { zh: "工單完成！預算與妥善率都進帳囉，要不要再接下一筆？", en: "Order complete! Budget & availability up — fancy another?" } },
+          ]
+    );
     setScreen("hub");
   };
 
