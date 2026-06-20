@@ -7,6 +7,7 @@ import MarketScreen from "./ui/screens/MarketScreen";
 import SailScreen from "./ui/screens/SailScreen";
 import RepairScreen from "./ui/screens/RepairScreen";
 import DialogueLayer from "./ui/DialogueLayer";
+import CourseModal from "./ui/CourseModal";
 import { GameProvider } from "./state/GameContext";
 import { DialogueProvider } from "./state/DialogueContext";
 
@@ -17,6 +18,7 @@ const accent = C.gold;
 export default function App() {
   const [screen, setScreen] = useState<Screen>("hub");
   const [scale, setScale] = useState(1);
+  const [showCourse, setShowCourse] = useState(false);
 
   // 1600×900 舞台等比縮放置中
   useEffect(() => {
@@ -63,8 +65,9 @@ export default function App() {
           {screen === "sail" && <SailScreen setScreen={setScreen} accent={accent} />}
           {screen === "repair" && <RepairScreen setScreen={setScreen} />}
 
-          <TopBar screen={screen} setScreen={setScreen} accent={accent} />
+          <TopBar screen={screen} setScreen={setScreen} accent={accent} onGear={() => setShowCourse(true)} />
           <DialogueLayer />
+          <CourseModal open={showCourse} onClose={() => setShowCourse(false)} />
         </div>
       </div>
       </DialogueProvider>

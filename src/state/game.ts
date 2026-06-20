@@ -24,6 +24,7 @@ export interface GameData {
   seaState: SeaState;
   questStage: QuestStage;
   questIndex: number; // 工單池索引（#4 多故障輪替）
+  customQuest: Quest | null; // 課程模式臨時指派的任務（#6），非 null 時覆蓋工單池
   repairDone: boolean; // 本工單維修是否完成
   cargoUsed: number;
   cargoCap: number;
@@ -40,6 +41,7 @@ export const INITIAL: GameData = {
   seaState: "workable",
   questStage: "available",
   questIndex: 0,
+  customQuest: null,
   repairDone: false,
   cargoUsed: 620,
   cargoCap: 1000,
@@ -51,6 +53,7 @@ export type Action =
   | { type: "BUY"; partId: string; qty: number; cost: number }
   | { type: "FINISH_REPAIR"; quest: Quest } // 維修完成 → 結算（A3）
   | { type: "NEXT_QUEST"; poolSize: number } // 下一筆工單（#4 輪替到新故障）
+  | { type: "ASSIGN_QUEST"; quest: Quest } // 課程模式臨時指派（#6）
   | { type: "RESET" };
 
 export function reducer(s: GameData, a: Action): GameData {
@@ -74,7 +77,9 @@ export function reducer(s: GameData, a: Action): GameData {
       };
     case "NEXT_QUEST":
       if (s.questStage !== "done") return s;
-      return { ...s, questIndex: (s.questIndex + 1) % a.poolSize, questStage: "available", repairDone: false, day: s.day + 1 };
+      return { ...s, customQuest: null, questIndex: (s.questIndex + 1) % a.poolSize, questStage: "available", repairDone: false, day: s.day + 1 };
+    case "ASSIGN_QUEST":
+      return { ...s, customQuest: a.quest, questStage: "available", repairDone: false };
     case "RESET":
       return { ...INITIAL };
     default:

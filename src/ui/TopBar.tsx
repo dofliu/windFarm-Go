@@ -27,10 +27,12 @@ export default function TopBar({
   screen,
   setScreen,
   accent,
+  onGear,
 }: {
   screen: Screen;
   setScreen: (s: Screen) => void;
   accent: string;
+  onGear?: () => void;
 }) {
   useLang();
   const { data } = useGame();
@@ -162,7 +164,7 @@ export default function TopBar({
         </div>
         <Btn onClick={() => toggleLang()}>{getLang() === "zh" ? "中" : "EN"}</Btn>
         <MuteBtn />
-        <Btn>⚙</Btn>
+        <Btn onClick={onGear}>⚙</Btn>
       </div>
     </div>
   );

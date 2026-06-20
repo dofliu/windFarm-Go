@@ -23,6 +23,8 @@ An educational, *Uncharted-Waters*-style game that reframes offshore **wind-farm
 - **Diagnosis quiz** as the teaching core — SCADA alarm → choose the correct first check → instant feedback.
 - **Character / dialogue system** with painterly portraits, speech bubbles and switchable facial expressions.
 - **Bilingual (繁中 / English)** — every UI string toggles live.
+- **Course Mode** (teacher tool) — assign any week's fault as the next task, or import a custom JSON task on the fly.
+- **Procedural Web Audio SFX** with a mute toggle (no audio files).
 - **Gold × deep-sea design system**, 1600×900 stage that scales to any viewport.
 
 ## Tech stack

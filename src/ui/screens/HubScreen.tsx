@@ -102,7 +102,7 @@ export default function HubScreen({ setScreen, accent }: { setScreen: (s: Screen
   const { data, dispatch } = useGame();
   const { say } = useDialogue();
   const stage = data.questStage;
-  const quest = questAt(data.questIndex);
+  const quest = data.customQuest ?? questAt(data.questIndex);
   const goMarket = () => setScreen("market");
   const goSail = () => setScreen("sail");
   const [ei, setEi] = useState<number | null>(null); // null = 跟隨階段表情

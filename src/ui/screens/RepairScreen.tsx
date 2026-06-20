@@ -29,8 +29,8 @@ export default function RepairScreen({ setScreen }: { setScreen: (s: Screen) => 
   useLang();
   const { data, dispatch } = useGame();
   const { say } = useDialogue();
-  const quest = questAt(data.questIndex);
-  const fault = FAULTS[quest.targetFault];
+  const quest = data.customQuest ?? questAt(data.questIndex);
+  const fault = FAULTS[quest.targetFault] ?? FAULTS.gearbox_overheat;
   const q = fault.quiz;
 
   const [pick, setPick] = useState<number | null>(null);
