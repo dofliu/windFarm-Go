@@ -23,6 +23,7 @@ export interface GameData {
   availability: number; // 機組妥善率 %
   seaState: SeaState;
   questStage: QuestStage;
+  questIndex: number; // 工單池索引（#4 多故障輪替）
   repairDone: boolean; // 本工單維修是否完成
   cargoUsed: number;
   cargoCap: number;
@@ -38,6 +39,7 @@ export const INITIAL: GameData = {
   availability: 86,
   seaState: "workable",
   questStage: "available",
+  questIndex: 0,
   repairDone: false,
   cargoUsed: 620,
   cargoCap: 1000,
@@ -48,6 +50,7 @@ export type Action =
   | { type: "ACCEPT_QUEST" }
   | { type: "BUY"; partId: string; qty: number; cost: number }
   | { type: "FINISH_REPAIR"; quest: Quest } // 維修完成 → 結算（A3）
+  | { type: "NEXT_QUEST"; poolSize: number } // 下一筆工單（#4 輪替到新故障）
   | { type: "RESET" };
 
 export function reducer(s: GameData, a: Action): GameData {
@@ -69,6 +72,9 @@ export function reducer(s: GameData, a: Action): GameData {
         xp: s.xp + a.quest.rewardXp,
         availability: Math.min(100, s.availability + 8),
       };
+    case "NEXT_QUEST":
+      if (s.questStage !== "done") return s;
+      return { ...s, questIndex: (s.questIndex + 1) % a.poolSize, questStage: "available", repairDone: false, day: s.day + 1 };
     case "RESET":
       return { ...INITIAL };
     default:

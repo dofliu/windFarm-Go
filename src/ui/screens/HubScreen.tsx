@@ -2,10 +2,10 @@ import { useState, type CSSProperties } from "react";
 import { C, FONT_SERIF, primaryBg, circle, panel, panelHeader, panelTitle, stripe } from "../tokens";
 import { t } from "../../game/systems/i18n";
 import { useLang } from "../useLang";
-import { AdvisorPopup } from "../Portrait";
+import { AdvisorPopup, Avatar } from "../Portrait";
 import { exprUrl, NARRATOR_EXPR } from "../characters";
 import { useGame } from "../../state/GameContext";
-import { ACTIVE_QUEST } from "../faults";
+import { QUEST_POOL, questAt } from "../faults";
 import type { I18n } from "../../game/systems/types";
 import type { QuestStage } from "../../state/game";
 import type { Screen } from "../../App";
@@ -98,6 +98,7 @@ export default function HubScreen({ setScreen, accent }: { setScreen: (s: Screen
   useLang();
   const { data, dispatch } = useGame();
   const stage = data.questStage;
+  const quest = questAt(data.questIndex);
   const goMarket = () => setScreen("market");
   const goSail = () => setScreen("sail");
   const [ei, setEi] = useState<number | null>(null); // null = 跟隨階段表情
@@ -156,14 +157,15 @@ export default function HubScreen({ setScreen, accent }: { setScreen: (s: Screen
       {/* BOTTOM-LEFT: quest card（依工單階段動態） */}
       <div style={{ ...panel, position: "absolute", left: 28, bottom: 26, width: 372, boxShadow: "0 12px 30px rgba(0,0,0,.4)" }}>
         <div style={panelHeader}>
-          <span style={panelTitle}>{t({ zh: "工單", en: "Work Order" })}</span>
+          <Avatar id="manager" size={28} />
+          <span style={panelTitle}>{t({ zh: "工單 · 風場經理", en: "Work Order · Manager" })}</span>
           <span style={{ marginLeft: "auto", fontSize: 12, color: stage === "done" ? C.green : C.mist2 }}>
             {t(stage === "available" ? { zh: "可接", en: "Available" } : stage === "active" ? { zh: "進行中", en: "Active" } : { zh: "已完成", en: "Done" })}
           </span>
         </div>
         <div style={{ padding: "12px 14px" }}>
-          <div style={{ color: C.cream, fontSize: 15, fontWeight: 700, marginBottom: 4 }}>{t(ACTIVE_QUEST.title)}</div>
-          <div style={{ color: C.mist, fontSize: 12.5, lineHeight: 1.5 }}>{t(ACTIVE_QUEST.brief)}</div>
+          <div style={{ color: C.cream, fontSize: 15, fontWeight: 700, marginBottom: 4 }}>{t(quest.title)}</div>
+          <div style={{ color: C.mist, fontSize: 12.5, lineHeight: 1.5 }}>{t(quest.brief)}</div>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 10 }}>
             <div style={{ flex: 1, height: 7, borderRadius: 4, background: "rgba(255,255,255,.1)", overflow: "hidden" }}>
               <div style={{ width: stage === "available" ? "0%" : stage === "done" ? "100%" : data.repairDone ? "100%" : "50%", height: "100%", background: "linear-gradient(90deg,#e8c074,#d9a441)" }} />
@@ -181,7 +183,14 @@ export default function HubScreen({ setScreen, accent }: { setScreen: (s: Screen
                 {t({ zh: "接單", en: "Accept" })}
               </button>
             )}
-            {stage === "done" && <span style={{ marginLeft: "auto", color: C.green, fontWeight: 700, fontSize: 13 }}>✅</span>}
+            {stage === "done" && (
+              <button
+                onClick={() => dispatch({ type: "NEXT_QUEST", poolSize: QUEST_POOL.length })}
+                style={{ marginLeft: "auto", padding: "5px 14px", borderRadius: 4, border: "1px solid rgba(214,167,84,.5)", background: "rgba(15,40,50,.82)", color: C.cream, fontFamily: FONT_SERIF, fontWeight: 700, fontSize: 13, cursor: "pointer" }}
+              >
+                ✅ {t({ zh: "下一筆工單", en: "Next Order" })}
+              </button>
+            )}
           </div>
         </div>
       </div>

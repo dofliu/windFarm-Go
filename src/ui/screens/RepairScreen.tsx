@@ -2,9 +2,9 @@ import { useState, type CSSProperties } from "react";
 import { C, FONT_SERIF, primaryBg, panel, panelHeader, panelTitle } from "../tokens";
 import { t } from "../../game/systems/i18n";
 import { useLang } from "../useLang";
-import { AdvisorPopup } from "../Portrait";
+import { AdvisorPopup, Avatar } from "../Portrait";
 import { useGame } from "../../state/GameContext";
-import { ACTIVE_QUEST, FAULTS } from "../faults";
+import { questAt, FAULTS } from "../faults";
 import type { Screen } from "../../App";
 
 function Hotspot({ left, top, label, color, alarm }: { left: number; top: number; label: { zh: string; en: string }; color: string; alarm?: boolean }) {
@@ -24,7 +24,7 @@ function Hotspot({ left, top, label, color, alarm }: { left: number; top: number
 export default function RepairScreen({ setScreen }: { setScreen: (s: Screen) => void }) {
   useLang();
   const { data, dispatch } = useGame();
-  const quest = ACTIVE_QUEST;
+  const quest = questAt(data.questIndex);
   const fault = FAULTS[quest.targetFault];
   const q = fault.quiz;
 
@@ -88,7 +88,10 @@ export default function RepairScreen({ setScreen }: { setScreen: (s: Screen) => 
           </div>
         </div>
         <div style={{ ...panel, flex: 1, padding: "12px 14px", borderRadius: 6 }}>
-          <div style={{ fontSize: 11, color: C.mist }}>{t({ zh: "作業安全窗", en: "Work Window" })}</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <Avatar id="safety_officer" size={22} />
+            <span style={{ fontSize: 11, color: C.mist }}>{t({ zh: "作業安全窗", en: "Work Window" })}</span>
+          </div>
           <div style={{ display: "flex", alignItems: "center", gap: 7, marginTop: 6 }}>
             <span style={{ width: 11, height: 11, borderRadius: "50%", background: C.greenBright, boxShadow: `0 0 8px ${C.greenBright}` }} />
             <span style={{ fontSize: 17, fontWeight: 900, color: C.greenLight, fontFamily: FONT_SERIF }}>{t({ zh: "可作業", en: "Workable" })}</span>
@@ -102,6 +105,7 @@ export default function RepairScreen({ setScreen }: { setScreen: (s: Screen) => 
         {/* SCADA alarm */}
         <div style={{ ...panel, border: "1px solid rgba(220,100,80,.5)", boxShadow: "0 12px 30px rgba(0,0,0,.45)" }}>
           <div style={{ ...panelHeader, background: "linear-gradient(180deg, rgba(220,100,80,.25), rgba(220,100,80,.06))", borderBottom: "1px solid rgba(220,100,80,.4)" }}>
+            <Avatar id="scada_eng" size={26} />
             <span style={{ width: 9, height: 9, borderRadius: "50%", background: C.red, boxShadow: `0 0 8px ${C.red}`, animation: "shimmer 1.2s ease-in-out infinite" }} />
             <span style={panelTitle}>{t({ zh: "SCADA 即時告警", en: "SCADA Live Alarms" })}</span>
             <span style={{ marginLeft: "auto", fontSize: 11, color: C.mist }}>{quest.unit} · 14:32</span>
@@ -122,6 +126,7 @@ export default function RepairScreen({ setScreen }: { setScreen: (s: Screen) => 
         {/* quiz */}
         <div style={{ ...panel, boxShadow: "0 12px 30px rgba(0,0,0,.45)" }}>
           <div style={panelHeader}>
+            <Avatar id="elec_eng" size={26} />
             <span style={panelTitle}>{t({ zh: "故障診斷 · 隨堂測驗", en: "Diagnosis · Quiz" })}</span>
           </div>
           <div style={{ padding: "13px 14px" }}>
