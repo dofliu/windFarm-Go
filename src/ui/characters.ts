@@ -20,8 +20,10 @@ export const CHARACTERS: Record<string, Character> = {
   narrator_girl: { id: "narrator_girl", name: { zh: "莉莉", en: "Lily" }, role: { zh: "見習嚮導", en: "Guide" } },
 };
 
-export const portraitUrl = (id: string) => `/assets/characters/${id}/portrait.png`;
-export const exprUrl = (id: string, name: string) => `/assets/characters/${id}/expr/${name}.png`;
+// 用 BASE_URL 前綴，讓本地（/）與 GitHub Pages 子路徑（/windFarm-Go/）都能正確載入
+const B = import.meta.env.BASE_URL;
+export const portraitUrl = (id: string) => `${B}assets/characters/${id}/portrait.png`;
+export const exprUrl = (id: string, name: string) => `${B}assets/characters/${id}/expr/${name}.png`;
 
 // 莉莉（解說員）可用表情
 export const NARRATOR_EXPR = ["smile", "happy", "surprise", "thinking", "worried", "wink"] as const;
