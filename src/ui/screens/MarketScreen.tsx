@@ -6,6 +6,7 @@ import { PARTS, stars, priceNum, fmt } from "../data";
 import { Portrait } from "../Portrait";
 import { useGame } from "../../state/GameContext";
 import { useDialogue } from "../../state/DialogueContext";
+import { S } from "../../i18n/strings";
 
 const TAX = 0.12;
 
@@ -39,11 +40,11 @@ export default function MarketScreen({ accent }: { accent: string }) {
         <div style={{ ...panel, flex: 1, boxShadow: "0 16px 40px rgba(0,0,0,.5)", display: "flex", flexDirection: "column" }}>
           <div style={{ display: "flex", alignItems: "center", padding: "12px 18px", borderBottom: "1px solid rgba(214,167,84,.3)" }}>
             <div style={{ display: "flex", gap: 6 }}>
-              <div style={{ padding: "7px 20px", borderRadius: "4px 4px 0 0", background: "linear-gradient(180deg,#e8c074,#d9a441)", color: C.ink, fontWeight: 700, fontSize: 15 }}>{t({ zh: "買入", en: "Buy" })}</div>
-              <div style={{ padding: "7px 20px", color: C.mist2, fontWeight: 500, fontSize: 15 }}>{t({ zh: "賣出", en: "Sell" })}</div>
+              <div style={{ padding: "7px 20px", borderRadius: "4px 4px 0 0", background: "linear-gradient(180deg,#e8c074,#d9a441)", color: C.ink, fontWeight: 700, fontSize: 15 }}>{t(S.btn.buy)}</div>
+              <div style={{ padding: "7px 20px", color: C.mist2, fontWeight: 500, fontSize: 15 }}>{t(S.btn.sell)}</div>
             </div>
             <div style={{ marginLeft: "auto", fontSize: 13, color: C.mist2 }}>
-              {t({ zh: "下次到貨", en: "Next restock" })} <span style={{ color: C.cream, fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>11:04</span>
+              {t(S.market.nextRestock)} <span style={{ color: C.cream, fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>11:04</span>
             </div>
           </div>
           <div style={{ flex: 1, padding: 18, display: "grid", gridTemplateColumns: "repeat(3,1fr)", gridAutoRows: "min-content", gap: 14, overflow: "auto" }}>
@@ -63,7 +64,7 @@ export default function MarketScreen({ accent }: { accent: string }) {
                     <div style={{ width: 52, height: 52, flex: "none", borderRadius: 5, background: stripe, border: "1px solid rgba(214,167,84,.3)", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "monospace", fontSize: 9, color: C.mist3 }}>IMG</div>
                     <div style={{ flex: 1, textAlign: "right" }}>
                       <div style={{ fontSize: 22, fontWeight: 900, color: up ? C.green : C.amber2, lineHeight: 1 }}>{p.idx}%</div>
-                      <div style={{ fontSize: 12, color: C.mist, marginTop: 2 }}>{t({ zh: "庫存", en: "Stock" })} {p.qty}</div>
+                      <div style={{ fontSize: 12, color: C.mist, marginTop: 2 }}>{t(S.market.stock)} {p.qty}</div>
                     </div>
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: 5, marginTop: 9, paddingTop: 8, borderTop: "1px solid rgba(255,255,255,.07)" }}>
@@ -80,27 +81,27 @@ export default function MarketScreen({ accent }: { accent: string }) {
         <div style={{ width: 392, flex: "none", display: "flex", flexDirection: "column", gap: 14 }}>
           <div style={{ flex: 1, position: "relative", borderRadius: 6, border: "1px solid rgba(214,167,84,.4)", background: "radial-gradient(circle at 50% 28%, #1c4f5f, #0e2a36)", overflow: "hidden", boxShadow: "0 16px 40px rgba(0,0,0,.5)" }}>
             <Portrait id="owner" style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }} />
-            <div style={{ position: "absolute", left: 14, top: 14, padding: "5px 12px", background: "rgba(12,30,38,.85)", border: "1px solid rgba(214,167,84,.45)", borderRadius: 3, color: C.cream, fontSize: 13, fontWeight: 700 }}>{t({ zh: "交易所主管", en: "Market Director" })}</div>
+            <div style={{ position: "absolute", left: 14, top: 14, padding: "5px 12px", background: "rgba(12,30,38,.85)", border: "1px solid rgba(214,167,84,.45)", borderRadius: 3, color: C.cream, fontSize: 13, fontWeight: 700 }}>{t(S.market.director)}</div>
           </div>
 
           <div style={{ ...panel, padding: "14px 16px", boxShadow: "0 12px 30px rgba(0,0,0,.45)" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
               <span style={{ color: accent, fontSize: 18 }}>▣</span>
-              <span style={{ color: C.cream, fontSize: 14, fontWeight: 700 }}>{t({ zh: "貨艙", en: "Cargo" })}</span>
+              <span style={{ color: C.cream, fontSize: 14, fontWeight: 700 }}>{t(S.panel.cargo)}</span>
               <div style={{ flex: 1, height: 9, borderRadius: 5, background: "rgba(255,255,255,.1)", overflow: "hidden" }}>
                 <div style={{ width: `${(data.cargoUsed / data.cargoCap) * 100}%`, height: "100%", background: "linear-gradient(90deg,#e8c074,#d9a441)" }} />
               </div>
               <span style={{ fontSize: 12, color: "#cfe0e6", fontVariantNumeric: "tabular-nums" }}>{data.cargoUsed} / {data.cargoCap}</span>
             </div>
-            <TaxRow label={t({ zh: "稅率", en: "Tax" })} value={`${Math.round(TAX * 100)}%`} dashed />
-            <TaxRow label={t({ zh: "稅前", en: "Subtotal" })} value={`◎ ${fmt(subtotal)}`} />
-            <TaxRow label={t({ zh: "應付（含稅）", en: "Total (tax incl.)" })} value={`◎ ${fmt(total)}`} green={canBuy} />
+            <TaxRow label={t(S.market.tax)} value={`${Math.round(TAX * 100)}%`} dashed />
+            <TaxRow label={t(S.market.subtotal)} value={`◎ ${fmt(subtotal)}`} />
+            <TaxRow label={t(S.market.total)} value={`◎ ${fmt(total)}`} green={canBuy} />
             <button
               disabled={!canBuy}
               onClick={confirm}
               style={{ width: "100%", marginTop: 12, padding: "13px 0", borderRadius: 5, border: "1px solid rgba(255,236,196,.6)", background: canBuy ? primaryBg(accent) : "rgba(255,255,255,.08)", color: canBuy ? C.ink : C.mist, fontFamily: FONT_SERIF, fontSize: 17, fontWeight: 900, letterSpacing: ".12em", whiteSpace: "nowrap", cursor: canBuy ? "pointer" : "not-allowed" }}
             >
-              {count > 0 ? t({ zh: "確 認 採 購", en: "CONFIRM" }) : t({ zh: "點選備品加入採購", en: "Tap parts to add" })}
+              {count > 0 ? t(S.btn.confirm) : t(S.btn.addPrompt)}
             </button>
           </div>
         </div>

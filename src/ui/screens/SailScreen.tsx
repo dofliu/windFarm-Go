@@ -4,6 +4,7 @@ import { t } from "../../game/systems/i18n";
 import { useLang } from "../useLang";
 import { SailTurbines } from "../Turbine";
 import { AdvisorPopup, Avatar } from "../Portrait";
+import { S } from "../../i18n/strings";
 import type { Screen } from "../../App";
 
 function CtvShip({ left, top, scale, opacity, wakeH, hullW, hullH, cabinW, cabinH }: { left: string; top: number; scale: number; opacity: number; wakeH: number; hullW: number; hullH: number; cabinW: number; cabinH: number }) {
@@ -116,12 +117,12 @@ export default function SailScreen({ setScreen, accent }: { setScreen: (s: Scree
 
       {/* command bar */}
       <div style={{ position: "absolute", left: 40, bottom: 28, display: "flex", gap: 10 }}>
-        <div style={cmdBtn}>{t({ zh: "航線圖", en: "Route" })}</div>
+        <div style={cmdBtn}>{t(S.btn.routeMap)}</div>
         <div style={cmdBtn}>{t({ zh: "甲板", en: "Deck" })}</div>
         <div style={cmdBtn}>{t({ zh: "海象", en: "Sea" })}</div>
         <div style={cmdBtn}>{t({ zh: "派工", en: "Assign" })}</div>
         <div onClick={() => setScreen("repair")} style={{ ...cmdBtn, padding: "11px 28px", background: "linear-gradient(180deg, #d9a441 0%, #b07d2a 100%)", border: "1px solid rgba(255,236,196,.6)", color: C.ink, fontWeight: 900, boxShadow: "0 6px 16px rgba(217,164,65,.32)" }}>
-          {t({ zh: "靠泊登塔", en: "Dock & Climb" })}
+          {t(S.btn.dockClimb)}
         </div>
       </div>
 

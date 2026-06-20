@@ -5,19 +5,21 @@ import { getLang, toggleLang } from "../game/systems/i18n";
 import { useLang } from "./useLang";
 import { useGame } from "../state/GameContext";
 import { toWan, type SeaState } from "../state/game";
+import { S } from "../i18n/strings";
+import type { I18n } from "../game/systems/types";
 import type { Screen } from "../App";
 
-const TABS: { key: Screen; label: { zh: string; en: string } }[] = [
-  { key: "hub", label: { zh: "母港大廳", en: "Home Port" } },
-  { key: "market", label: { zh: "備品交易所", en: "Parts Market" } },
-  { key: "sail", label: { zh: "出海航行", en: "Set Sail" } },
-  { key: "repair", label: { zh: "維修作業", en: "Repair" } },
+const TABS: { key: Screen; label: I18n }[] = [
+  { key: "hub", label: S.nav.home },
+  { key: "market", label: S.nav.market },
+  { key: "sail", label: S.nav.sail },
+  { key: "repair", label: S.nav.repair },
 ];
 
-const SEA: Record<SeaState, { c: string; label: { zh: string; en: string } }> = {
-  workable: { c: C.greenBright, label: { zh: "可作業", en: "Workable" } },
-  caution: { c: C.amber, label: { zh: "警戒", en: "Caution" } },
-  closed: { c: C.red, label: { zh: "停航", en: "Closed" } },
+const SEA: Record<SeaState, { c: string; label: I18n }> = {
+  workable: { c: C.greenBright, label: S.status.workable },
+  caution: { c: C.amber, label: S.status.caution },
+  closed: { c: C.red, label: S.status.closed },
 };
 
 export default function TopBar({
@@ -81,7 +83,7 @@ export default function TopBar({
               textShadow: "0 1px 4px rgba(0,0,0,.5)",
             }}
           >
-            {t({ zh: "離岸風場 · 運維傳說", en: "Offshore O&M Legend" })}
+            {t(S.nav.title)}
           </div>
           <div style={{ fontFamily: FONT_CINZEL, fontSize: 11, color: C.gold, letterSpacing: ".34em", marginTop: 3 }}>
             OFFSHORE O&amp;M LEGEND
@@ -133,25 +135,25 @@ export default function TopBar({
           <span style={{ width: 10, height: 10, borderRadius: "50%", background: sea.c, boxShadow: `0 0 8px ${sea.c}`, animation: "shimmer 2.4s ease-in-out infinite" }} />
           <div style={{ lineHeight: 1.15 }}>
             <div style={{ color: C.cream, fontSize: 13, fontWeight: 700 }}>
-              {t({ zh: "海象", en: "Sea" })} {t(sea.label)}
+              {t(S.hud.sea)} {t(sea.label)}
             </div>
-            <div style={{ color: C.mist, fontSize: 10 }}>{t({ zh: "浪 1.2m · 風 8m/s · ENE", en: "1.2m · 8m/s · ENE" })}</div>
+            <div style={{ color: C.mist, fontSize: 10 }}>{t(S.hud.seaSub)}</div>
           </div>
         </div>
         <div style={chip}>
           <span style={{ color: C.gold }}>◷</span>
-          <span style={{ color: C.cream, fontSize: 13, fontWeight: 700 }}>{t({ zh: "Day 21 · 晴", en: "Day 21 · Clear" })}</span>
+          <span style={{ color: C.cream, fontSize: 13, fontWeight: 700 }}>{t(S.hud.day)}</span>
         </div>
         <div style={chip}>
           <span style={{ color: C.greenLight }}>人</span>
           <span style={{ color: C.cream, fontSize: 13, fontWeight: 700 }}>
-            {t({ zh: "技師", en: "Techs" })} {data.techAvail}/{data.techTotal}
+            {t(S.hud.techs)} {data.techAvail}/{data.techTotal}
           </span>
         </div>
         <div style={{ ...chip, background: "linear-gradient(180deg, rgba(217,164,65,.22), rgba(217,164,65,.06))", border: "1px solid rgba(214,167,84,.5)" }}>
           <span style={{ color: C.gold, fontSize: 16 }}>◎</span>
           <span style={{ color: C.goldText, fontSize: 15, fontWeight: 900, fontVariantNumeric: "tabular-nums" }}>
-            {toWan(data.budget)} {t({ zh: "萬", en: "M" })}
+            {toWan(data.budget)} {t(S.hud.wan)}
           </span>
         </div>
         <Btn onClick={() => toggleLang()}>{getLang() === "zh" ? "中" : "EN"}</Btn>

@@ -5,6 +5,7 @@ import { useLang } from "../useLang";
 import { AdvisorPopup, Avatar } from "../Portrait";
 import { useGame } from "../../state/GameContext";
 import { useDialogue } from "../../state/DialogueContext";
+import { S } from "../../i18n/strings";
 import { questAt, FAULTS } from "../faults";
 import type { Screen } from "../../App";
 
@@ -85,7 +86,7 @@ export default function RepairScreen({ setScreen }: { setScreen: (s: Screen) => 
       {/* left bottom cards */}
       <div style={{ position: "absolute", left: 40, bottom: 28, width: 300, display: "flex", gap: 12 }}>
         <div style={{ ...panel, flex: 1, padding: "12px 14px", borderRadius: 6 }}>
-          <div style={{ fontSize: 11, color: C.mist }}>{t({ zh: "機組妥善率", en: "Availability" })}</div>
+          <div style={{ fontSize: 11, color: C.mist }}>{t(S.panel.availability)}</div>
           <div style={{ fontSize: 30, fontWeight: 900, color: C.amber2, fontFamily: FONT_SERIF, lineHeight: 1.1 }}>
             {data.availability}<span style={{ fontSize: 15 }}>%</span>
           </div>
@@ -96,7 +97,7 @@ export default function RepairScreen({ setScreen }: { setScreen: (s: Screen) => 
         <div style={{ ...panel, flex: 1, padding: "12px 14px", borderRadius: 6 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
             <Avatar id="safety_officer" size={22} />
-            <span style={{ fontSize: 11, color: C.mist }}>{t({ zh: "作業安全窗", en: "Work Window" })}</span>
+            <span style={{ fontSize: 11, color: C.mist }}>{t(S.panel.workWindow)}</span>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 7, marginTop: 6 }}>
             <span style={{ width: 11, height: 11, borderRadius: "50%", background: C.greenBright, boxShadow: `0 0 8px ${C.greenBright}` }} />
@@ -113,12 +114,12 @@ export default function RepairScreen({ setScreen }: { setScreen: (s: Screen) => 
           <div style={{ ...panelHeader, background: "linear-gradient(180deg, rgba(220,100,80,.25), rgba(220,100,80,.06))", borderBottom: "1px solid rgba(220,100,80,.4)" }}>
             <Avatar id="scada_eng" size={26} />
             <span style={{ width: 9, height: 9, borderRadius: "50%", background: C.red, boxShadow: `0 0 8px ${C.red}`, animation: "shimmer 1.2s ease-in-out infinite" }} />
-            <span style={panelTitle}>{t({ zh: "SCADA 即時告警", en: "SCADA Live Alarms" })}</span>
+            <span style={panelTitle}>{t(S.panel.scada)}</span>
             <span style={{ marginLeft: "auto", fontSize: 11, color: C.mist }}>{quest.unit} · 14:32</span>
           </div>
           <div style={{ padding: "11px 14px" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
-              <span style={{ padding: "3px 8px", borderRadius: 3, background: C.red, color: "#fff", fontSize: 11, fontWeight: 700 }}>{t({ zh: "嚴重", en: "CRIT" })}</span>
+              <span style={{ padding: "3px 8px", borderRadius: 3, background: C.red, color: "#fff", fontSize: 11, fontWeight: 700 }}>{t(S.status.crit)}</span>
               <span style={{ color: C.cream, fontSize: 14, fontWeight: 700 }}>{t(fault.severityTemp)}</span>
             </div>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 9 }}>
@@ -133,7 +134,7 @@ export default function RepairScreen({ setScreen }: { setScreen: (s: Screen) => 
         <div style={{ ...panel, boxShadow: "0 12px 30px rgba(0,0,0,.45)" }}>
           <div style={panelHeader}>
             <Avatar id="elec_eng" size={26} />
-            <span style={panelTitle}>{t({ zh: "故障診斷 · 隨堂測驗", en: "Diagnosis · Quiz" })}</span>
+            <span style={panelTitle}>{t(S.panel.quiz)}</span>
           </div>
           <div style={{ padding: "13px 14px" }}>
             <div style={{ color: C.cream, fontSize: 14, fontWeight: 700, lineHeight: 1.5, marginBottom: 11 }}>{t(q.question)}</div>
@@ -156,7 +157,7 @@ export default function RepairScreen({ setScreen }: { setScreen: (s: Screen) => 
         {/* SOP checklist (interactive) */}
         <div style={{ ...panel, flex: 1, boxShadow: "0 12px 30px rgba(0,0,0,.45)", display: "flex", flexDirection: "column" }}>
           <div style={panelHeader}>
-            <span style={panelTitle}>{t({ zh: "維修 SOP 作業步驟", en: "Repair SOP Steps" })}</span>
+            <span style={panelTitle}>{t(S.panel.sop)}</span>
             <span style={{ marginLeft: "auto", fontSize: 11, color: C.mist }}>{steps.filter(Boolean).length}/{steps.length}</span>
           </div>
           <div style={{ padding: "9px 14px", flex: 1 }}>
@@ -184,7 +185,7 @@ export default function RepairScreen({ setScreen }: { setScreen: (s: Screen) => 
                 onClick={finish}
                 style={{ width: "100%", padding: "11px 0", borderRadius: 6, border: "1px solid rgba(255,236,196,.6)", background: ready ? primaryBg() : "rgba(255,255,255,.08)", color: ready ? C.ink : C.mist, fontFamily: FONT_SERIF, fontWeight: 900, fontSize: 15, letterSpacing: ".08em", cursor: ready ? "pointer" : "not-allowed" }}
               >
-                {t({ zh: "回報 SCADA · 完成維修", en: "Report SCADA · Finish" })}
+                {t(S.btn.finishRepair)}
               </button>
             )}
           </div>

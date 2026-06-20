@@ -6,6 +6,7 @@ import { AdvisorPopup, Avatar } from "../Portrait";
 import { exprUrl, NARRATOR_EXPR } from "../characters";
 import { useGame } from "../../state/GameContext";
 import { useDialogue } from "../../state/DialogueContext";
+import { S } from "../../i18n/strings";
 import { QUEST_POOL, questAt } from "../faults";
 import type { I18n } from "../../game/systems/types";
 import type { QuestStage } from "../../state/game";
@@ -160,9 +161,9 @@ export default function HubScreen({ setScreen, accent }: { setScreen: (s: Screen
       <div style={{ ...panel, position: "absolute", left: 28, bottom: 26, width: 372, boxShadow: "0 12px 30px rgba(0,0,0,.4)" }}>
         <div style={panelHeader}>
           <Avatar id="manager" size={28} />
-          <span style={panelTitle}>{t({ zh: "工單 · 風場經理", en: "Work Order · Manager" })}</span>
+          <span style={panelTitle}>{t(S.panel.workOrder)}</span>
           <span style={{ marginLeft: "auto", fontSize: 12, color: stage === "done" ? C.green : C.mist2 }}>
-            {t(stage === "available" ? { zh: "可接", en: "Available" } : stage === "active" ? { zh: "進行中", en: "Active" } : { zh: "已完成", en: "Done" })}
+            {t(stage === "available" ? S.status.available : stage === "active" ? S.status.active : S.status.done)}
           </span>
         </div>
         <div style={{ padding: "12px 14px" }}>
@@ -185,7 +186,7 @@ export default function HubScreen({ setScreen, accent }: { setScreen: (s: Screen
                 }}
                 style={{ marginLeft: "auto", padding: "5px 16px", borderRadius: 4, border: "1px solid rgba(255,236,196,.6)", background: primaryBg(accent), color: C.ink, fontFamily: FONT_SERIF, fontWeight: 900, fontSize: 13, cursor: "pointer" }}
               >
-                {t({ zh: "接單", en: "Accept" })}
+                {t(S.btn.accept)}
               </button>
             )}
             {stage === "done" && (
@@ -196,7 +197,7 @@ export default function HubScreen({ setScreen, accent }: { setScreen: (s: Screen
                 }}
                 style={{ marginLeft: "auto", padding: "5px 14px", borderRadius: 4, border: "1px solid rgba(214,167,84,.5)", background: "rgba(15,40,50,.82)", color: C.cream, fontFamily: FONT_SERIF, fontWeight: 700, fontSize: 13, cursor: "pointer" }}
               >
-                ✅ {t({ zh: "下一筆工單", en: "Next Order" })}
+                ✅ {t(S.btn.nextOrder)}
               </button>
             )}
           </div>
@@ -205,11 +206,11 @@ export default function HubScreen({ setScreen, accent }: { setScreen: (s: Screen
 
       {/* BOTTOM-CENTER: primary actions */}
       <div style={{ position: "absolute", left: "50%", bottom: 34, transform: "translateX(-50%)", display: "flex", gap: 16, alignItems: "center" }}>
-        <SecBtn icon="◷" label={t({ zh: "航線圖", en: "Route Map" })} />
+        <SecBtn icon="◷" label={t(S.btn.routeMap)} />
         <div onClick={goSail} style={{ padding: "16px 46px", borderRadius: 6, background: primaryBg(accent), border: "1px solid rgba(255,236,196,.6)", color: C.ink, fontFamily: FONT_SERIF, fontSize: 21, fontWeight: 900, letterSpacing: ".1em", whiteSpace: "nowrap", cursor: "pointer", boxShadow: "0 8px 22px rgba(217,164,65,.35), inset 0 1px 0 rgba(255,255,255,.4)" }}>
-          {t({ zh: "出 海 作 業", en: "SET SAIL" })}
+          {t(S.btn.setSail)}
         </div>
-        <SecBtn icon="⚓" label={t({ zh: "靠港休整", en: "Rest in Port" })} />
+        <SecBtn icon="⚓" label={t(S.btn.restPort)} />
       </div>
 
       {/* 解說員少女：任務引導（點擊換表情/台詞） */}
