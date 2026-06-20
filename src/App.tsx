@@ -11,6 +11,7 @@ import CourseModal from "./ui/CourseModal";
 import Toaster from "./ui/Toaster";
 import { GameProvider } from "./state/GameContext";
 import { DialogueProvider } from "./state/DialogueContext";
+import { Bgm } from "./audio/bgm";
 
 export type Screen = "hub" | "market" | "sail" | "repair";
 
@@ -28,6 +29,11 @@ export default function App() {
     window.addEventListener("resize", fit);
     return () => window.removeEventListener("resize", fit);
   }, []);
+
+  // 依場景切換背景音樂（#19）
+  useEffect(() => {
+    Bgm.play(screen);
+  }, [screen]);
 
   const showSharedBg = screen === "hub" || screen === "market";
 

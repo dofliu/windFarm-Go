@@ -16,6 +16,11 @@ function ac(): AudioContext {
   return ctx;
 }
 
+// 與 BGM 共用同一個 AudioContext，讓任一次點擊都能一併喚醒背景音樂
+export function audioCtx(): AudioContext {
+  return ac();
+}
+
 // 排程一個帶包絡的音
 function tone(freq: number, t0: number, dur: number, type: OscillatorType = "triangle", peak = 0.18) {
   const c = ac();
@@ -35,15 +40,14 @@ function tone(freq: number, t0: number, dur: number, type: OscillatorType = "tri
 
 export const Sfx = {
   isMuted: () => muted,
-  toggle(): boolean {
-    muted = !muted;
+  setMuted(b: boolean) {
+    muted = b;
     try {
-      localStorage.setItem("wfg-muted", muted ? "1" : "0");
+      localStorage.setItem("wfg-muted", b ? "1" : "0");
     } catch {
       // 忽略
     }
-    if (!muted) tone(880, 0, 0.08); // 解除靜音時回饋一聲
-    return muted;
+    if (!b) tone(880, 0, 0.08);
   },
   click() {
     if (muted) return;

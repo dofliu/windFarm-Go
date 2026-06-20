@@ -1,6 +1,7 @@
 import { useState, type CSSProperties, type ReactNode } from "react";
 import { C, FONT_SERIF, FONT_CINZEL, chip } from "./tokens";
 import { Sfx } from "../audio/sfx";
+import { Bgm } from "../audio/bgm";
 import { t } from "../game/systems/i18n";
 import { getLang, toggleLang } from "../game/systems/i18n";
 import { useLang } from "./useLang";
@@ -172,7 +173,18 @@ export default function TopBar({
 
 function MuteBtn() {
   const [m, setM] = useState(Sfx.isMuted());
-  return <Btn onClick={() => setM(Sfx.toggle())}>{m ? "🔇" : "🔊"}</Btn>;
+  return (
+    <Btn
+      onClick={() => {
+        const nm = !m;
+        setM(nm);
+        Sfx.setMuted(nm); // 同時控制音效與背景音樂
+        Bgm.setMuted(nm);
+      }}
+    >
+      {m ? "🔇" : "🔊"}
+    </Btn>
+  );
 }
 
 function Btn({ children, onClick }: { children: ReactNode; onClick?: () => void }) {

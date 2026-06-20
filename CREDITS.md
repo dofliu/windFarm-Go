@@ -18,8 +18,9 @@ MIT License © 2026 Juihung Liu (劉瑞弘), DOF Lab, National Chin-Yi Universit
   早期 tile 原型使用，現行版本改為 CSS/立繪 UI，後續可能移除。
 
 ## Audio
-- Sound effects are generated procedurally at runtime via the Web Audio API
-  (no external audio files). 音效為 Web Audio 即時合成，無外部音檔。
+- Sound effects AND per-scene background music are generated procedurally at
+  runtime via the Web Audio API (no external audio files).
+  音效與各場景背景音樂皆為 Web Audio 即時合成，無外部音檔。
 
 ## Engine / Libraries
 - React, Vite, TypeScript, Tailwind CSS.
