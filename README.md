@@ -8,14 +8,14 @@ An educational, *Uncharted-Waters*-style game that reframes offshore **wind-farm
 
 ▶ **[Play online](https://dofliu.github.io/windFarm-Go/)**
 
-![Home Port](docs/design_handoff_offshore_om_game/screenshots/01-母港大廳.png)
+![Home Port](docs/screenshots/01-hub.png)
 
 ## Screens
 | | |
 |---|---|
-| ![Market](docs/design_handoff_offshore_om_game/screenshots/02-備品交易所.png) | ![Sail](docs/design_handoff_offshore_om_game/screenshots/03-出海航行.png) |
+| ![Market](docs/screenshots/02-market.png) | ![Sail](docs/screenshots/03-sail.png) |
 | **Parts Market** — spare-part prices & trading | **Set Sail** — CTV voyage & vessel status |
-| ![Repair](docs/design_handoff_offshore_om_game/screenshots/04-維修作業.png) | |
+| ![Repair](docs/screenshots/04-repair.png) | |
 | **Repair** — fault diagnosis quiz + SOP steps | |
 
 ## Features

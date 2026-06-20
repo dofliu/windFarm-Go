@@ -8,14 +8,14 @@
 
 ▶ **[線上試玩](https://dofliu.github.io/windFarm-Go/)**
 
-![母港大廳](docs/design_handoff_offshore_om_game/screenshots/01-母港大廳.png)
+![母港大廳](docs/screenshots/01-hub.png)
 
 ## 畫面
 | | |
 |---|---|
-| ![交易所](docs/design_handoff_offshore_om_game/screenshots/02-備品交易所.png) | ![出海](docs/design_handoff_offshore_om_game/screenshots/03-出海航行.png) |
+| ![交易所](docs/screenshots/02-market.png) | ![出海](docs/screenshots/03-sail.png) |
 | **備品交易所** — 風機備品行情與買賣 | **出海航行** — CTV 航行與船況管理 |
-| ![維修](docs/design_handoff_offshore_om_game/screenshots/04-維修作業.png) | |
+| ![維修](docs/screenshots/04-repair.png) | |
 | **維修作業** — 故障診斷測驗 + SOP 步驟 | |
 
 ## 特色
