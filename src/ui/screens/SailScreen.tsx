@@ -13,6 +13,7 @@ import { missionAt } from "../campaign";
 import { DISC, hasEngineer } from "../disc";
 import { PARTS } from "../data";
 import Vessel, { vesselTypeOf, type VesselType } from "../Vessel";
+import RouteMap from "../RouteMap";
 import { ForecastStrip, StormWarning } from "../Forecast";
 import type { Screen } from "../../App";
 
@@ -102,6 +103,13 @@ export default function SailScreen({ setScreen, accent, mode = "sim" }: { setScr
           <div style={{ color: C.mist, fontSize: 11 }}>{t({ zh: "船舶", en: "Vessel" })}: {data.ownsSOV ? "SOV" : "CTV"} · {t({ zh: "耐海象", en: "sea-tol" })} {vesselSeaTol(data.ownsSOV)}</div>
         </div>
       </div>
+
+      {/* 出海動態航線俯瞰圖（Phase A #1）：航行中顯示港口→風場的船隻移動 */}
+      {data.jobPhase === "enroute" && (
+        <div style={{ position: "absolute", left: "calc(50% - 30px)", top: "46%", transform: "translate(-50%,-50%)", zIndex: 3 }}>
+          <RouteMap progress={progress} unit={quest.unit} vessel={fleetType} />
+        </div>
+      )}
 
       {/* 出勤就緒 / 航行 / 抵達 面板 */}
       <div style={{ position: "absolute", right: 26, top: 92, width: 320, background: "linear-gradient(180deg, rgba(20,50,63,.95), rgba(13,36,46,.97))", border: "1px solid rgba(214,167,84,.5)", borderRadius: 8, boxShadow: "0 14px 36px rgba(0,0,0,.5)", overflow: "hidden" }}>

@@ -8,7 +8,7 @@ import { useGame } from "../../state/GameContext";
 import { useDialogue } from "../../state/DialogueContext";
 import { S } from "../../i18n/strings";
 import { Sfx } from "../../audio/sfx";
-import { toast, SOON } from "../toast";
+import { toast } from "../toast";
 import { CAMPAIGN, missionAt } from "../campaign";
 import { FAULTS } from "../faults";
 import { PARTS } from "../data";
@@ -380,7 +380,7 @@ export default function HubScreen({ setScreen, accent, onDispatch, onFacility, s
 
       {/* ───── 中央底部：主要動作 ───── */}
       <div style={{ position: "absolute", left: "50%", bottom: 36, transform: "translateX(-50%)", display: "flex", gap: 16, alignItems: "center" }}>
-        <SecBtn icon="◷" label={t(S.btn.routeMap)} onClick={() => { Sfx.click(); toast(SOON); }} />
+        <SecBtn icon="🛰" label={t({ zh: "遠端巡檢", en: "Remote Check" })} onClick={() => { Sfx.click(); dispatch({ type: "REMOTE_CHECK" }); say({ speaker: "scada_eng", expr: "neutral", line: { zh: "遠端 SCADA 巡檢完成：早期徵兆已記錄，今天就這樣（+經驗）。", en: "Remote SCADA sweep done — early signs logged. A day well spent (+XP)." } }); }} />
         <div onClick={() => { Sfx.click(); goSail(); }} style={{ padding: "16px 46px", borderRadius: 6, background: primaryBg(accent), border: "1px solid rgba(255,236,196,.6)", color: C.ink, fontFamily: FONT_SERIF, fontSize: 21, fontWeight: 900, letterSpacing: ".1em", whiteSpace: "nowrap", cursor: "pointer", boxShadow: "0 8px 22px rgba(217,164,65,.35), inset 0 1px 0 rgba(255,255,255,.4)" }}>
           {t(S.btn.setSail)}
         </div>
