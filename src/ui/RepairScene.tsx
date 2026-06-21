@@ -18,6 +18,11 @@ function Alarm({ left, top, label }: { left: number; top: number; label: I18n })
 
 const beam: CSSProperties = { position: "absolute", background: "linear-gradient(180deg,#4a5560,#2a333b)", borderRadius: 2 };
 
+// 閃爍狀態燈（#4 動態細節）
+function Led({ left, top, color, rate = 1.4 }: { left: number; top: number; color: string; rate?: number }) {
+  return <span style={{ position: "absolute", left, top, width: 7, height: 7, borderRadius: "50%", background: color, boxShadow: `0 0 8px ${color}`, animation: `shimmer ${rate}s ease-in-out infinite` }} />;
+}
+
 // 機艙內：齒輪箱 + 發電機 + 傳動軸 + 結構樑 + 採光窗
 function Nacelle({ alarm }: { alarm: I18n }) {
   return (
@@ -36,15 +41,26 @@ function Nacelle({ alarm }: { alarm: I18n }) {
       </div>
       {/* 傳動軸 */}
       <div style={{ position: "absolute", left: 190, top: 262, width: 90, height: 24, background: "linear-gradient(180deg,#8b97a0,#4b555d)", borderRadius: 12 }} />
-      {/* 齒輪箱（右大圓柱） */}
+      {/* 齒輪箱（右大圓柱，內部齒輪轉動） */}
       <div style={{ position: "absolute", left: 270, top: 200, width: 150, height: 150, background: "radial-gradient(circle at 40% 35%,#7c8893,#39424a)", borderRadius: "50%", boxShadow: "0 8px 18px rgba(0,0,0,.45)" }}>
         <div style={{ position: "absolute", inset: 28, borderRadius: "50%", border: "3px solid rgba(0,0,0,.3)" }} />
-        <div style={{ position: "absolute", inset: 52, borderRadius: "50%", background: "linear-gradient(180deg,#9aa6af,#5b656d)" }} />
+        <div style={{ position: "absolute", inset: 52, borderRadius: "50%", background: "linear-gradient(180deg,#9aa6af,#5b656d)", animation: "spin 5s linear infinite" }}>
+          {[0, 45, 90, 135].map((d) => (
+            <div key={d} style={{ position: "absolute", top: "50%", left: "50%", width: "100%", height: 3, background: "rgba(0,0,0,.35)", transformOrigin: "center", transform: `translate(-50%,-50%) rotate(${d}deg)` }} />
+          ))}
+        </div>
+      </div>
+      {/* 傳動軸聯軸器轉動 */}
+      <div style={{ position: "absolute", left: 250, top: 256, width: 30, height: 30, borderRadius: "50%", background: "radial-gradient(circle,#9aa6af,#4b555d)", animation: "spin 5s linear infinite" }}>
+        <div style={{ position: "absolute", top: "50%", left: 0, width: "100%", height: 2, background: "rgba(0,0,0,.4)", transform: "translateY(-50%)" }} />
       </div>
       {/* 冷卻管路 */}
       <div style={{ position: "absolute", left: 120, top: 350, width: 280, height: 6, background: "#c98a3a", borderRadius: 3 }} />
       {/* 警示地貼 */}
       <div style={{ position: "absolute", left: 0, bottom: 60, width: "100%", height: 10, background: "repeating-linear-gradient(45deg,#d9a441 0 10px,#2a333b 10px 20px)", opacity: 0.7 }} />
+      <Led left={92} top={232} color="#7fce8e" rate={2} />
+      <Led left={104} top={232} color="#7fce8e" rate={2.6} />
+      <Led left={300} top={206} color="#e3ad42" rate={1} />
       <Alarm left={300} top={185} label={alarm} />
     </>
   );
@@ -60,8 +76,11 @@ function Tower({ alarm }: { alarm: I18n }) {
         const w = 120 + i * 48;
         return <div key={i} style={{ position: "absolute", left: 215 - w / 2, top: 70 + i * 95, width: w, height: 26, border: "2px solid rgba(150,165,175,.4)", borderRadius: "50%" }} />;
       })}
-      {/* 頂部採光 */}
-      <div style={{ position: "absolute", left: 175, top: 30, width: 80, height: 40, background: "radial-gradient(ellipse,#cfe2ea,#7fa6b6)", borderRadius: "50%", opacity: 0.7, filter: "blur(2px)" }} />
+      {/* 頂部採光（微微明滅） */}
+      <div style={{ position: "absolute", left: 175, top: 30, width: 80, height: 40, background: "radial-gradient(ellipse,#cfe2ea,#7fa6b6)", borderRadius: "50%", opacity: 0.7, filter: "blur(2px)", animation: "shimmer 5s ease-in-out infinite" }} />
+      <Led left={211} top={56} color="#dc6450" rate={1.6} />
+      <Led left={206} top={300} color="#7fce8e" rate={2.2} />
+      <Led left={318} top={150} color="#e3ad42" rate={1.2} />
       {/* 中央爬梯 */}
       <div style={{ position: "absolute", left: 200, top: 80, width: 30, height: 500 }}>
         <div style={{ position: "absolute", left: 0, top: 0, width: 4, height: "100%", background: "#9aa6af" }} />
@@ -82,10 +101,12 @@ function Hub({ alarm }: { alarm: I18n }) {
   return (
     <>
       <div style={{ position: "absolute", inset: 0, background: "radial-gradient(circle at 55% 45%, #3a444e 0%, #262d34 55%, #181d22 100%)" }} />
-      {/* 變槳軸承大環 */}
+      {/* 變槳軸承大環（內環緩慢轉動） */}
       <div style={{ position: "absolute", left: 90, top: 120, width: 250, height: 250, borderRadius: "50%", border: "16px solid #5b656d", boxShadow: "inset 0 0 24px rgba(0,0,0,.5), 0 8px 18px rgba(0,0,0,.4)" }}>
-        <div style={{ position: "absolute", inset: 6, borderRadius: "50%", border: "3px dashed rgba(150,165,175,.35)" }} />
+        <div style={{ position: "absolute", inset: 6, borderRadius: "50%", border: "3px dashed rgba(150,165,175,.45)", animation: "spin 18s linear infinite" }} />
       </div>
+      <Led left={104} top={300} color="#7fce8e" rate={2.4} />
+      <Led left={120} top={300} color="#e3ad42" rate={1.3} />
       {/* 葉根開口 */}
       <div style={{ position: "absolute", left: 150, top: 180, width: 130, height: 130, borderRadius: "50%", background: "radial-gradient(circle,#222a31,#10151a)" }} />
       {/* 液壓蓄能器 */}
@@ -117,6 +138,9 @@ function Deck({ alarm }: { alarm: I18n }) {
       {/* 登船梯 */}
       <div style={{ position: "absolute", left: 120, top: 440, width: 8, height: 70, background: "#caa83e" }} />
       <div style={{ position: "absolute", left: 150, top: 440, width: 8, height: 70, background: "#caa83e" }} />
+      {/* 助航燈號明滅 */}
+      <Led left={84} top={322} color="#e3ad42" rate={1.1} />
+      <Led left={352} top={322} color="#dc6450" rate={1.5} />
       <Alarm left={250} top={150} label={alarm} />
     </>
   );

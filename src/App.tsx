@@ -111,12 +111,12 @@ export default function App() {
             overflow: "hidden",
           }}
         >
-          {showSharedBg && <SceneBackground sceneId={sceneId} aerial={aerial && screen === "hub"} mode={mode} imageFile={imageFile} />}
+          {(mode !== "sim" || showSharedBg) && <SceneBackground sceneId={sceneId} aerial={aerial && screen === "hub"} mode={mode} imageFile={imageFile} />}
 
           {screen === "hub" && <HubScreen setScreen={setScreen} accent={accent} onDispatch={() => setShowDispatch(true)} onFacility={(k) => setFacility(k)} sceneName={sceneName} onCycleScene={cycleScene} aerial={aerial} onToggleView={() => setAerial((v) => !v)} mode={mode} onCycleMode={cycleMode} onOps={() => setShowOps(true)} week={week} />}
           {screen === "market" && <MarketScreen accent={accent} />}
-          {screen === "sail" && <SailScreen setScreen={setScreen} accent={accent} />}
-          {screen === "repair" && <RepairScreen setScreen={setScreen} />}
+          {screen === "sail" && <SailScreen setScreen={setScreen} accent={accent} mode={mode} />}
+          {screen === "repair" && <RepairScreen setScreen={setScreen} mode={mode} />}
 
           <TopBar screen={screen} setScreen={setScreen} accent={accent} onGear={() => setShowCourse(true)} onLogout={logout} />
           <DialogueLayer />

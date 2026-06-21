@@ -8,14 +8,14 @@ import { useDialogue } from "../../state/DialogueContext";
 import { S } from "../../i18n/strings";
 import { Sfx } from "../../audio/sfx";
 import { exprUrl } from "../characters";
-import { FAULTS, LOCATION_LABEL, locationOf } from "../faults";
+import { FAULTS, LOCATION_LABEL, locationOf, isMajorFault } from "../faults";
 import RepairScene from "../RepairScene";
 import Vessel, { vesselTypeOf } from "../Vessel";
 import { PARTS } from "../data";
 import { missionAt } from "../campaign";
 import type { Screen } from "../../App";
 
-export default function RepairScreen({ setScreen }: { setScreen: (s: Screen) => void }) {
+export default function RepairScreen({ setScreen, mode = "sim" }: { setScreen: (s: Screen) => void; mode?: "sim" | "real" | "comic" }) {
   useLang();
   const { data, dispatch } = useGame();
   const { say } = useDialogue();
@@ -32,7 +32,7 @@ export default function RepairScreen({ setScreen }: { setScreen: (s: Screen) => 
 
   // #33 登船事件 + 作業地點
   const location = locationOf(fault.id);
-  const fleetType = vesselTypeOf(data.ownsSOV);
+  const fleetType = isMajorFault(fault.id) ? "jackup" : vesselTypeOf(data.ownsSOV);
   const roughBoarding = data.seaState !== "workable"; // 浪高 → 登船延誤
   const [boarded, setBoarded] = useState(false);
 
@@ -155,22 +155,24 @@ export default function RepairScreen({ setScreen }: { setScreen: (s: Screen) => 
 
   return (
     <div style={{ position: "absolute", inset: 0, zIndex: 2 }}>
-      {/* dusk bg */}
-      <div style={{ position: "absolute", inset: 0 }}>
-        <div style={{ position: "absolute", left: 0, right: 0, top: 0, height: "56%", background: "linear-gradient(180deg,#34435e 0%, #5a5d72 38%, #b08a6a 64%, #d8b487 75%)" }} />
-        <div style={{ position: "absolute", left: 0, right: 0, top: 0, height: "60%", background: "radial-gradient(circle at 62% 90%, rgba(255,214,160,.7), rgba(255,214,160,0) 42%)" }} />
-        <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: "44%", background: "linear-gradient(180deg,#2b5566 0%, #1c4151 40%, #122f3b 100%)" }} />
-        <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: "44%", background: "repeating-linear-gradient(178deg, rgba(255,255,255,.04) 0 2px, rgba(255,255,255,0) 2px 30px)" }} />
-        <div style={{ position: "absolute", inset: 0, background: "radial-gradient(circle at 30% 40%, rgba(6,16,22,0) 50%, rgba(6,16,22,.55) 100%)", pointerEvents: "none" }} />
-      </div>
+      {/* 模擬模式：CSS 黃昏背景＋地點機械場景；實境/漫畫由背景圖呈現 */}
+      {mode === "sim" && (
+        <div style={{ position: "absolute", inset: 0 }}>
+          <div style={{ position: "absolute", left: 0, right: 0, top: 0, height: "56%", background: "linear-gradient(180deg,#34435e 0%, #5a5d72 38%, #b08a6a 64%, #d8b487 75%)" }} />
+          <div style={{ position: "absolute", left: 0, right: 0, top: 0, height: "60%", background: "radial-gradient(circle at 62% 90%, rgba(255,214,160,.7), rgba(255,214,160,0) 42%)" }} />
+          <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: "44%", background: "linear-gradient(180deg,#2b5566 0%, #1c4151 40%, #122f3b 100%)" }} />
+          <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: "44%", background: "repeating-linear-gradient(178deg, rgba(255,255,255,.04) 0 2px, rgba(255,255,255,0) 2px 30px)" }} />
+          <div style={{ position: "absolute", inset: 0, background: "radial-gradient(circle at 30% 40%, rgba(6,16,22,0) 50%, rgba(6,16,22,.55) 100%)", pointerEvents: "none" }} />
+        </div>
+      )}
 
       {/* 作業地點標籤（#33） */}
       <div style={{ position: "absolute", left: 40, top: 92, padding: "7px 14px", borderRadius: 20, background: "rgba(10,28,36,.75)", border: "1px solid rgba(214,167,84,.4)", color: C.cream, fontSize: 13, fontWeight: 700, zIndex: 3 }}>
         <span style={{ color: C.gold }}>📍</span> {t({ zh: "作業地點", en: "Work area" })}：{t(LOCATION_LABEL[location])} · {quest.unit}
       </div>
 
-      {/* 依作業地點變化的場景（#5）：機艙內/塔架內/輪轂/甲板 */}
-      <RepairScene location={location} alarm={fault.name} />
+      {/* 依作業地點變化的場景（#5）：機艙內/塔架內/輪轂/甲板（僅模擬模式） */}
+      {mode === "sim" && <RepairScene location={location} alarm={fault.name} />}
 
       {/* left bottom cards */}
       <div style={{ position: "absolute", left: 40, bottom: 28, width: 300, display: "flex", gap: 12 }}>

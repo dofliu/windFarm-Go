@@ -8,7 +8,7 @@ import { exprUrl } from "../characters";
 import { useGame } from "../../state/GameContext";
 import { Sfx } from "../../audio/sfx";
 import { SEA_INDEX, vesselSeaTol } from "../../state/game";
-import { FAULTS } from "../faults";
+import { FAULTS, isMajorFault } from "../faults";
 import { missionAt } from "../campaign";
 import { DISC, hasEngineer } from "../disc";
 import { PARTS } from "../data";
@@ -35,14 +35,15 @@ function Check({ ok, label, hint }: { ok: boolean; label: string; hint?: string 
   );
 }
 
-export default function SailScreen({ setScreen, accent }: { setScreen: (s: Screen) => void; accent: string }) {
+export default function SailScreen({ setScreen, accent, mode = "sim" }: { setScreen: (s: Screen) => void; accent: string; mode?: "sim" | "real" | "comic" }) {
   useLang();
   const { data, dispatch } = useGame();
-  const fleetType = vesselTypeOf(data.ownsSOV);
   const active = data.questStage === "active";
   const quest = data.customQuest ?? missionAt(data.campaignIndex);
   const fault = FAULTS[quest.targetFault];
   const part = PARTS.find((p) => p.id === fault?.part);
+  // 重大作業出動安裝船(jack-up)，否則依擁有船型
+  const fleetType = fault && isMajorFault(fault.id) ? "jackup" : vesselTypeOf(data.ownsSOV);
 
   // 出勤就緒檢查（#25）
   const engOk = fault ? hasEngineer(data.engineers, fault.discipline) : false;
@@ -74,18 +75,22 @@ export default function SailScreen({ setScreen, accent }: { setScreen: (s: Scree
 
   return (
     <div style={{ position: "absolute", inset: 0, zIndex: 2 }}>
-      {/* open sea bg */}
-      <div style={{ position: "absolute", inset: 0 }}>
-        <div style={{ position: "absolute", left: 0, right: 0, top: 0, height: "34%", background: "linear-gradient(180deg,#a9cfe0 0%, #cfe1de 55%, #ece4cd 100%)" }} />
-        <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: "66%", background: "linear-gradient(180deg,#50b4c5 0%, #2f93ab 28%, #1f6f88 68%, #134e61 100%)" }} />
-        <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: "66%", background: "repeating-linear-gradient(178deg, rgba(255,255,255,.06) 0 2px, rgba(255,255,255,0) 2px 28px)" }} />
-        <div style={{ position: "absolute", left: 0, right: 0, top: "33.6%", height: 1, background: "rgba(255,255,255,.45)" }} />
-        <SailTurbines />
-        <CtvShip left="47%" top={300} scale={0.66} opacity={0.9} type={fleetType} />
-        <CtvShip left="43%" top={360} scale={0.9} opacity={0.96} type={fleetType} />
-        <CtvShip left="38.5%" top={432} scale={1.18} opacity={1} type={fleetType} />
-        <div style={{ position: "absolute", inset: 0, background: "radial-gradient(circle at 50% 46%, rgba(6,18,24,0) 55%, rgba(6,18,24,.42) 100%)", pointerEvents: "none" }} />
-      </div>
+      {/* 模擬模式：CSS 海面＋風機＋船；實境/漫畫模式由背景圖呈現，只保留航行中的船 */}
+      {mode === "sim" ? (
+        <div style={{ position: "absolute", inset: 0 }}>
+          <div style={{ position: "absolute", left: 0, right: 0, top: 0, height: "34%", background: "linear-gradient(180deg,#a9cfe0 0%, #cfe1de 55%, #ece4cd 100%)" }} />
+          <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: "66%", background: "linear-gradient(180deg,#50b4c5 0%, #2f93ab 28%, #1f6f88 68%, #134e61 100%)" }} />
+          <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: "66%", background: "repeating-linear-gradient(178deg, rgba(255,255,255,.06) 0 2px, rgba(255,255,255,0) 2px 28px)" }} />
+          <div style={{ position: "absolute", left: 0, right: 0, top: "33.6%", height: 1, background: "rgba(255,255,255,.45)" }} />
+          <SailTurbines />
+          <CtvShip left="47%" top={300} scale={0.66} opacity={0.9} type={fleetType} />
+          <CtvShip left="43%" top={360} scale={0.9} opacity={0.96} type={fleetType} />
+          <CtvShip left="38.5%" top={432} scale={1.18} opacity={1} type={fleetType} />
+          <div style={{ position: "absolute", inset: 0, background: "radial-gradient(circle at 50% 46%, rgba(6,18,24,0) 55%, rgba(6,18,24,.42) 100%)", pointerEvents: "none" }} />
+        </div>
+      ) : (
+        <CtvShip left="42%" top={392} scale={1.25} opacity={1} type={fleetType} />
+      )}
 
       {/* destination chip */}
       <div style={{ position: "absolute", left: 40, top: 96, padding: "9px 16px", borderRadius: 6, background: "rgba(10,28,36,.82)", border: "1px solid rgba(214,167,84,.4)", backdropFilter: "blur(3px)", display: "flex", alignItems: "center", gap: 10 }}>

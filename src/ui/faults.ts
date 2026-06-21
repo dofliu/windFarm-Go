@@ -189,6 +189,10 @@ export const FAULT_LOCATION: Record<string, RepairLocation> = {
 };
 export const locationOf = (faultId: string): RepairLocation => FAULT_LOCATION[faultId] ?? "nacelle";
 
+// 重大作業（需重吊／安裝船 jack-up 出動）：大型組件更換，如發電機/主軸承、葉片。
+export const MAJOR_FAULTS: string[] = ["gen_vibration"];
+export const isMajorFault = (faultId: string): boolean => MAJOR_FAULTS.includes(faultId);
+
 // 工單池（#4）：每筆工單對應一種故障，完成後輪替到下一筆。
 export const QUEST_POOL: Quest[] = [
   {

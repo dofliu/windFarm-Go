@@ -470,6 +470,168 @@ export const TASKS: TaskTemplate[] = [
   { id: "g_marine_mammal", cat: "G", xp: 50, title: { zh: "海洋哺乳類進入工區", en: "Marine mammal in worksite" }, scenario: { zh: "打樁/噪音作業前發現鯨豚進入警戒區。", en: "Cetaceans enter the exclusion zone before noisy work." }, choices: [
     { label: { zh: "暫停作業、待其離開", en: "Pause work until they leave" }, good: true, feedback: { zh: "✓ 遵守鯨豚觀察與緩啟動規範。", en: "✓ Follow MMO & soft-start protocols." }, eff: { g: -30 } },
     { label: { zh: "照常打樁", en: "Pile-drive anyway" }, good: false, feedback: { zh: "✗ 違反生態規範、傷害海洋生物。", en: "✗ Violates eco-rules and harms wildlife." }, eff: { b: -300000, s: 1 } } ] },
+
+  // ════════ 擴充至 150+（第三批） ════════
+  // A
+  { id: "a_chiller", cat: "A", xp: 50, title: { zh: "機艙空調失效", en: "Nacelle HVAC failure" }, scenario: { zh: "機艙空調故障，電控櫃溫度上升。", en: "Nacelle HVAC fails; control-cabinet temperature rises." }, choices: [
+    { label: { zh: "降載並修復空調", en: "Derate & repair HVAC" }, good: true, feedback: { zh: "✓ 電控過熱會誤動作甚至跳機。", en: "✓ Overheated electronics misfire or trip." }, eff: { a: 3, b: -100000 } },
+    { label: { zh: "開艙門通風硬撐", en: "Open hatches and push on" }, good: false, feedback: { zh: "✗ 鹽霧進入更傷電控。", en: "✗ Salt air harms electronics further." }, eff: { a: -3, s: 1 } } ] },
+  { id: "a_crane_fault", cat: "A", xp: 50, title: { zh: "機艙吊車故障", en: "Nacelle crane fault" }, scenario: { zh: "機艙服務吊車故障，零件無法吊運。", en: "The service crane fails; parts can't be hoisted." }, choices: [
+    { label: { zh: "先修吊車再進行維修", en: "Fix the crane before repairs" }, good: true, feedback: { zh: "✓ 無吊車無法安全吊裝。", en: "✓ No crane, no safe lifting." }, eff: { a: 2, b: -80000 } },
+    { label: { zh: "人力硬抬零件", en: "Manhandle the parts" }, good: false, feedback: { zh: "✗ 人力吊重＝傷害風險。", en: "✗ Manual lifting risks injury." }, eff: { s: 2 } } ] },
+  { id: "a_encoder", cat: "A", xp: 50, title: { zh: "編碼器訊號異常", en: "Encoder signal fault" }, scenario: { zh: "轉速/位置編碼器訊號跳動，控制不穩。", en: "Speed/position encoder signal jitters; control unstable." }, choices: [
+    { label: { zh: "檢查接線與更換編碼器", en: "Check wiring & replace encoder" }, good: true, feedback: { zh: "✓ 回授不準會導致誤動作。", en: "✓ Bad feedback causes misoperation." }, eff: { a: 3, b: -70000 } },
+    { label: { zh: "忽略偶發跳動", en: "Ignore the occasional jitter" }, good: false, feedback: { zh: "✗ 間歇故障常演變成停機。", en: "✗ Intermittent faults grow into outages." }, eff: { a: -2 } } ] },
+  { id: "a_brake_resistor", cat: "A", xp: 50, title: { zh: "煞車電阻過熱", en: "Brake resistor overheat" }, scenario: { zh: "變流器煞車電阻過熱告警。", en: "Converter brake-resistor overheat alarm." }, choices: [
+    { label: { zh: "檢查散熱與電阻箱", en: "Check cooling & resistor bank" }, good: true, feedback: { zh: "✓ 過熱可能起火，須處理。", en: "✓ Overheat can ignite — address it." }, eff: { a: 3, b: -90000 } },
+    { label: { zh: "復歸續用", en: "Reset and continue" }, good: false, feedback: { zh: "✗ 反覆過熱風險高。", en: "✗ Repeated overheat is risky." }, eff: { a: -2, s: 1 } } ] },
+  { id: "a_grease_pump", cat: "A", xp: 40, title: { zh: "潤滑泵故障", en: "Lube pump failure" }, scenario: { zh: "主軸/變槳潤滑泵停止運作。", en: "Main-shaft/pitch lube pump stops." }, choices: [
+    { label: { zh: "停機更換潤滑泵", en: "Stop & replace the pump" }, good: true, feedback: { zh: "✓ 潤滑斷供快速磨損軸承。", en: "✓ Lube loss rapidly wears bearings." }, eff: { a: 3, b: -80000 } },
+    { label: { zh: "手動補脂頂著", en: "Hand-grease for now" }, good: false, feedback: { zh: "△ 治標、軸承仍受損。", en: "△ Stopgap; bearings still wear." }, eff: { a: -2 } } ] },
+  { id: "a_sensor_drift", cat: "A", xp: 40, title: { zh: "溫度感測漂移", en: "Temp sensor drift" }, scenario: { zh: "多支溫度感測讀值明顯不一致。", en: "Several temperature sensors disagree noticeably." }, choices: [
+    { label: { zh: "校正/更換故障感測", en: "Calibrate / replace faulty sensors" }, good: true, feedback: { zh: "✓ 錯誤讀值會誤導保護動作。", en: "✓ Wrong readings mislead protection." }, eff: { a: 2, b: -40000 } },
+    { label: { zh: "取平均值湊合", en: "Just average them" }, good: false, feedback: { zh: "✗ 掩蓋真實過熱風險。", en: "✗ Masks real overheating risk." }, eff: { s: 1 } } ] },
+  { id: "a_cabinet_water", cat: "A", xp: 60, title: { zh: "電控櫃進水", en: "Cabinet water ingress" }, scenario: { zh: "塔基電控櫃發現滲水痕跡。", en: "Water ingress found in the tower-base control cabinet." }, choices: [
+    { label: { zh: "斷電除濕、修復密封", en: "De-energise, dry, re-seal" }, good: true, feedback: { zh: "✓ 進水＋帶電＝短路與觸電。", en: "✓ Water + live = short & shock risk." }, eff: { a: 2, b: -120000 } },
+    { label: { zh: "擦乾繼續用", en: "Wipe it and continue" }, good: false, feedback: { zh: "✗ 未修密封會持續進水。", en: "✗ Unsealed, water keeps coming." }, eff: { s: 2 } } ] },
+
+  // B
+  { id: "b_power_dip", cat: "B", xp: 70, title: { zh: "出力間歇下挫", en: "Intermittent power dips" }, scenario: { zh: "某機組出力曲線出現規律性瞬間下挫。", en: "A unit shows regular momentary power dips." }, choices: [
+    { label: { zh: "比對運轉資料找根因", en: "Correlate operating data for root cause" }, good: true, feedback: { zh: "✓ 規律性下挫多有明確機械/電氣因。", en: "✓ Regular dips usually have a clear cause." }, eff: { a: 2, b: -80000 } },
+    { label: { zh: "當作正常波動", en: "Call it normal scatter" }, good: false, feedback: { zh: "✗ 規律≠隨機，恐錯失故障。", en: "✗ Regular isn't random — may miss a fault." }, eff: { a: -2 } } ] },
+  { id: "b_harmonic", cat: "B", xp: 70, chart: "spectrum", title: { zh: "諧波超標趨勢", en: "Harmonic distortion rising" }, scenario: { zh: "併網點諧波(THD)趨勢升高。", en: "Grid-point harmonic distortion (THD) is rising." }, choices: [
+    { label: { zh: "檢查濾波器與變流器", en: "Check filters & converters" }, good: true, feedback: { zh: "✓ 諧波超標違反併網規範。", en: "✓ Excess harmonics breach grid code." }, eff: { a: 2, b: -150000 } },
+    { label: { zh: "在限值邊緣不理", en: "Leave it near the limit" }, good: false, feedback: { zh: "✗ 超標恐受罰並擾鄰近設備。", en: "✗ Exceeding it brings penalties & interference." }, eff: { a: -2 } } ] },
+  { id: "b_blade_noise", cat: "B", xp: 60, title: { zh: "葉片異音趨勢", en: "Blade noise trend" }, scenario: { zh: "聲學監測顯示某葉片異音逐漸增加。", en: "Acoustic monitoring shows a blade's noise rising." }, choices: [
+    { label: { zh: "安排葉片內視鏡檢查", en: "Schedule a blade borescope" }, good: true, feedback: { zh: "✓ 異音可能是結構或雷擊損傷。", en: "✓ Noise can signal structural or LPS damage." }, eff: { a: 2, b: -100000 } },
+    { label: { zh: "忽略", en: "Ignore it" }, good: false, feedback: { zh: "✗ 葉片問題不容忽視。", en: "✗ Blade issues mustn't be ignored." }, eff: { a: -2, s: 1 } } ] },
+  { id: "b_fatigue_load", cat: "B", xp: 80, title: { zh: "疲勞載荷累積", en: "Fatigue load accrual" }, scenario: { zh: "載荷監測顯示某機組疲勞消耗快於預期。", en: "Load monitoring shows fatigue consumed faster than expected." }, choices: [
+    { label: { zh: "調整運轉策略降載荷", en: "Adjust operation to cut loads" }, good: true, feedback: { zh: "✓ 主動降載可延長結構壽命。", en: "✓ Load-reducing operation extends life." }, eff: { a: 1, g: -30 } },
+    { label: { zh: "繼續滿載運轉", en: "Keep running at full load" }, good: false, feedback: { zh: "✗ 提早達疲勞極限。", en: "✗ Reaches the fatigue limit sooner." }, eff: { a: -2, s: 1 } } ] },
+  { id: "b_transformer_temp", cat: "B", xp: 70, title: { zh: "變壓器溫升趨勢", en: "Transformer temp trend" }, scenario: { zh: "主變壓器繞組溫度趨勢偏高。", en: "Main transformer winding temperature trends high." }, choices: [
+    { label: { zh: "檢查冷卻與負載分配", en: "Check cooling & load sharing" }, good: true, feedback: { zh: "✓ 溫升縮短變壓器壽命。", en: "✓ Heat shortens transformer life." }, eff: { a: 2, b: -120000 } },
+    { label: { zh: "提高跳脫門檻", en: "Raise the trip threshold" }, good: false, feedback: { zh: "✗ 調高門檻是掩耳盜鈴。", en: "✗ Raising the limit just hides the risk." }, eff: { s: 1 } } ] },
+  { id: "b_soil_trend", cat: "B", xp: 50, title: { zh: "葉片污染趨勢", en: "Blade soiling trend" }, scenario: { zh: "功率係數隨季節下降、疑似葉片污染。", en: "Power coefficient falls seasonally — suspected soiling." }, choices: [
+    { label: { zh: "排程清潔回復效率", en: "Schedule cleaning to restore efficiency" }, good: true, feedback: { zh: "✓ 清潔回收的發電常大於成本。", en: "✓ Cleaning gains usually beat the cost." }, eff: { a: 1, g: 60 } },
+    { label: { zh: "等雨自然洗", en: "Wait for rain to wash it" }, good: false, feedback: { zh: "△ 不可靠、效率持續流失。", en: "△ Unreliable; efficiency keeps leaking." }, eff: { g: -30 } } ] },
+  { id: "b_anomaly_cluster", cat: "B", xp: 70, title: { zh: "多機同型告警", en: "Fleet-wide same alarm" }, scenario: { zh: "同型號多台機組出現相同間歇告警。", en: "Many units of one model show the same intermittent alarm." }, choices: [
+    { label: { zh: "視為系統性問題、通報原廠", en: "Treat as systemic; notify OEM" }, good: true, feedback: { zh: "✓ 同型同症狀多為設計/韌體共因。", en: "✓ Same model & symptom often shares a root cause." }, eff: { a: 2 } },
+    { label: { zh: "逐台分別處理", en: "Handle each separately" }, good: false, feedback: { zh: "△ 忽略共因、重工又難根治。", en: "△ Misses the common cause; rework-prone." }, eff: { a: -1 } } ] },
+
+  // C
+  { id: "c_oil_flush", cat: "C", xp: 50, title: { zh: "齒輪箱換油沖洗", en: "Gearbox oil flush" }, scenario: { zh: "齒輪箱到期須換油與系統沖洗。", en: "Gearbox is due for an oil change & system flush." }, choices: [
+    { label: { zh: "依規換油並沖洗", en: "Change oil & flush per spec" }, good: true, feedback: { zh: "✓ 乾淨潤滑大幅延長齒輪壽命。", en: "✓ Clean lube greatly extends gear life." }, eff: { a: 2, b: -150000 } },
+    { label: { zh: "只補油不沖洗", en: "Top up without flushing" }, good: false, feedback: { zh: "△ 舊油雜質殘留繼續磨損。", en: "△ Old contaminants keep grinding." }, eff: { a: -1 } } ] },
+  { id: "c_seal_inspect", cat: "C", xp: 40, title: { zh: "主軸油封巡檢", en: "Main-shaft seal check" }, scenario: { zh: "主軸油封到期須巡檢漏油。", en: "Main-shaft seals are due for a leak inspection." }, choices: [
+    { label: { zh: "巡檢並更換劣化油封", en: "Inspect & replace worn seals" }, good: true, feedback: { zh: "✓ 漏油污染並降低潤滑。", en: "✓ Leaks contaminate & reduce lubrication." }, eff: { a: 2, b: -90000 } },
+    { label: { zh: "沒滴油就略過", en: "Skip if not dripping" }, good: false, feedback: { zh: "△ 微滲不易見卻持續惡化。", en: "△ Weeping is subtle but worsens." }, eff: { a: -1 } } ] },
+  { id: "c_davit_test", cat: "C", xp: 50, title: { zh: "逃生吊救裝置測試", en: "Davit/rescue device test" }, scenario: { zh: "逃生與吊救裝置到期須功能測試。", en: "Escape & rescue devices are due for testing." }, choices: [
+    { label: { zh: "依規測試與保養", en: "Test & service per regulation" }, good: true, feedback: { zh: "✓ 緊急時這是保命裝置。", en: "✓ These are life-saving in emergencies." }, eff: { b: -40000 } },
+    { label: { zh: "延後測試", en: "Defer the test" }, good: false, feedback: { zh: "✗ 失效時無法救援。", en: "✗ If failed, no rescue when needed." }, eff: { s: 2 } } ] },
+  { id: "c_ladder_inspect", cat: "C", xp: 40, title: { zh: "爬梯/防墜系統檢查", en: "Ladder/fall-arrest check" }, scenario: { zh: "塔內爬梯與防墜系統到期須檢查。", en: "Tower ladder & fall-arrest system are due for inspection." }, choices: [
+    { label: { zh: "檢查防墜軌與安全裝置", en: "Inspect fall-arrest rail & gear" }, good: true, feedback: { zh: "✓ 防墜是登塔作業的命脈。", en: "✓ Fall-arrest is the lifeline for climbing." }, eff: { b: -30000 } },
+    { label: { zh: "看起來沒問題", en: "Looks fine" }, good: false, feedback: { zh: "✗ 防墜失效＝致命墜落。", en: "✗ Fall-arrest failure = fatal fall." }, eff: { s: 2 } } ] },
+  { id: "c_battery_capacity", cat: "C", xp: 50, title: { zh: "後備電池容量測試", en: "Backup battery capacity test" }, scenario: { zh: "變槳/UPS 後備電池到期須容量測試。", en: "Pitch/UPS backup batteries are due for a capacity test." }, choices: [
+    { label: { zh: "做容量測試、汰換衰退電池", en: "Capacity-test & replace weak cells" }, good: true, feedback: { zh: "✓ 容量衰退會在斷電時誤事。", en: "✓ Degraded capacity fails you on power loss." }, eff: { a: 1, b: -60000 } },
+    { label: { zh: "看電壓正常就好", en: "Just check the voltage" }, good: false, feedback: { zh: "✗ 電壓正常不代表容量足。", en: "✗ Good voltage ≠ good capacity." }, eff: { s: 1 } } ] },
+  { id: "c_thermography", cat: "C", xp: 50, title: { zh: "電氣紅外線巡檢", en: "Electrical thermography" }, scenario: { zh: "高壓設備到期須紅外線熱影像巡檢。", en: "HV equipment is due for a thermographic survey." }, choices: [
+    { label: { zh: "做熱影像找熱點", en: "Run thermography to find hotspots" }, good: true, feedback: { zh: "✓ 提早抓鬆接點避免火災。", en: "✓ Catch loose joints before fires." }, eff: { a: 2, b: -50000 } },
+    { label: { zh: "省下這次", en: "Skip this round" }, good: false, feedback: { zh: "△ 失去一次早期診斷。", en: "△ Lose an early-warning check." }, eff: { s: 1 } } ] },
+  { id: "c_dehumidifier", cat: "C", xp: 40, title: { zh: "除濕系統保養", en: "Dehumidifier service" }, scenario: { zh: "機艙/塔內除濕系統到期須保養。", en: "Nacelle/tower dehumidifiers are due for service." }, choices: [
+    { label: { zh: "保養除濕、控制濕度", en: "Service units & control humidity" }, good: true, feedback: { zh: "✓ 控濕防鏽蝕與電氣故障。", en: "✓ Humidity control fights corrosion & faults." }, eff: { a: 1, b: -30000 } },
+    { label: { zh: "海上本來就濕、略過", en: "It's the sea — skip it" }, good: false, feedback: { zh: "△ 高濕加速設備老化。", en: "△ High humidity ages equipment." }, eff: { a: -1 } } ] },
+
+  // D
+  { id: "d_route_optimize", cat: "D", xp: 60, title: { zh: "維運航次最佳化", en: "Sortie optimisation" }, scenario: { zh: "多項維修可重排以減少航次。", en: "Several jobs could be re-sequenced to cut sorties." }, choices: [
+    { label: { zh: "整合航次、共用窗口", en: "Bundle jobs into shared windows" }, good: true, feedback: { zh: "✓ 減少航次直接降成本。", en: "✓ Fewer sorties cut cost directly." }, eff: { b: 200000 } },
+    { label: { zh: "各別出勤不整合", en: "Run each job separately" }, good: false, feedback: { zh: "△ 航次與成本上升。", en: "△ More sorties, more cost." }, eff: { b: -150000 } } ] },
+  { id: "d_inventory_audit", cat: "D", xp: 50, title: { zh: "備品庫存盤點", en: "Spares inventory audit" }, scenario: { zh: "庫存帳實不符，部分關鍵件數量不明。", en: "Stock records don't match; some critical counts are unclear." }, choices: [
+    { label: { zh: "全面盤點、更新最低庫存", en: "Audit & reset min stock levels" }, good: true, feedback: { zh: "✓ 準確庫存避免急修缺料。", en: "✓ Accurate stock prevents stockouts." }, eff: { a: 2, b: -50000 } },
+    { label: { zh: "缺了再買", en: "Buy when short" }, good: false, feedback: { zh: "✗ 急單交期長、停機久。", en: "✗ Rush orders mean long downtime." }, eff: { a: -2 } } ] },
+  { id: "d_green_cert", cat: "D", xp: 50, title: { zh: "綠電憑證申辦", en: "Green certificate filing" }, scenario: { zh: "可申辦綠電憑證提升收益。", en: "Renewable energy certificates can be filed for extra revenue." }, choices: [
+    { label: { zh: "完成查證申辦憑證", en: "Verify & file certificates" }, good: true, feedback: { zh: "✓ 憑證是額外收益來源。", en: "✓ Certificates add revenue." }, eff: { b: 300000 } },
+    { label: { zh: "嫌麻煩不辦", en: "Skip — too much hassle" }, good: false, feedback: { zh: "△ 放棄一筆穩定收入。", en: "△ Forgoes steady income." }, eff: {} } ] },
+  { id: "d_data_invest", cat: "D", xp: 60, title: { zh: "數位監診投資", en: "Digital diagnostics investment" }, scenario: { zh: "考慮投資進階監診平台。", en: "Consider investing in an advanced diagnostics platform." }, choices: [
+    { label: { zh: "導入監診、提升預知維護", en: "Adopt diagnostics for predictive O&M" }, good: true, feedback: { zh: "✓ 預知維護長期降本增益。", en: "✓ Predictive O&M pays off long-term." }, eff: { a: 3, b: -500000 } },
+    { label: { zh: "維持人工巡檢", en: "Stick to manual inspection" }, good: false, feedback: { zh: "△ 錯失早期預警。", en: "△ Misses early warnings." }, eff: { a: -1 } } ] },
+  { id: "d_subcontract", cat: "D", xp: 50, title: { zh: "尖峰外包決策", en: "Peak-load subcontracting" }, scenario: { zh: "維修積壓，自有人力不足。", en: "Repair backlog exceeds in-house capacity." }, choices: [
+    { label: { zh: "短期外包消化積壓", en: "Subcontract to clear backlog" }, good: true, feedback: { zh: "✓ 積壓越久發電損失越大。", en: "✓ Backlog left to grow loses generation." }, eff: { a: 3, b: -400000 } },
+    { label: { zh: "慢慢自己做", en: "Do it all in-house slowly" }, good: false, feedback: { zh: "△ 停機拖長、損失累積。", en: "△ Downtime lingers; losses pile up." }, eff: { a: -2 } } ] },
+  { id: "d_bench_kpi", cat: "D", xp: 50, title: { zh: "同業標竿比較", en: "Benchmark vs peers" }, scenario: { zh: "本場可用率落後同業標竿。", en: "Your availability lags the industry benchmark." }, choices: [
+    { label: { zh: "分析差距、訂改善計畫", en: "Analyse the gap & plan improvements" }, good: true, feedback: { zh: "✓ 標竿管理驅動持續改善。", en: "✓ Benchmarking drives improvement." }, eff: { a: 2 } },
+    { label: { zh: "認為條件不同不比", en: "Dismiss — conditions differ" }, good: false, feedback: { zh: "△ 失去改善動力。", en: "△ Loses the improvement drive." }, eff: { a: -1 } } ] },
+  { id: "d_capex_plan", cat: "D", xp: 60, title: { zh: "大型零件汰換預算", en: "Major-component capex plan" }, scenario: { zh: "未來兩年多台齒輪箱可能須更換。", en: "Several gearboxes may need replacing over two years." }, choices: [
+    { label: { zh: "編列預算、分批汰換", en: "Budget & phase the replacements" }, good: true, feedback: { zh: "✓ 提前編預算避免現金衝擊。", en: "✓ Pre-budgeting avoids cash shocks." }, eff: { a: 2, b: -300000 } },
+    { label: { zh: "壞一台才想一台", en: "React one at a time" }, good: false, feedback: { zh: "△ 突發支出與停機難控。", en: "△ Surprise costs & downtime." }, eff: { a: -2 } } ] },
+
+  // E
+  { id: "e_typhoon_path", cat: "E", xp: 80, title: { zh: "颱風路徑不確定", en: "Uncertain typhoon track" }, scenario: { zh: "颱風路徑預報不確定，可能擦邊或直撲。", en: "Typhoon track is uncertain — glancing or direct hit." }, choices: [
+    { label: { zh: "保守備災、提前準備停機", en: "Prepare conservatively for shutdown" }, good: true, feedback: { zh: "✓ 路徑不確定時以安全為先。", en: "✓ When track is uncertain, err safe." }, eff: { a: 1 } },
+    { label: { zh: "賭它轉向照常運轉", en: "Bet it veers, run as usual" }, good: false, feedback: { zh: "✗ 賭天氣是危險的賭注。", en: "✗ Betting on weather is a dangerous gamble." }, eff: { a: -4, s: 2 } } ] },
+  { id: "e_storm_surge", cat: "E", xp: 60, title: { zh: "暴潮影響登靠", en: "Storm surge affects access" }, scenario: { zh: "暴潮使水位異常，登靠平台高差大變。", en: "A storm surge skews water level & access height." }, choices: [
+    { label: { zh: "暫停登靠、重新評估", en: "Suspend access & re-assess" }, good: true, feedback: { zh: "✓ 異常水位下登靠極危險。", en: "✓ Access in abnormal levels is dangerous." }, eff: {} },
+    { label: { zh: "照常登靠", en: "Board as usual" }, good: false, feedback: { zh: "✗ 高差劇變易釀墜落。", en: "✗ Sudden gaps risk falls." }, eff: { s: 2 } } ] },
+  { id: "e_wind_lull", cat: "E", xp: 40, title: { zh: "無風期維修良機", en: "Wind lull repair window" }, scenario: { zh: "預報數日低風，發電本就低。", en: "Forecast shows days of low wind; output is low anyway." }, choices: [
+    { label: { zh: "把握低風期集中維修", en: "Concentrate repairs in the lull" }, good: true, feedback: { zh: "✓ 低風期停機機會成本最低。", en: "✓ Downtime in a lull costs the least." }, eff: { a: 3 } },
+    { label: { zh: "等有風再排", en: "Wait until it's windy" }, good: false, feedback: { zh: "✗ 等於把停機排在高發電時段。", en: "✗ That puts downtime in high-output hours." }, eff: { g: -60 } } ] },
+  { id: "e_temp_inversion", cat: "E", xp: 50, title: { zh: "大氣穩定低風切", en: "Stable atmosphere shear" }, scenario: { zh: "大氣穩定造成異常風切與尾流。", en: "A stable atmosphere causes abnormal shear & wake." }, choices: [
+    { label: { zh: "調整尾流控制策略", en: "Tune wake-control strategy" }, good: true, feedback: { zh: "✓ 尾流管理可回收場級發電。", en: "✓ Wake steering recovers farm-level output." }, eff: { g: 60 } },
+    { label: { zh: "不調整", en: "Leave settings as-is" }, good: false, feedback: { zh: "△ 尾流損失持續。", en: "△ Wake losses persist." }, eff: { g: -30 } } ] },
+  { id: "e_visibility", cat: "E", xp: 40, title: { zh: "夜航能見度", en: "Night-transit visibility" }, scenario: { zh: "需夜間出勤、能見度與疲勞風險升高。", en: "A night sortie raises visibility & fatigue risk." }, choices: [
+    { label: { zh: "評估必要性、加強戒護", en: "Assess necessity & add safeguards" }, good: true, feedback: { zh: "✓ 夜航風險高，須審慎。", en: "✓ Night transits are higher risk." }, eff: {} },
+    { label: { zh: "照常夜航", en: "Night-sail routinely" }, good: false, feedback: { zh: "✗ 夜間事故率較高。", en: "✗ Night incident rates are higher." }, eff: { s: 1 } } ] },
+  { id: "e_gust_front", cat: "E", xp: 50, title: { zh: "陣風鋒面通過", en: "Gust front passing" }, scenario: { zh: "陣風鋒面通過，風速短時劇烈變動。", en: "A gust front brings sharp short-term wind swings." }, choices: [
+    { label: { zh: "提高保護裕度、暫緩高處作業", en: "Raise margins, pause at-height work" }, good: true, feedback: { zh: "✓ 劇烈變動下作業風險高。", en: "✓ Sharp swings make work risky." }, eff: { a: -1 } },
+    { label: { zh: "照常作業", en: "Work as usual" }, good: false, feedback: { zh: "✗ 陣風易致失衡與落物。", en: "✗ Gusts cause imbalance & dropped objects." }, eff: { s: 1 } } ] },
+  { id: "e_heat_cable", cat: "E", xp: 50, title: { zh: "高溫海纜降容", en: "Heat cable derating" }, scenario: { zh: "高水溫使海纜輸送容量下降。", en: "High sea temperature derates cable capacity." }, choices: [
+    { label: { zh: "依降容限制調整輸出", en: "Adjust output to derated limit" }, good: true, feedback: { zh: "✓ 過載海纜會加速老化。", en: "✓ Overloading the cable ages it fast." }, eff: { g: -30 } },
+    { label: { zh: "維持滿載輸送", en: "Keep full transmission" }, good: false, feedback: { zh: "✗ 海纜過熱故障代價極高。", en: "✗ Cable overheating is very costly." }, eff: { a: -3, s: 1 } } ] },
+
+  // F
+  { id: "f_warehouse", cat: "F", xp: 50, title: { zh: "倉儲容量不足", en: "Warehouse capacity" }, scenario: { zh: "備品倉儲空間不足以容納關鍵大件。", en: "Warehouse space can't hold critical big parts." }, choices: [
+    { label: { zh: "擴充/租用合適倉儲", en: "Expand / rent suitable storage" }, good: true, feedback: { zh: "✓ 大件就近備儲縮短停機。", en: "✓ Nearby big-part storage cuts downtime." }, eff: { a: 2, b: -100000 } },
+    { label: { zh: "露天堆放將就", en: "Store outdoors for now" }, good: false, feedback: { zh: "✗ 大件露天受潮鏽蝕。", en: "✗ Outdoor storage corrodes parts." }, eff: { a: -1 } } ] },
+  { id: "f_oem_support", cat: "F", xp: 60, title: { zh: "原廠技術支援延遲", en: "OEM support delay" }, scenario: { zh: "原廠工程師到場支援需數週。", en: "OEM engineers can't attend for weeks." }, choices: [
+    { label: { zh: "遠距支援＋自有團隊先行", en: "Remote support + in-house first response" }, good: true, feedback: { zh: "✓ 培養自主能力降低依賴。", en: "✓ In-house capability cuts dependence." }, eff: { a: 2, b: -100000 } },
+    { label: { zh: "乾等原廠", en: "Wait for the OEM" }, good: false, feedback: { zh: "✗ 停機隨等待延長。", en: "✗ Downtime grows with the wait." }, eff: { a: -3 } } ] },
+  { id: "f_spares_pool", cat: "F", xp: 50, title: { zh: "共用備品庫", en: "Shared spares pool" }, scenario: { zh: "鄰近風場提議共用關鍵備品庫。", en: "A neighbouring farm proposes a shared critical-spares pool." }, choices: [
+    { label: { zh: "加入共用庫分攤成本", en: "Join the pool to share cost" }, good: true, feedback: { zh: "✓ 共用降低單方備庫成本。", en: "✓ Pooling cuts each party's stocking cost." }, eff: { a: 1, b: 100000 } },
+    { label: { zh: "堅持各自備庫", en: "Keep separate stocks" }, good: false, feedback: { zh: "△ 成本較高、彈性較差。", en: "△ Higher cost, less flexibility." }, eff: { b: -100000 } } ] },
+  { id: "f_training_gap", cat: "F", xp: 50, title: { zh: "技能落差", en: "Skills gap" }, scenario: { zh: "新機型導入，團隊缺乏對應技能。", en: "A new turbine model arrives; the team lacks the skills." }, choices: [
+    { label: { zh: "安排原廠訓練與認證", en: "Arrange OEM training & certification" }, good: true, feedback: { zh: "✓ 技能到位才能安全維修。", en: "✓ Skills enable safe, correct repairs." }, eff: { a: 2, b: -150000 } },
+    { label: { zh: "邊做邊學", en: "Learn on the job" }, good: false, feedback: { zh: "✗ 不熟新機易誤修受傷。", en: "✗ Unfamiliarity risks errors & injury." }, eff: { s: 1 } } ] },
+  { id: "f_local_content", cat: "F", xp: 50, title: { zh: "在地化供應要求", en: "Local-content requirement" }, scenario: { zh: "政策要求提高在地供應比例。", en: "Policy requires higher local-content sourcing." }, choices: [
+    { label: { zh: "扶植在地供應鏈、確保品質", en: "Develop local supply with QA" }, good: true, feedback: { zh: "✓ 符合政策又縮短供應鏈。", en: "✓ Meets policy & shortens the supply chain." }, eff: { a: 1, b: -100000 } },
+    { label: { zh: "全進口忽視規範", en: "Import all, ignore the rule" }, good: false, feedback: { zh: "✗ 違反政策恐影響許可。", en: "✗ Breaching policy can hit your permit." }, eff: { b: -300000 } } ] },
+  { id: "f_vessel_charter", cat: "F", xp: 60, title: { zh: "重吊船租期決策", en: "Heavy-lift charter timing" }, scenario: { zh: "重吊安裝船檔期緊、租金高。", en: "The heavy-lift vessel is in demand & pricey." }, choices: [
+    { label: { zh: "整合多項大修共用船期", en: "Bundle major works into one charter" }, good: true, feedback: { zh: "✓ 重吊船昂貴，整合最省。", en: "✓ Heavy-lift is costly — bundle works." }, eff: { a: 3, b: -600000 } },
+    { label: { zh: "各別臨時租", en: "Charter ad-hoc each time" }, good: false, feedback: { zh: "✗ 多次租金與檔期風險高。", en: "✗ Repeated charters cost more & risk delays." }, eff: { b: -800000 } } ] },
+  { id: "f_quay_crane", cat: "F", xp: 40, title: { zh: "碼頭吊掛資源", en: "Quayside crane resource" }, scenario: { zh: "碼頭吊掛資源排程衝突。", en: "Quayside crane scheduling conflicts arise." }, choices: [
+    { label: { zh: "提前預約、錯峰作業", en: "Pre-book & stagger operations" }, good: true, feedback: { zh: "✓ 提前協調避免船等岸。", en: "✓ Pre-coordination avoids vessels waiting." }, eff: { b: -30000 } },
+    { label: { zh: "現場再喬", en: "Sort it out on the day" }, good: false, feedback: { zh: "△ 臨時衝突拖延出勤。", en: "△ Last-minute clashes delay sorties." }, eff: { a: -1 } } ] },
+
+  // G
+  { id: "g_grid_fault", cat: "G", xp: 70, title: { zh: "電網事故跳脫", en: "Grid fault trip" }, scenario: { zh: "電網側事故造成全場低電壓跳脫。", en: "A grid-side fault trips the whole farm on low voltage." }, choices: [
+    { label: { zh: "依 LVRT 程序安全復電", en: "Restore safely per LVRT procedure" }, good: true, feedback: { zh: "✓ 依序復電避免二次衝擊。", en: "✓ Sequenced restart avoids re-stress." }, eff: { a: 2 } },
+    { label: { zh: "一次全部併回", en: "Reconnect everything at once" }, good: false, feedback: { zh: "✗ 突波恐再跳脫或損設備。", en: "✗ Inrush can re-trip or damage gear." }, eff: { a: -3, s: 1 } } ] },
+  { id: "g_blackstart", cat: "G", xp: 70, title: { zh: "全黑復電", en: "Black-start recovery" }, scenario: { zh: "區域停電，風場須配合黑啟動程序。", en: "A regional blackout requires black-start coordination." }, choices: [
+    { label: { zh: "依電網調度逐步併網", en: "Re-energise stepwise with the operator" }, good: true, feedback: { zh: "✓ 與調度協調是復電關鍵。", en: "✓ Coordinating with the operator is key." }, eff: { a: 1 } },
+    { label: { zh: "自行搶併", en: "Reconnect on your own" }, good: false, feedback: { zh: "✗ 未協調復電危及電網穩定。", en: "✗ Uncoordinated restart risks the grid." }, eff: { s: 1 } } ] },
+  { id: "g_anchor_drag", cat: "G", xp: 70, title: { zh: "船舶走錨", en: "Vessel anchor dragging" }, scenario: { zh: "錨泊船走錨，逼近海纜路由。", en: "An anchored vessel is dragging toward the cable route." }, choices: [
+    { label: { zh: "通報並警示船舶移離", en: "Alert authorities & warn the vessel" }, good: true, feedback: { zh: "✓ 走錨勾損海纜後果嚴重。", en: "✓ A dragged anchor can sever cables." }, eff: {} },
+    { label: { zh: "觀望", en: "Wait and see" }, good: false, feedback: { zh: "✗ 海纜受損全列停電。", en: "✗ Cable damage blacks out the array." }, eff: { a: -3, s: 1 } } ] },
+  { id: "g_debris", cat: "G", xp: 50, title: { zh: "海漂物纏繞", en: "Floating debris" }, scenario: { zh: "大型海漂物纏繞基礎/登靠區。", en: "Large debris tangles the foundation/access area." }, choices: [
+    { label: { zh: "清除後再作業", en: "Clear it before working" }, good: true, feedback: { zh: "✓ 纏繞物危及登靠安全。", en: "✓ Debris endangers safe access." }, eff: {} },
+    { label: { zh: "繞過直接登靠", en: "Board around it" }, good: false, feedback: { zh: "✗ 暗藏勾掛與滑倒風險。", en: "✗ Hidden snag & slip hazards." }, eff: { s: 1 } } ] },
+  { id: "g_near_miss", cat: "G", xp: 60, title: { zh: "虛驚事件回報", en: "Near-miss reporting" }, scenario: { zh: "現場發生一起未致傷的虛驚事件。", en: "A near-miss occurs on site with no injury." }, choices: [
+    { label: { zh: "據實通報並檢討改善", en: "Report honestly & improve" }, good: true, feedback: { zh: "✓ 虛驚通報能預防真正事故。", en: "✓ Near-miss reporting prevents real accidents." }, eff: {} },
+    { label: { zh: "沒受傷就不報", en: "No injury — don't report" }, good: false, feedback: { zh: "✗ 隱匿讓風險再次發生。", en: "✗ Hiding it lets the risk recur." }, eff: { s: 1 } } ] },
+  { id: "g_pollution_report", cat: "G", xp: 50, title: { zh: "環境通報義務", en: "Environmental reporting duty" }, scenario: { zh: "作業產生少量廢棄物需妥善處理。", en: "Work generates waste needing proper disposal." }, choices: [
+    { label: { zh: "依規分類回收處理", en: "Sort & dispose per regulation" }, good: true, feedback: { zh: "✓ 合規處理維護環境與商譽。", en: "✓ Compliant disposal protects environment & reputation." }, eff: { b: -20000 } },
+    { label: { zh: "就地丟海", en: "Dump it at sea" }, good: false, feedback: { zh: "✗ 海拋廢棄物重罰且違法。", en: "✗ Dumping at sea is illegal & heavily fined." }, eff: { b: -400000, s: 1 } } ] },
+  { id: "g_evacuation", cat: "G", xp: 70, title: { zh: "緊急全員撤離", en: "Emergency evacuation" }, scenario: { zh: "天候急轉直下，須全員緊急撤離。", en: "Weather turns fast; full evacuation is required." }, choices: [
+    { label: { zh: "依撤離程序有序撤回", en: "Evacuate orderly per procedure" }, good: true, feedback: { zh: "✓ 有序撤離是保命關鍵。", en: "✓ Orderly evacuation saves lives." }, eff: { a: -1 } },
+    { label: { zh: "搶完工再撤", en: "Finish the job, then go" }, good: false, feedback: { zh: "✗ 拖延撤離極度危險。", en: "✗ Delaying evacuation is extremely dangerous." }, eff: { s: 3 } } ] },
 ];
 
 export interface TaskInstance {
