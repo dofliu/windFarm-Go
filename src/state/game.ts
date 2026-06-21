@@ -156,6 +156,7 @@ export type Action =
   | { type: "NEXT_QUEST"; poolSize: number } // 下一關（#20 主線推進）
   | { type: "RESTART_CAMPAIGN" } // 重玩戰役（#20）
   | { type: "ASSIGN_QUEST"; quest: Quest } // 課程模式臨時指派（#6）
+  | { type: "RESOLVE_TASK"; dAvail: number; dBudget: number; dSafety: number; dGen: number; xp: number } // 自由營運沙盒任務結算
   | { type: "LOAD_STATE"; state: Partial<GameData> } // 雲端存檔載入（#31）
   | { type: "RESET" };
 
@@ -232,6 +233,20 @@ export function reducer(s: GameData, a: Action): GameData {
       return { ...s, campaignIndex: 0, campaignDone: false, customQuest: null, questStage: "available", repairDone: false, jobPhase: "office" };
     case "ASSIGN_QUEST":
       return { ...s, customQuest: a.quest, questStage: "available", repairDone: false, jobPhase: "office", seaState: rollSea() };
+    case "RESOLVE_TASK": {
+      // 自由營運沙盒：推進一天（含突發事件）後套用選擇效果，計入績效（沙盒，衝排行）
+      const adv = advance(s, 1);
+      return {
+        ...s,
+        ...adv,
+        availability: Math.max(0, Math.min(100, (adv.availability ?? s.availability) + a.dAvail)),
+        budget: Math.max(0, (adv.budget ?? s.budget) + a.dBudget),
+        generationMWh: Math.max(0, (adv.generationMWh ?? s.generationMWh) + a.dGen),
+        safetyIncidents: s.safetyIncidents + a.dSafety,
+        xp: s.xp + a.xp,
+        missionsDone: s.missionsDone + 1,
+      };
+    }
     case "LOAD_STATE":
       return { ...INITIAL, ...a.state };
     case "RESET":

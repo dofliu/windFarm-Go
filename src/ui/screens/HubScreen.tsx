@@ -55,7 +55,7 @@ function OpsBlock({ title, children }: { title: I18n; children: ReactNode }) {
 
 const kvRow: CSSProperties = { display: "flex", justifyContent: "space-between", fontSize: 13, color: C.cream, padding: "3px 0" };
 
-export default function HubScreen({ setScreen, accent, onDispatch, onFacility, sceneId, onCycleScene, aerial, onToggleView, realistic, onToggleRealistic }: { setScreen: (s: Screen) => void; accent: string; onDispatch?: () => void; onFacility?: (k: "vessel" | "tech" | "tool" | "codex" | "ranking" | "farms") => void; sceneId?: string; onCycleScene?: () => void; aerial?: boolean; onToggleView?: () => void; realistic?: boolean; onToggleRealistic?: () => void }) {
+export default function HubScreen({ setScreen, accent, onDispatch, onFacility, sceneId, onCycleScene, aerial, onToggleView, realistic, onToggleRealistic, onOps }: { setScreen: (s: Screen) => void; accent: string; onDispatch?: () => void; onFacility?: (k: "vessel" | "tech" | "tool" | "codex" | "ranking" | "farms") => void; sceneId?: string; onCycleScene?: () => void; aerial?: boolean; onToggleView?: () => void; realistic?: boolean; onToggleRealistic?: () => void; onOps?: () => void }) {
   useLang();
   const { data, dispatch } = useGame();
   const { say } = useDialogue();
@@ -105,6 +105,7 @@ export default function HubScreen({ setScreen, accent, onDispatch, onFacility, s
         <div style={panelHeader}><span style={panelTitle}>{t({ zh: "設施", en: "Facilities" })}</span></div>
         <div style={{ padding: "10px 10px 6px" }}>
           <FacRow char="調" label={{ zh: "調度中心", en: "Dispatch" }} stat={stage === "available" ? { zh: "有新工單可接", en: "New order available" } : stage === "active" ? { zh: "工單進行中", en: "Order active" } : { zh: "本關已完成", en: "Stage done" }} onClick={() => { Sfx.click(); onDispatch?.(); }} />
+          <FacRow char="營" label={{ zh: "自由營運中心", en: "Ops Center" }} stat={{ zh: "無限狀況・判斷決策（衝排行）", en: "Endless situations · judgment (leaderboard)" }} onClick={() => { Sfx.click(); onOps?.(); }} />
           <FacRow char="師" label={{ zh: "技師公會", en: "Tech Guild" }} stat={{ zh: `技師 ${data.engineers.length} 名 · 在勤 ${data.techAvail}/${data.techTotal}`, en: `${data.engineers.length} engineers · ${data.techAvail}/${data.techTotal} on duty` }} onClick={() => { Sfx.click(); onFacility?.("tech"); }} />
           <FacRow char="工" label={{ zh: "機具工坊", en: "Workshop" }} stat={{ zh: `工具 Lv.${data.toolLevel}`, en: `Tools Lv.${data.toolLevel}` }} onClick={() => { Sfx.click(); onFacility?.("tool"); }} />
           <FacRow char="備" label={{ zh: "備品交易所", en: "Parts Market" }} stat={{ zh: `庫存 ${invItems.length} 類`, en: `${invItems.length} part types in stock` }} onClick={() => { Sfx.click(); setScreen("market"); }} />

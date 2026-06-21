@@ -10,6 +10,7 @@ import DialogueLayer from "./ui/DialogueLayer";
 import IntroRunner from "./ui/IntroRunner";
 import CourseModal from "./ui/CourseModal";
 import DispatchModal from "./ui/DispatchModal";
+import OpsCenterModal from "./ui/OpsCenterModal";
 import FacilityModal, { type Facility } from "./ui/FacilityModal";
 import Toaster from "./ui/Toaster";
 import LoginScreen from "./ui/LoginScreen";
@@ -30,6 +31,7 @@ export default function App() {
   const [scale, setScale] = useState(1);
   const [showCourse, setShowCourse] = useState(false);
   const [showDispatch, setShowDispatch] = useState(false);
+  const [showOps, setShowOps] = useState(false);
   const [facility, setFacility] = useState<Facility | null>(null);
   const [loggedIn, setLoggedIn] = useState(() => getProfile() != null);
   const [sceneId, setSceneId] = useState(getSceneId);
@@ -94,7 +96,7 @@ export default function App() {
         >
           {showSharedBg && <SceneBackground sceneId={sceneId} aerial={aerial && screen === "hub"} realistic={realistic} />}
 
-          {screen === "hub" && <HubScreen setScreen={setScreen} accent={accent} onDispatch={() => setShowDispatch(true)} onFacility={(k) => setFacility(k)} sceneId={sceneId} onCycleScene={cycleScene} aerial={aerial} onToggleView={() => setAerial((v) => !v)} realistic={realistic} onToggleRealistic={toggleRealistic} />}
+          {screen === "hub" && <HubScreen setScreen={setScreen} accent={accent} onDispatch={() => setShowDispatch(true)} onFacility={(k) => setFacility(k)} sceneId={sceneId} onCycleScene={cycleScene} aerial={aerial} onToggleView={() => setAerial((v) => !v)} realistic={realistic} onToggleRealistic={toggleRealistic} onOps={() => setShowOps(true)} />}
           {screen === "market" && <MarketScreen accent={accent} />}
           {screen === "sail" && <SailScreen setScreen={setScreen} accent={accent} />}
           {screen === "repair" && <RepairScreen setScreen={setScreen} />}
@@ -104,6 +106,7 @@ export default function App() {
           <IntroRunner />
           <CourseModal open={showCourse} onClose={() => setShowCourse(false)} />
           <DispatchModal open={showDispatch} onClose={() => setShowDispatch(false)} />
+          <OpsCenterModal open={showOps} onClose={() => setShowOps(false)} />
           <FacilityModal kind={facility} onClose={() => setFacility(null)} />
           <ScoreSync />
           <WelcomeOnLogin />
