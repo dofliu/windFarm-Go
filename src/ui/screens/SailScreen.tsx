@@ -13,6 +13,7 @@ import { missionAt } from "../campaign";
 import { DISC, hasEngineer } from "../disc";
 import { PARTS } from "../data";
 import Vessel, { vesselTypeOf, type VesselType } from "../Vessel";
+import { ForecastStrip, StormWarning } from "../Forecast";
 import type { Screen } from "../../App";
 
 function CtvShip({ left, top, scale, opacity, type }: { left: string; top: number; scale: number; opacity: number; type: VesselType }) {
@@ -116,6 +117,10 @@ export default function SailScreen({ setScreen, accent, mode = "sim" }: { setScr
               <Check ok={true} label={`${t({ zh: "工具", en: "Tools" })} Lv.${data.toolLevel}`} />
               <Check ok={partOk} label={`${t({ zh: "備品", en: "Part" })}：${t(part?.n ?? { zh: fault?.part ?? "", en: fault?.part ?? "" })}`} hint={t({ zh: "去交易所購買", en: "buy at Market" })} />
               <Check ok={seaOk} label={`${t({ zh: "天氣窗", en: "Weather" })}：${data.seaState === "workable" ? t({ zh: "可作業", en: "OK" }) : data.seaState === "caution" ? t({ zh: "警戒", en: "Caution" }) : t({ zh: "停航", en: "Closed" })}`} hint={t({ zh: "需 SOV 或靠港休整", en: "need SOV or rest" })} />
+              {/* 微觀天氣預報（#2）：協助決定「現在出航」或「靠港等更好的天氣窗」 */}
+              <div style={{ fontSize: 11, color: C.mist2, margin: "6px 0 4px" }}>{t({ zh: "三日預報", en: "3-Day Forecast" })}</div>
+              <ForecastStrip forecast={data.forecast} compact />
+              <StormWarning forecast={data.forecast} />
               <button
                 disabled={!ready}
                 onClick={depart}

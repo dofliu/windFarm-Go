@@ -18,6 +18,7 @@ import { FARMS } from "../../state/farms";
 import { fetchLeaderboard, type Row } from "../../cloud/sheet";
 import { getProfile } from "../../state/profile";
 import { MODE_LABEL, MODE_ICON, type SceneMode } from "../scenes";
+import { ForecastStrip, StormWarning } from "../Forecast";
 import { missionWeek } from "../../state/course";
 import type { I18n } from "../../game/systems/types";
 import type { Screen } from "../../App";
@@ -126,8 +127,12 @@ export default function HubScreen({ setScreen, accent, onDispatch, onFacility, s
       <div style={{ ...panel, flex: "none" }}>
         <div style={panelHeader}><span style={panelTitle}>{t({ zh: "風場動態", en: "Farm Status" })}</span></div>
         <div style={{ padding: "10px 12px" }}>
-          <div style={kvRow}><span style={{ color: C.mist }}>{t({ zh: "海象", en: "Sea" })}</span><span style={{ color: seaColor, fontWeight: 700 }}>{t(seaLabel)}</span></div>
-          <div style={kvRow}><span style={{ color: C.mist }}>{t({ zh: "營運風場", en: "Farms" })}</span><span style={{ fontWeight: 700 }}>{data.farmsOwned} / {FARMS.length}</span></div>
+          <div style={kvRow}><span style={{ color: C.mist }}>{t({ zh: "海象（今日）", en: "Sea (today)" })}</span><span style={{ color: seaColor, fontWeight: 700 }}>{t(seaLabel)}</span></div>
+          {/* 微觀天氣預報（#2）：未來三日 + 風暴警示 */}
+          <div style={{ fontSize: 11, color: C.mist2, margin: "4px 0 4px" }}>{t({ zh: "三日預報", en: "3-Day Forecast" })}</div>
+          <ForecastStrip forecast={data.forecast} />
+          <StormWarning forecast={data.forecast} />
+          <div style={{ ...kvRow, marginTop: 8 }}><span style={{ color: C.mist }}>{t({ zh: "營運風場", en: "Farms" })}</span><span style={{ fontWeight: 700 }}>{data.farmsOwned} / {FARMS.length}</span></div>
           <div style={kvRow}><span style={{ color: C.mist }}>{t({ zh: "可用率", en: "Availability" })}</span><span style={{ fontWeight: 700 }}>{data.availability}%</span></div>
           <div style={kvRow}><span style={{ color: C.mist }}>{t({ zh: "發電量", en: "Generation" })}</span><span style={{ fontWeight: 700 }}>{data.generationMWh} MWh</span></div>
           <div style={kvRow}><span style={{ color: C.mist }}>{t({ zh: "安全事件", en: "Safety incidents" })}</span><span style={{ fontWeight: 700, color: data.safetyIncidents > 0 ? C.red : C.green }}>{data.safetyIncidents}</span></div>

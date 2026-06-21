@@ -19,6 +19,15 @@ export const SEA_INDEX: Record<SeaState, number> = { workable: 0, caution: 1, cl
 export const vesselSeaTol = (ownsSOV: boolean) => (ownsSOV ? 2 : 1); // CTV 可到 caution；SOV 可到 closed
 export const BASE_GEN_PER_DAY = 120; // 100% 可用率每日發電量 (MWh)
 
+// 海象標籤 / 圖示（單一真實來源，供各畫面與三日預報共用，#2）
+export const SEA_LABEL: Record<SeaState, I18n> = {
+  workable: { zh: "可作業", en: "Workable" },
+  caution: { zh: "警戒", en: "Caution" },
+  closed: { zh: "停航", en: "Closed" },
+};
+export const SEA_ICON: Record<SeaState, string> = { workable: "☀", caution: "⛅", closed: "🌀" };
+export const FORECAST_DAYS = 3; // 微觀天氣預報展望天數（#2）
+
 export interface Quest {
   id: string;
   title: I18n;
@@ -60,6 +69,7 @@ export interface GameData {
   safetyIncidents: number; // 安全事件次數（#34，扣績效分）
   lastEvent: EventStamp | null; // 最近一次突發事件（#34）
   fleetHealth: number; // 機組健康度 0-100（#1）：忽略預兆/未修故障會衰退，提高連鎖故障機率
+  forecast: SeaState[]; // 微觀天氣預報（#2）：未來 N 日海象預測，支援預防性排程
 }
 
 export const DOWNTIME_PER_DAY = 30_000; // 機組停機每日損失（C）
@@ -107,6 +117,7 @@ export const INITIAL: GameData = {
   safetyIncidents: 0,
   lastEvent: null,
   fleetHealth: 88,
+  forecast: ["workable", "caution", "closed"], // 三日後有風暴：開局即示範預防性排程（#2）
 };
 
 const clampN = (n: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, n));
@@ -138,6 +149,10 @@ function advance(s: GameData, days = 1): Partial<GameData> {
   const neglect = s.questStage === "active" && !s.repairDone ? 1.5 : 0;
   const health = clampN(s.fleetHealth - (0.5 + neglect) * days, 0, 100);
   patch.fleetHealth = health;
+  // 天氣隨日推進（#2）：昨日預報實現為今日海象，並滾動更新三日預報
+  const w = advanceWeather(s.seaState, s.forecast, days);
+  patch.seaState = w.seaState;
+  patch.forecast = w.forecast;
   // 健康度越低 → 突發事件機率越高、且偏向壞事件（連鎖故障）
   const riskBoost = ((100 - health) / 100) * 0.4;
   const ev = rollEvent(riskBoost, health);
@@ -169,16 +184,47 @@ export type Action =
   | { type: "LOAD_STATE"; state: Partial<GameData> } // 雲端存檔載入（#31）
   | { type: "RESET" };
 
-// 擲海象：約 6 成可作業、3 成警戒、1 成停航
-function rollSea(): SeaState {
+// ───────── 微觀天氣模型（#2）─────────
+// 天氣有慣性（風暴成群出現）：用簡化的馬可夫轉移由前一日推算次日海象。
+const SEA_ORDER: SeaState[] = ["workable", "caution", "closed"];
+function nextSeaFrom(prev: SeaState): SeaState {
   const r = Math.random();
-  return r < 0.6 ? "workable" : r < 0.9 ? "caution" : "closed";
+  switch (prev) {
+    case "workable": return r < 0.62 ? "workable" : r < 0.9 ? "caution" : "closed";
+    case "caution": return r < 0.42 ? "workable" : r < 0.8 ? "caution" : "closed";
+    default /* closed */: return r < 0.22 ? "workable" : r < 0.62 ? "caution" : "closed";
+  }
+}
+// 預報誤差：把預測值上/下移動一級（教學：預報不是百分百準確）
+function jitterSea(s: SeaState): SeaState {
+  const i = SEA_ORDER.indexOf(s);
+  const dir = Math.random() < 0.5 ? -1 : 1;
+  return SEA_ORDER[clampN(i + dir, 0, 2)];
+}
+// 由前一日海象產生未來 N 日預報
+export function makeForecast(prev: SeaState, n = FORECAST_DAYS): SeaState[] {
+  const out: SeaState[] = [];
+  let cur = prev;
+  for (let i = 0; i < n; i++) { cur = nextSeaFrom(cur); out.push(cur); }
+  return out;
+}
+// 推進 days 天：每日「昨日預報」實現為今日海象（含 ~18% 預報誤差），並滾動補上新的尾日預報
+function advanceWeather(today: SeaState, forecast: SeaState[], days: number): { seaState: SeaState; forecast: SeaState[] } {
+  let cur = today;
+  let fc = forecast.length ? [...forecast] : makeForecast(today);
+  for (let d = 0; d < days; d++) {
+    const predicted = fc[0] ?? nextSeaFrom(cur);
+    cur = Math.random() < 0.18 ? jitterSea(predicted) : predicted;
+    const rest = fc.slice(1);
+    fc = [...rest, nextSeaFrom(rest[rest.length - 1] ?? cur)];
+  }
+  return { seaState: cur, forecast: fc };
 }
 
 export function reducer(s: GameData, a: Action): GameData {
   switch (a.type) {
     case "ACCEPT_QUEST":
-      return { ...s, questStage: "active", repairDone: false, jobPhase: "office", seaState: rollSea() };
+      return { ...s, questStage: "active", repairDone: false, jobPhase: "office" };
     case "HIRE":
       if (a.cost > s.budget) return s;
       return { ...s, budget: s.budget - a.cost, engineers: [...s.engineers, a.engineer] };
@@ -197,7 +243,7 @@ export function reducer(s: GameData, a: Action): GameData {
       return { ...s, jobPhase: "office", availability: Math.max(0, s.availability - 4), safetyIncidents: s.safetyIncidents + 1 };
     case "REST": {
       const adv = advance(s, 1);
-      return { ...s, ...adv, seaState: rollSea(), availability: Math.min(100, s.availability + 1), fleetHealth: clampN((adv.fleetHealth ?? s.fleetHealth) + 1.5, 0, 100) };
+      return { ...s, ...adv, availability: Math.min(100, s.availability + 1), fleetHealth: clampN((adv.fleetHealth ?? s.fleetHealth) + 1.5, 0, 100) };
     }
     case "BUY": {
       if (a.cost > s.budget) return s;
@@ -238,12 +284,12 @@ export function reducer(s: GameData, a: Action): GameData {
       if (s.questStage !== "done") return s;
       const last = a.poolSize - 1;
       if (s.campaignIndex >= last) return { ...s, campaignDone: true, customQuest: null };
-      return { ...s, ...advance(s, 1), customQuest: null, campaignIndex: s.campaignIndex + 1, questStage: "available", repairDone: false, jobPhase: "office", seaState: rollSea() };
+      return { ...s, ...advance(s, 1), customQuest: null, campaignIndex: s.campaignIndex + 1, questStage: "available", repairDone: false, jobPhase: "office" };
     }
     case "RESTART_CAMPAIGN":
       return { ...s, campaignIndex: 0, campaignDone: false, customQuest: null, questStage: "available", repairDone: false, jobPhase: "office" };
     case "ASSIGN_QUEST":
-      return { ...s, customQuest: a.quest, questStage: "available", repairDone: false, jobPhase: "office", seaState: rollSea() };
+      return { ...s, customQuest: a.quest, questStage: "available", repairDone: false, jobPhase: "office" };
     case "RESOLVE_TASK": {
       // 自由營運沙盒：推進一天（含突發事件）後套用選擇效果，計入績效（沙盒，衝排行）
       const adv = advance(s, 1);
