@@ -20,7 +20,7 @@ import { GameProvider } from "./state/GameContext";
 import { DialogueProvider } from "./state/DialogueContext";
 import { Bgm } from "./audio/bgm";
 import { getProfile, clearProfile } from "./state/profile";
-import { SCENES, getSceneId, setSceneId as persistSceneId, getRealistic, setRealistic as persistRealistic } from "./ui/scenes";
+import { SCENES, getSceneId, setSceneId as persistSceneId, getMode, setMode as persistMode, getImgIdx, setImgIdx as persistImgIdx, imagesFor, type SceneMode } from "./ui/scenes";
 import { getWeek, setWeek as persistWeek } from "./state/course";
 
 export type Screen = "hub" | "market" | "sail" | "repair";
@@ -37,17 +37,31 @@ export default function App() {
   const [loggedIn, setLoggedIn] = useState(() => getProfile() != null);
   const [sceneId, setSceneId] = useState(getSceneId);
   const [aerial, setAerial] = useState(false); // 俯瞰風場全景模式（#32）
-  const [realistic, setRealistic] = useState(getRealistic); // 模擬/實境模式（#32）
-  const toggleRealistic = () => setRealistic((v) => { persistRealistic(!v); return !v; });
+  const [mode, setMode] = useState<SceneMode>(getMode); // 模擬/實境/漫畫（#32）
+  const [imgIdx, setImgIdx] = useState(getImgIdx); // 圖片模式目前索引
   const [week, setWeekState] = useState(getWeek); // 教師端開放週次（#3）
   const changeWeek = (w: number) => { persistWeek(w); setWeekState(w); };
 
-  // 切換海域背景（#32）：循環到下一個主題並記住選擇
+  const imgList = imagesFor(mode);
+  const imageFile = imgList.length ? imgList[imgIdx % imgList.length].file : undefined;
+  const sceneName = mode === "sim" ? SCENES.find((s) => s.id === sceneId)?.name : imgList[imgIdx % imgList.length]?.name;
+
+  // 切換背景模式：模擬 → 實境 → 漫畫 → 模擬
+  const cycleMode = () => {
+    const order: SceneMode[] = ["sim", "real", "comic"];
+    const next = order[(order.indexOf(mode) + 1) % order.length];
+    setMode(next); persistMode(next); setImgIdx(0); persistImgIdx(0);
+  };
+  // 切換背景：模擬循環海域、圖片模式循環圖片
   const cycleScene = () => {
-    const i = SCENES.findIndex((s) => s.id === sceneId);
-    const next = SCENES[(i + 1) % SCENES.length];
-    setSceneId(next.id);
-    persistSceneId(next.id);
+    if (mode === "sim") {
+      const i = SCENES.findIndex((s) => s.id === sceneId);
+      const nid = SCENES[(i + 1) % SCENES.length].id;
+      setSceneId(nid); persistSceneId(nid);
+    } else if (imgList.length) {
+      const n = (imgIdx + 1) % imgList.length;
+      setImgIdx(n); persistImgIdx(n);
+    }
   };
 
   // 1600×900 舞台等比縮放置中
@@ -97,9 +111,9 @@ export default function App() {
             overflow: "hidden",
           }}
         >
-          {showSharedBg && <SceneBackground sceneId={sceneId} aerial={aerial && screen === "hub"} realistic={realistic} />}
+          {showSharedBg && <SceneBackground sceneId={sceneId} aerial={aerial && screen === "hub"} mode={mode} imageFile={imageFile} />}
 
-          {screen === "hub" && <HubScreen setScreen={setScreen} accent={accent} onDispatch={() => setShowDispatch(true)} onFacility={(k) => setFacility(k)} sceneId={sceneId} onCycleScene={cycleScene} aerial={aerial} onToggleView={() => setAerial((v) => !v)} realistic={realistic} onToggleRealistic={toggleRealistic} onOps={() => setShowOps(true)} week={week} />}
+          {screen === "hub" && <HubScreen setScreen={setScreen} accent={accent} onDispatch={() => setShowDispatch(true)} onFacility={(k) => setFacility(k)} sceneName={sceneName} onCycleScene={cycleScene} aerial={aerial} onToggleView={() => setAerial((v) => !v)} mode={mode} onCycleMode={cycleMode} onOps={() => setShowOps(true)} week={week} />}
           {screen === "market" && <MarketScreen accent={accent} />}
           {screen === "sail" && <SailScreen setScreen={setScreen} accent={accent} />}
           {screen === "repair" && <RepairScreen setScreen={setScreen} />}

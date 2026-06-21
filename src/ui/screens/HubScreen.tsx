@@ -17,7 +17,7 @@ import { toWan, computeScore, type QuestStage } from "../../state/game";
 import { FARMS } from "../../state/farms";
 import { fetchLeaderboard, type Row } from "../../cloud/sheet";
 import { getProfile } from "../../state/profile";
-import { sceneById } from "../scenes";
+import { MODE_LABEL, MODE_ICON, type SceneMode } from "../scenes";
 import { missionWeek } from "../../state/course";
 import type { I18n } from "../../game/systems/types";
 import type { Screen } from "../../App";
@@ -56,7 +56,7 @@ function OpsBlock({ title, children }: { title: I18n; children: ReactNode }) {
 
 const kvRow: CSSProperties = { display: "flex", justifyContent: "space-between", fontSize: 13, color: C.cream, padding: "3px 0" };
 
-export default function HubScreen({ setScreen, accent, onDispatch, onFacility, sceneId, onCycleScene, aerial, onToggleView, realistic, onToggleRealistic, onOps, week = 1 }: { setScreen: (s: Screen) => void; accent: string; onDispatch?: () => void; onFacility?: (k: "vessel" | "tech" | "tool" | "codex" | "ranking" | "farms") => void; sceneId?: string; onCycleScene?: () => void; aerial?: boolean; onToggleView?: () => void; realistic?: boolean; onToggleRealistic?: () => void; onOps?: () => void; week?: number }) {
+export default function HubScreen({ setScreen, accent, onDispatch, onFacility, sceneName, onCycleScene, aerial, onToggleView, mode = "sim", onCycleMode, onOps, week = 1 }: { setScreen: (s: Screen) => void; accent: string; onDispatch?: () => void; onFacility?: (k: "vessel" | "tech" | "tool" | "codex" | "ranking" | "farms") => void; sceneName?: I18n; onCycleScene?: () => void; aerial?: boolean; onToggleView?: () => void; mode?: SceneMode; onCycleMode?: () => void; onOps?: () => void; week?: number }) {
   useLang();
   const { data, dispatch } = useGame();
   const { say } = useDialogue();
@@ -240,13 +240,13 @@ export default function HubScreen({ setScreen, accent, onDispatch, onFacility, s
         </div>
         {!aerial && (
           <>
-            <div onClick={() => { Sfx.click(); onToggleRealistic?.(); }} style={{ display: "flex", alignItems: "center", gap: 7, padding: "7px 15px", borderRadius: 20, background: realistic ? "linear-gradient(180deg,#e8c074,#d9a441)" : "rgba(10,28,36,.72)", border: "1px solid rgba(214,167,84,.45)", color: realistic ? C.ink : C.cream, fontSize: 13, fontWeight: 700, cursor: "pointer", backdropFilter: "blur(3px)", whiteSpace: "nowrap" }}>
-              <span style={{ fontSize: 15 }}>{realistic ? "📷" : "✏️"}</span>
-              {realistic ? t({ zh: "實境模式", en: "Realistic" }) : t({ zh: "模擬模式", en: "Simulation" })}
+            <div onClick={() => { Sfx.click(); onCycleMode?.(); }} style={{ display: "flex", alignItems: "center", gap: 7, padding: "7px 15px", borderRadius: 20, background: mode !== "sim" ? "linear-gradient(180deg,#e8c074,#d9a441)" : "rgba(10,28,36,.72)", border: "1px solid rgba(214,167,84,.45)", color: mode !== "sim" ? C.ink : C.cream, fontSize: 13, fontWeight: 700, cursor: "pointer", backdropFilter: "blur(3px)", whiteSpace: "nowrap" }}>
+              <span style={{ fontSize: 15 }}>{MODE_ICON[mode]}</span>
+              {t(MODE_LABEL[mode])}
             </div>
             <div onClick={() => { Sfx.click(); onCycleScene?.(); }} style={{ display: "flex", alignItems: "center", gap: 7, padding: "7px 15px", borderRadius: 20, background: "rgba(10,28,36,.72)", border: "1px solid rgba(214,167,84,.4)", color: C.cream, fontSize: 13, fontWeight: 700, cursor: "pointer", backdropFilter: "blur(3px)", whiteSpace: "nowrap" }}>
               <span style={{ color: C.gold, fontSize: 15 }}>🎨</span>
-              {t({ zh: "海域", en: "Scene" })}：{t(sceneById(sceneId ?? "").name)}
+              {sceneName ? t(sceneName) : "—"}
               <span style={{ color: C.mist2 }}>↻</span>
             </div>
           </>
