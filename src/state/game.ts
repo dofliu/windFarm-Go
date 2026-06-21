@@ -70,7 +70,42 @@ export interface GameData {
   lastEvent: EventStamp | null; // 最近一次突發事件（#34）
   fleetHealth: number; // 機組健康度 0-100（#1）：忽略預兆/未修故障會衰退，提高連鎖故障機率
   forecast: SeaState[]; // 微觀天氣預報（#2）：未來 N 日海象預測，支援預防性排程
+  overhaul: Overhaul | null; // 進行中的多回合大修（#4）：需連續可作業天氣窗，惡劣海象停滯+待命費
+  quarter: number; // 目前合約季度（#3，自 1 起）
+  quarterStartDay: number; // 本季起始日（#3）
+  slaAvailSum: number; // 本季可用率每日累計（#3，用於平均）
+  slaSamples: number; // 本季取樣天數（#3）
+  slaPenalties: number; // 累計 SLA 違約次數（#3，扣績效分）
+  lastSla: SlaResult | null; // 最近一次季度結算（#3）
 }
+
+// 多回合大修（#4）：重大組件更換需多個「可作業天氣窗」工日才完成。
+export interface Overhaul {
+  questId: string;
+  unit: string; // 機組編號（顯示）
+  fault: string; // 故障 id（完成後計入圖鑑）
+  progress: number; // 已完成的可作業工日
+  need: number; // 需要的可作業工日
+  demurrageDays: number; // 因惡劣海象停滯（已付待命費）的天數
+  rewardBudget: number; // 完成時發放
+  rewardXp: number;
+}
+
+// 季度 SLA 結算結果（#3）
+export interface SlaResult {
+  quarter: number;
+  avg: number; // 本季平均可用率 %
+  floor: number; // 底線 %
+  breached: boolean; // 是否違約
+  penalty: number; // 違約金 ◎
+  day: number;
+}
+
+export const OVERHAUL_NEED = 3; // 大修所需的可作業工日（#4）
+export const DEMURRAGE_PER_DAY = 400_000; // 大修因惡劣海象停滯的船舶待命費／日（#4）
+export const QUARTER_DAYS = 90; // 一季天數（#3）
+export const SLA_FLOOR = 90; // 季度可用率底線 %（#3）
+export const SLA_PENALTY = 5_000_000; // 違約金 ◎（#3）
 
 export const DOWNTIME_PER_DAY = 30_000; // 機組停機每日損失（C）
 
@@ -81,9 +116,9 @@ function ownedFarmGen(farmsOwned: number): number {
   return g;
 }
 
-// 綜合績效分（單一真實來源，#28/#34）：發電量 + 可用率×5 + 完成任務×30 − 安全事件×20 + 風場×10
+// 綜合績效分（單一真實來源，#28/#34/#3）：發電量 + 可用率×5 + 完成任務×30 − 安全事件×20 + 風場×10 − SLA違約×25
 export function computeScore(d: GameData): number {
-  return Math.max(0, d.generationMWh + d.availability * 5 + d.missionsDone * 30 - d.safetyIncidents * 20 + d.farmsOwned * 10);
+  return Math.max(0, d.generationMWh + d.availability * 5 + d.missionsDone * 30 - d.safetyIncidents * 20 + d.farmsOwned * 10 - (d.slaPenalties ?? 0) * 25);
 }
 
 export const INITIAL: GameData = {
@@ -118,6 +153,13 @@ export const INITIAL: GameData = {
   lastEvent: null,
   fleetHealth: 88,
   forecast: ["workable", "caution", "closed"], // 三日後有風暴：開局即示範預防性排程（#2）
+  overhaul: null,
+  quarter: 1,
+  quarterStartDay: 21, // = INITIAL.day，本季自開局起算（#3）
+  slaAvailSum: 0,
+  slaSamples: 0,
+  slaPenalties: 0,
+  lastSla: null,
 };
 
 const clampN = (n: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, n));
@@ -153,6 +195,8 @@ function advance(s: GameData, days = 1): Partial<GameData> {
   const w = advanceWeather(s.seaState, s.forecast, days);
   patch.seaState = w.seaState;
   patch.forecast = w.forecast;
+  // 大修進行中：安裝船每日待命費（demurrage，#4）。惡劣海象拉長工期 → 待命天數變多 → 總成本上升。
+  if (s.overhaul) patch.budget = Math.max(0, (patch.budget ?? s.budget) - DEMURRAGE_PER_DAY * days);
   // 健康度越低 → 突發事件機率越高、且偏向壞事件（連鎖故障）
   const riskBoost = ((100 - health) / 100) * 0.4;
   const ev = rollEvent(riskBoost, health);
@@ -160,6 +204,32 @@ function advance(s: GameData, days = 1): Partial<GameData> {
     const evPatch = ev.apply({ ...s, ...patch } as GameData);
     patch = { ...patch, ...evPatch, lastEvent: { id: ev.id, name: ev.name, desc: ev.desc, good: !!ev.good, day } };
   }
+  // 合約 SLA（#3）：每日累計可用率，跨季結算；平均低於底線 → 扣違約金
+  const avail = patch.availability ?? s.availability;
+  let qStart = s.quarterStartDay;
+  let quarter = s.quarter;
+  let sum = s.slaAvailSum + avail * days;
+  let samples = s.slaSamples + days;
+  let penalties = s.slaPenalties;
+  let lastSla = s.lastSla;
+  if (day - qStart >= QUARTER_DAYS) {
+    const avg = samples > 0 ? sum / samples : avail;
+    const breached = avg < SLA_FLOOR;
+    const penalty = breached ? SLA_PENALTY : 0;
+    patch.budget = Math.max(0, (patch.budget ?? s.budget) - penalty);
+    lastSla = { quarter, avg: Math.round(avg * 10) / 10, floor: SLA_FLOOR, breached, penalty, day };
+    if (breached) penalties += 1;
+    quarter += 1;
+    qStart = day;
+    sum = 0;
+    samples = 0;
+  }
+  patch.quarter = quarter;
+  patch.quarterStartDay = qStart;
+  patch.slaAvailSum = sum;
+  patch.slaSamples = samples;
+  patch.slaPenalties = penalties;
+  patch.lastSla = lastSla;
   return patch;
 }
 
@@ -168,6 +238,8 @@ export type Action =
   | { type: "BUY"; partId: string; qty: number; cost: number; leadDays: number }
   | { type: "SELL"; partId: string; gain: number } // 賣出 1 件（#18）
   | { type: "FINISH_REPAIR"; quest: Quest; part?: string } // 維修完成 → 結算（A3）+ 消耗備品
+  | { type: "START_OVERHAUL"; quest: Quest; part?: string } // 重大故障：拆檢完成後啟動多回合大修（#4）
+  | { type: "ADVANCE_OVERHAUL" } // 推進大修一天（#4）：可作業窗 → 進度+1；惡劣海象 → 停滯+待命費
   | { type: "DO_ROUTINE"; budget: number; xp: number } // 調度中心例行小任務（#21）
   | { type: "UPGRADE"; kind: "vessel" | "tech" | "tool"; cost: number } // 設施升級（A）
   | { type: "HIRE"; engineer: Engineer; cost: number } // 招募技師（#27）
@@ -269,6 +341,51 @@ export function reducer(s: GameData, a: Action): GameData {
       }
       const seen = s.seenFaults.includes(a.quest.targetFault) ? s.seenFaults : [...s.seenFaults, a.quest.targetFault];
       return { ...s, repairDone: true, questStage: "done", jobPhase: "office", budget: s.budget + a.quest.rewardBudget, xp: s.xp + a.quest.rewardXp, availability: Math.min(100, s.availability + 8 + s.techLevel * 2), fleetHealth: clampN(s.fleetHealth + 8, 0, 100), inventory: inv, cargoUsed: cargo, seenFaults: seen, missionsDone: s.missionsDone + 1 };
+    }
+    case "START_OVERHAUL": {
+      if (s.questStage !== "active" || s.overhaul) return s;
+      const inv = { ...s.inventory };
+      let cargo = s.cargoUsed;
+      if (a.part && (inv[a.part] ?? 0) > 0) {
+        inv[a.part] = (inv[a.part] ?? 0) - 1; // 拆檢即消耗必備備品（大組件）
+        cargo = Math.max(0, cargo - 1);
+      }
+      return {
+        ...s,
+        jobPhase: "office",
+        inventory: inv,
+        cargoUsed: cargo,
+        overhaul: { questId: a.quest.id, unit: a.quest.unit, fault: a.quest.targetFault, progress: 0, need: OVERHAUL_NEED, demurrageDays: 0, rewardBudget: a.quest.rewardBudget, rewardXp: a.quest.rewardXp },
+      };
+    }
+    case "ADVANCE_OVERHAUL": {
+      if (!s.overhaul) return s;
+      const adv = advance(s, 1); // 天氣/天數推進、停機成本、健康度、SLA 累計
+      const sea = (adv.seaState ?? s.seaState) as SeaState;
+      const oh = s.overhaul;
+      if (sea === "workable") {
+        const progress = oh.progress + 1;
+        if (progress >= oh.need) {
+          const seen = s.seenFaults.includes(oh.fault) ? s.seenFaults : [...s.seenFaults, oh.fault];
+          return {
+            ...s,
+            ...adv,
+            overhaul: null,
+            repairDone: true,
+            questStage: "done",
+            jobPhase: "office",
+            budget: (adv.budget ?? s.budget) + oh.rewardBudget,
+            xp: s.xp + oh.rewardXp,
+            availability: Math.min(100, s.availability + 10 + s.techLevel * 2),
+            fleetHealth: clampN((adv.fleetHealth ?? s.fleetHealth) + 12, 0, 100),
+            seenFaults: seen,
+            missionsDone: s.missionsDone + 1,
+          };
+        }
+        return { ...s, ...adv, overhaul: { ...oh, progress } };
+      }
+      // 惡劣海象：大修停滯（進度不前），待命費已於 advance() 計入；累計停滯天數供顯示
+      return { ...s, ...adv, overhaul: { ...oh, demurrageDays: oh.demurrageDays + 1 } };
     }
     case "DO_ROUTINE": {
       const adv = advance(s, 1);

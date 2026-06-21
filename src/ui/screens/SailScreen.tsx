@@ -110,6 +110,12 @@ export default function SailScreen({ setScreen, accent, mode = "sim" }: { setScr
         <div style={{ padding: "12px 16px" }}>
           {!active ? (
             <div style={{ color: C.mist, fontSize: 13, lineHeight: 1.6, textAlign: "center", padding: "10px 0" }}>{t({ zh: "請先在母港接下工單。", en: "Accept a work order at the port first." })}</div>
+          ) : data.jobPhase === "office" && data.overhaul ? (
+            <div style={{ padding: "8px 0" }}>
+              <div style={{ fontSize: 13.5, color: C.goldText, fontWeight: 700, marginBottom: 6 }}>🛠 {t({ zh: "大修工程進行中", en: "Overhaul in progress" })} · {data.overhaul.unit}</div>
+              <div style={{ fontSize: 12.5, color: C.cream, lineHeight: 1.6, marginBottom: 10 }}>{t({ zh: "安裝船已就位吊裝大組件，無需再次出航。請回母港「待處理工單」逐日推進大修——看準三日預報的可作業天氣窗。", en: "The jack-up is on station for the component swap — no need to sail again. Push the overhaul day-by-day from the port Work Order panel, timing the workable windows in the 3-day forecast." })}</div>
+              <button onClick={() => { Sfx.click(); setScreen("hub"); }} style={{ width: "100%", padding: "11px 0", borderRadius: 6, border: "1px solid rgba(255,236,196,.6)", background: primaryBg(accent), color: C.ink, fontFamily: FONT_SERIF, fontWeight: 900, fontSize: 15, cursor: "pointer" }}>{t({ zh: "回母港推進大修", en: "Back to port" })}</button>
+            </div>
           ) : data.jobPhase === "office" ? (
             <>
               <Check ok={true} label={`${t({ zh: "船舶", en: "Vessel" })}：${data.ownsSOV ? "SOV" : "CTV"}`} />
