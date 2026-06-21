@@ -4,7 +4,7 @@ category: edtech
 progress: 99
 status: active
 last_updated: "2026-06-21"
-next_milestone: "B/A/C 完成；後續(選)：多回合工期、登入紀錄(雲端)、CC0實體音樂、playtest平衡"
+next_milestone: "依GAME_DESIGN實作：出勤就緒閘門(#25)、船隊系統(#26)、技師招募(#27)、發電量KPI(#28)"
 technologies:
   - React
   - TypeScript
