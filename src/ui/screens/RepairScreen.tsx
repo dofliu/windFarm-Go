@@ -9,6 +9,7 @@ import { S } from "../../i18n/strings";
 import { Sfx } from "../../audio/sfx";
 import { exprUrl } from "../characters";
 import { FAULTS } from "../faults";
+import { PARTS } from "../data";
 import { missionAt } from "../campaign";
 import type { Screen } from "../../App";
 
@@ -41,11 +42,15 @@ export default function RepairScreen({ setScreen }: { setScreen: (s: Screen) => 
   const windowMax = data.seaState === "closed" ? 6 : data.seaState === "caution" ? 8 : 10;
   const [win, setWin] = useState(windowMax);
 
+  const need = fault.part; // 必備備品
+  const needPart = PARTS.find((p) => p.id === need);
+  const hasPart = (data.inventory[need] ?? 0) > 0;
+
   const quizCorrect = pick === q.correct;
   const allSteps = steps.every(Boolean);
   const complete = quizCorrect && allSteps;
   const failed = win <= 0 && !complete; // 窗內未完成 → 撤離
-  const ready = complete && data.questStage === "active" && !data.repairDone && !failed;
+  const ready = complete && hasPart && data.questStage === "active" && !data.repairDone && !failed;
 
   const spend = (c: number) => setWin((w) => Math.max(0, w - c));
 
@@ -64,7 +69,7 @@ export default function RepairScreen({ setScreen }: { setScreen: (s: Screen) => 
 
   const finish = () => {
     Sfx.success();
-    dispatch({ type: "FINISH_REPAIR", quest });
+    dispatch({ type: "FINISH_REPAIR", quest, part: need });
     const m = data.customQuest ? null : missionAt(data.campaignIndex);
     say(
       m
@@ -228,6 +233,13 @@ export default function RepairScreen({ setScreen }: { setScreen: (s: Screen) => 
           </div>
           {/* 完成/結算按鈕（A3） */}
           <div style={{ padding: "0 14px 14px" }}>
+            {data.questStage === "active" && !failed && (
+              <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8, fontSize: 12, color: hasPart ? C.green : C.amber2 }}>
+                <span>{hasPart ? "✔" : "✖"}</span>
+                <span>{t({ zh: "必備備品", en: "Required part" })}：{t(needPart?.n ?? { zh: need, en: need })}</span>
+                {!hasPart && <span style={{ color: C.mist }}>（{t({ zh: "去交易所購買", en: "buy at Market" })}）</span>}
+              </div>
+            )}
             {data.questStage !== "active" ? (
               <div style={{ textAlign: "center", fontSize: 12, color: C.mist }}>{t({ zh: "（請先在母港接單）", en: "(Accept an order in port first)" })}</div>
             ) : failed ? (

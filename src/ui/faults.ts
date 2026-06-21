@@ -10,6 +10,7 @@ export interface Fault {
   quiz: { question: I18n; options: I18n[]; correct: number; ok: I18n; no: I18n };
   sop: I18n[]; // 5 步驟（前兩步預設完成）
   knowledge_point: string;
+  part: string; // 完成維修所需的必備備品 id（對應 data.ts PARTS）
 }
 
 export const FAULTS: Record<string, Fault> = {
@@ -41,6 +42,7 @@ export const FAULTS: Record<string, Fault> = {
       { zh: "復歸測試並回報 SCADA", en: "Reset test & report to SCADA" },
     ],
     knowledge_point: "gearbox_thermal",
+    part: "gearbox_oil",
   },
   yaw_misalign: {
     id: "yaw_misalign",
@@ -70,6 +72,7 @@ export const FAULTS: Record<string, Fault> = {
       { zh: "複歸定位並回報 SCADA", en: "Re-home position & report to SCADA" },
     ],
     knowledge_point: "yaw_brake",
+    part: "yaw_motor",
   },
   gen_vibration: {
     id: "gen_vibration",
@@ -99,6 +102,7 @@ export const FAULTS: Record<string, Fault> = {
       { zh: "復歸測試並回報 SCADA", en: "Reset test & report to SCADA" },
     ],
     knowledge_point: "vibration_bpfi",
+    part: "pitch_bearing",
   },
   pitch_fault: {
     id: "pitch_fault",
@@ -128,6 +132,7 @@ export const FAULTS: Record<string, Fault> = {
       { zh: "順槳測試並回報 SCADA", en: "Feather test & report to SCADA" },
     ],
     knowledge_point: "pitch_backup",
+    part: "hydraulic_oil",
   },
   converter_fault: {
     id: "converter_fault",
@@ -157,6 +162,7 @@ export const FAULTS: Record<string, Fault> = {
       { zh: "復歸測試並回報 SCADA", en: "Reset test & report to SCADA" },
     ],
     knowledge_point: "converter_cooling",
+    part: "converter",
   },
 };
 

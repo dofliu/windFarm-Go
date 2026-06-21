@@ -8,6 +8,7 @@ import SailScreen from "./ui/screens/SailScreen";
 import RepairScreen from "./ui/screens/RepairScreen";
 import DialogueLayer from "./ui/DialogueLayer";
 import CourseModal from "./ui/CourseModal";
+import DispatchModal from "./ui/DispatchModal";
 import Toaster from "./ui/Toaster";
 import { GameProvider } from "./state/GameContext";
 import { DialogueProvider } from "./state/DialogueContext";
@@ -21,6 +22,7 @@ export default function App() {
   const [screen, setScreen] = useState<Screen>("hub");
   const [scale, setScale] = useState(1);
   const [showCourse, setShowCourse] = useState(false);
+  const [showDispatch, setShowDispatch] = useState(false);
 
   // 1600×900 舞台等比縮放置中
   useEffect(() => {
@@ -67,7 +69,7 @@ export default function App() {
         >
           {showSharedBg && <SceneBackground />}
 
-          {screen === "hub" && <HubScreen setScreen={setScreen} accent={accent} />}
+          {screen === "hub" && <HubScreen setScreen={setScreen} accent={accent} onDispatch={() => setShowDispatch(true)} />}
           {screen === "market" && <MarketScreen accent={accent} />}
           {screen === "sail" && <SailScreen setScreen={setScreen} accent={accent} />}
           {screen === "repair" && <RepairScreen setScreen={setScreen} />}
@@ -75,6 +77,7 @@ export default function App() {
           <TopBar screen={screen} setScreen={setScreen} accent={accent} onGear={() => setShowCourse(true)} />
           <DialogueLayer />
           <CourseModal open={showCourse} onClose={() => setShowCourse(false)} />
+          <DispatchModal open={showDispatch} onClose={() => setShowDispatch(false)} />
           <Toaster />
         </div>
       </div>

@@ -56,7 +56,8 @@ export type Action =
   | { type: "ACCEPT_QUEST" }
   | { type: "BUY"; partId: string; qty: number; cost: number }
   | { type: "SELL"; partId: string; gain: number } // 賣出 1 件（#18）
-  | { type: "FINISH_REPAIR"; quest: Quest } // 維修完成 → 結算（A3）
+  | { type: "FINISH_REPAIR"; quest: Quest; part?: string } // 維修完成 → 結算（A3）+ 消耗備品
+  | { type: "DO_ROUTINE"; budget: number; xp: number } // 調度中心例行小任務（#21）
   | { type: "FAIL_REPAIR" } // 天氣窗關閉、撤離（#17）
   | { type: "REST" } // 靠港休整：進日 + 重新擲海象（#18）
   | { type: "NEXT_QUEST"; poolSize: number } // 下一關（#20 主線推進）
@@ -88,16 +89,18 @@ export function reducer(s: GameData, a: Action): GameData {
       if (have <= 0) return s;
       return { ...s, budget: s.budget + a.gain, inventory: { ...s.inventory, [a.partId]: have - 1 }, cargoUsed: Math.max(0, s.cargoUsed - 1) };
     }
-    case "FINISH_REPAIR":
+    case "FINISH_REPAIR": {
       if (s.questStage !== "active") return s;
-      return {
-        ...s,
-        repairDone: true,
-        questStage: "done",
-        budget: s.budget + a.quest.rewardBudget,
-        xp: s.xp + a.quest.rewardXp,
-        availability: Math.min(100, s.availability + 8),
-      };
+      const inv = { ...s.inventory };
+      let cargo = s.cargoUsed;
+      if (a.part && (inv[a.part] ?? 0) > 0) {
+        inv[a.part] = (inv[a.part] ?? 0) - 1; // 消耗 1 件必備備品
+        cargo = Math.max(0, cargo - 1);
+      }
+      return { ...s, repairDone: true, questStage: "done", budget: s.budget + a.quest.rewardBudget, xp: s.xp + a.quest.rewardXp, availability: Math.min(100, s.availability + 8), inventory: inv, cargoUsed: cargo };
+    }
+    case "DO_ROUTINE":
+      return { ...s, budget: s.budget + a.budget, xp: s.xp + a.xp, day: s.day + 1, availability: Math.min(100, s.availability + 1) };
     case "NEXT_QUEST": {
       if (s.questStage !== "done") return s;
       const last = a.poolSize - 1;
