@@ -13,6 +13,7 @@ import { missionAt } from "../campaign";
 import { DISC, hasEngineer } from "../disc";
 import { PARTS } from "../data";
 import Vessel, { vesselTypeOf, type VesselType } from "../Vessel";
+import { ForecastStrip, StormWarning } from "../Forecast";
 import type { Screen } from "../../App";
 
 function CtvShip({ left, top, scale, opacity, type }: { left: string; top: number; scale: number; opacity: number; type: VesselType }) {
@@ -109,6 +110,12 @@ export default function SailScreen({ setScreen, accent, mode = "sim" }: { setScr
         <div style={{ padding: "12px 16px" }}>
           {!active ? (
             <div style={{ color: C.mist, fontSize: 13, lineHeight: 1.6, textAlign: "center", padding: "10px 0" }}>{t({ zh: "請先在母港接下工單。", en: "Accept a work order at the port first." })}</div>
+          ) : data.jobPhase === "office" && data.overhaul ? (
+            <div style={{ padding: "8px 0" }}>
+              <div style={{ fontSize: 13.5, color: C.goldText, fontWeight: 700, marginBottom: 6 }}>🛠 {t({ zh: "大修工程進行中", en: "Overhaul in progress" })} · {data.overhaul.unit}</div>
+              <div style={{ fontSize: 12.5, color: C.cream, lineHeight: 1.6, marginBottom: 10 }}>{t({ zh: "安裝船已就位吊裝大組件，無需再次出航。請回母港「待處理工單」逐日推進大修——看準三日預報的可作業天氣窗。", en: "The jack-up is on station for the component swap — no need to sail again. Push the overhaul day-by-day from the port Work Order panel, timing the workable windows in the 3-day forecast." })}</div>
+              <button onClick={() => { Sfx.click(); setScreen("hub"); }} style={{ width: "100%", padding: "11px 0", borderRadius: 6, border: "1px solid rgba(255,236,196,.6)", background: primaryBg(accent), color: C.ink, fontFamily: FONT_SERIF, fontWeight: 900, fontSize: 15, cursor: "pointer" }}>{t({ zh: "回母港推進大修", en: "Back to port" })}</button>
+            </div>
           ) : data.jobPhase === "office" ? (
             <>
               <Check ok={true} label={`${t({ zh: "船舶", en: "Vessel" })}：${data.ownsSOV ? "SOV" : "CTV"}`} />
@@ -116,6 +123,10 @@ export default function SailScreen({ setScreen, accent, mode = "sim" }: { setScr
               <Check ok={true} label={`${t({ zh: "工具", en: "Tools" })} Lv.${data.toolLevel}`} />
               <Check ok={partOk} label={`${t({ zh: "備品", en: "Part" })}：${t(part?.n ?? { zh: fault?.part ?? "", en: fault?.part ?? "" })}`} hint={t({ zh: "去交易所購買", en: "buy at Market" })} />
               <Check ok={seaOk} label={`${t({ zh: "天氣窗", en: "Weather" })}：${data.seaState === "workable" ? t({ zh: "可作業", en: "OK" }) : data.seaState === "caution" ? t({ zh: "警戒", en: "Caution" }) : t({ zh: "停航", en: "Closed" })}`} hint={t({ zh: "需 SOV 或靠港休整", en: "need SOV or rest" })} />
+              {/* 微觀天氣預報（#2）：協助決定「現在出航」或「靠港等更好的天氣窗」 */}
+              <div style={{ fontSize: 11, color: C.mist2, margin: "6px 0 4px" }}>{t({ zh: "三日預報", en: "3-Day Forecast" })}</div>
+              <ForecastStrip forecast={data.forecast} compact />
+              <StormWarning forecast={data.forecast} />
               <button
                 disabled={!ready}
                 onClick={depart}

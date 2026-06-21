@@ -13,11 +13,12 @@ import { CAMPAIGN, missionAt } from "../campaign";
 import { FAULTS } from "../faults";
 import { PARTS } from "../data";
 import { DISC } from "../disc";
-import { toWan, computeScore, type QuestStage } from "../../state/game";
+import { toWan, computeScore, QUARTER_DAYS, SLA_FLOOR, DEMURRAGE_PER_DAY, type QuestStage } from "../../state/game";
 import { FARMS } from "../../state/farms";
 import { fetchLeaderboard, type Row } from "../../cloud/sheet";
 import { getProfile } from "../../state/profile";
 import { MODE_LABEL, MODE_ICON, type SceneMode } from "../scenes";
+import { ForecastStrip, StormWarning } from "../Forecast";
 import { missionWeek } from "../../state/course";
 import type { I18n } from "../../game/systems/types";
 import type { Screen } from "../../App";
@@ -92,6 +93,32 @@ export default function HubScreen({ setScreen, accent, onDispatch, onFacility, s
     }
   }, [data.lastEvent]);
 
+  // #3 合約 SLA：季度結算（lastSla）變動時跳通知
+  const lastSlaDay = useRef(-1);
+  useEffect(() => {
+    const r = data.lastSla;
+    if (r && r.day !== lastSlaDay.current) {
+      lastSlaDay.current = r.day;
+      (r.breached ? Sfx.error : Sfx.success)();
+      toast(
+        r.breached
+          ? { zh: `📑 第 ${r.quarter} 季 SLA 違約！平均可用率 ${r.avg}% < ${r.floor}%，扣違約金 ◎${toWan(r.penalty)} 萬`, en: `📑 Q${r.quarter} SLA breached! Avg availability ${r.avg}% < ${r.floor}% — penalty ◎${toWan(r.penalty)}M` }
+          : { zh: `📑 第 ${r.quarter} 季 SLA 達標 ✔ 平均可用率 ${r.avg}% ≥ ${r.floor}%`, en: `📑 Q${r.quarter} SLA met ✔ Avg availability ${r.avg}% ≥ ${r.floor}%` }
+      );
+    }
+  }, [data.lastSla]);
+
+  // #4 大修完成提示：overhaul 由有轉無且工單結算為 done 時通知
+  const prevOverhaul = useRef(false);
+  useEffect(() => {
+    const has = !!data.overhaul;
+    if (prevOverhaul.current && !has && data.questStage === "done") {
+      Sfx.success();
+      toast({ zh: "🛠 大修完成！大組件更換到位，可用率回升。", en: "🛠 Overhaul complete! Major component replaced — availability recovered." });
+    }
+    prevOverhaul.current = has;
+  }, [data.overhaul, data.questStage]);
+
   const me = getProfile();
   // #3 每週開放：下一關屬下週時鎖定（沙盒不受限；課程臨時任務不鎖）
   const nextLocked = !data.customQuest && !data.campaignDone && missionWeek(data.campaignIndex + 1) > week;
@@ -126,8 +153,35 @@ export default function HubScreen({ setScreen, accent, onDispatch, onFacility, s
       <div style={{ ...panel, flex: "none" }}>
         <div style={panelHeader}><span style={panelTitle}>{t({ zh: "風場動態", en: "Farm Status" })}</span></div>
         <div style={{ padding: "10px 12px" }}>
-          <div style={kvRow}><span style={{ color: C.mist }}>{t({ zh: "海象", en: "Sea" })}</span><span style={{ color: seaColor, fontWeight: 700 }}>{t(seaLabel)}</span></div>
-          <div style={kvRow}><span style={{ color: C.mist }}>{t({ zh: "營運風場", en: "Farms" })}</span><span style={{ fontWeight: 700 }}>{data.farmsOwned} / {FARMS.length}</span></div>
+          <div style={kvRow}><span style={{ color: C.mist }}>{t({ zh: "海象（今日）", en: "Sea (today)" })}</span><span style={{ color: seaColor, fontWeight: 700 }}>{t(seaLabel)}</span></div>
+          {/* 微觀天氣預報（#2）：未來三日 + 風暴警示 */}
+          <div style={{ fontSize: 11, color: C.mist2, margin: "4px 0 4px" }}>{t({ zh: "三日預報", en: "3-Day Forecast" })}</div>
+          <ForecastStrip forecast={data.forecast} />
+          <StormWarning forecast={data.forecast} />
+          {/* 合約 SLA（#3）：季度可用率底線 + 違約金 */}
+          {(() => {
+            const daysLeft = Math.max(0, QUARTER_DAYS - (data.day - data.quarterStartDay));
+            const avg = data.slaSamples > 0 ? data.slaAvailSum / data.slaSamples : data.availability;
+            const atRisk = avg < SLA_FLOOR;
+            const col = atRisk ? C.red : avg < SLA_FLOOR + 3 ? C.amber : C.green;
+            return (
+              <div style={{ marginTop: 10, padding: "7px 9px", borderRadius: 4, background: "rgba(95,168,217,.1)", border: `1px solid ${atRisk ? "rgba(220,100,80,.4)" : "rgba(95,168,217,.3)"}` }}>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11.5 }}>
+                  <span style={{ color: C.gold, fontWeight: 700, letterSpacing: ".06em" }}>{t({ zh: `合約 SLA · 第 ${data.quarter} 季`, en: `Contract SLA · Q${data.quarter}` })}</span>
+                  <span style={{ color: C.mist2 }}>{t({ zh: `剩 ${daysLeft} 天`, en: `${daysLeft}d left` })}</span>
+                </div>
+                <div style={{ ...kvRow, padding: "3px 0 1px" }}><span style={{ color: C.mist }}>{t({ zh: "本季平均可用率", en: "Quarter avg avail." })}</span><span style={{ fontWeight: 700, color: col }}>{avg.toFixed(1)}%</span></div>
+                <div style={{ ...kvRow, padding: "1px 0" }}><span style={{ color: C.mist }}>{t({ zh: "違約底線", en: "SLA floor" })}</span><span style={{ fontWeight: 700 }}>{SLA_FLOOR}%</span></div>
+                {atRisk && <div style={{ fontSize: 11, color: C.red, marginTop: 3 }}>⚠ {t({ zh: "低於底線：季末將扣違約金，盡快拉高可用率", en: "Below floor: penalty looms at quarter end — raise availability" })}</div>}
+                {data.lastSla && (
+                  <div style={{ fontSize: 10.5, color: data.lastSla.breached ? C.red : C.green, marginTop: 3 }}>
+                    {t({ zh: `上季：${data.lastSla.avg}% ${data.lastSla.breached ? `違約 −◎${toWan(data.lastSla.penalty)}萬` : "達標 ✔"}`, en: `Last Q: ${data.lastSla.avg}% ${data.lastSla.breached ? `breach −◎${toWan(data.lastSla.penalty)}M` : "met ✔"}` })}
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+          <div style={{ ...kvRow, marginTop: 8 }}><span style={{ color: C.mist }}>{t({ zh: "營運風場", en: "Farms" })}</span><span style={{ fontWeight: 700 }}>{data.farmsOwned} / {FARMS.length}</span></div>
           <div style={kvRow}><span style={{ color: C.mist }}>{t({ zh: "可用率", en: "Availability" })}</span><span style={{ fontWeight: 700 }}>{data.availability}%</span></div>
           <div style={kvRow}><span style={{ color: C.mist }}>{t({ zh: "發電量", en: "Generation" })}</span><span style={{ fontWeight: 700 }}>{data.generationMWh} MWh</span></div>
           <div style={kvRow}><span style={{ color: C.mist }}>{t({ zh: "安全事件", en: "Safety incidents" })}</span><span style={{ fontWeight: 700, color: data.safetyIncidents > 0 ? C.red : C.green }}>{data.safetyIncidents}</span></div>
@@ -196,6 +250,31 @@ export default function HubScreen({ setScreen, accent, onDispatch, onFacility, s
                     <div style={{ color: C.cream, fontSize: 13.5, fontWeight: 700, margin: "2px 0" }}>{t(quest.title)}</div>
                     <div style={{ color: C.mist, fontSize: 11.5 }}>{quest.unit} · {fault ? t(fault.name) : "—"} · <span style={{ color: stage === "done" ? C.green : C.amber2 }}>{t(stage === "available" ? S.status.available : stage === "active" ? S.status.active : S.status.done)}</span></div>
                     {stage === "active" && <div style={{ fontSize: 11, color: C.amber2, marginTop: 4 }}>{t({ zh: "⚠ 停機中：每天約損失 3 萬", en: "⚠ Down: ~30k/day lost" })}</div>}
+                    {/* 多回合大修（#4）：需連續可作業天氣窗，惡劣海象停滯 + 船舶待命費 */}
+                    {stage === "active" && data.overhaul && (() => {
+                      const oh = data.overhaul;
+                      const pct = Math.round((oh.progress / oh.need) * 100);
+                      const seaOk = data.seaState === "workable";
+                      return (
+                        <div style={{ marginTop: 8, padding: "8px 9px", borderRadius: 4, background: "rgba(214,167,84,.1)", border: "1px solid rgba(214,167,84,.34)" }}>
+                          <div style={{ fontSize: 11.5, fontWeight: 700, color: C.goldText }}>🛠 {t({ zh: "大修工程進行中", en: "Overhaul in progress" })} · {oh.unit}</div>
+                          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: C.mist, marginTop: 3 }}>
+                            <span>{t({ zh: "可作業工日", en: "Workable days" })}</span><span style={{ color: C.cream, fontWeight: 700 }}>{oh.progress} / {oh.need}</span>
+                          </div>
+                          <div style={{ height: 6, borderRadius: 3, background: "rgba(255,255,255,.1)", overflow: "hidden", margin: "3px 0" }}><div style={{ width: `${pct}%`, height: "100%", background: primaryBg(accent) }} /></div>
+                          <div style={{ fontSize: 10.5, color: C.amber2, marginTop: 1 }}>{t({ zh: `安裝船待命費 ◎${toWan(DEMURRAGE_PER_DAY)} 萬／天（停機中）`, en: `Jack-up standby ◎${toWan(DEMURRAGE_PER_DAY)}M/day (down)` })}</div>
+                          <div style={{ fontSize: 11, color: seaOk ? C.green : C.red, marginTop: 2 }}>
+                            {seaOk
+                              ? t({ zh: "✔ 今日可作業：推進 +1 工日", en: "✔ Workable today: push adds +1 day" })
+                              : t({ zh: "✖ 今日不可作業：推進只會空耗 1 天待命費，建議等可作業窗", en: "✖ Not workable: pushing only burns a standby day — wait for a workable window" })}
+                          </div>
+                          {oh.demurrageDays > 0 && <div style={{ fontSize: 10.5, color: C.amber2, marginTop: 2 }}>{t({ zh: `已因惡劣海象停滯 ${oh.demurrageDays} 天`, en: `Stalled ${oh.demurrageDays}d by weather` })}</div>}
+                          <button onClick={() => { (seaOk ? Sfx.success : Sfx.error)(); dispatch({ type: "ADVANCE_OVERHAUL" }); }} style={{ width: "100%", marginTop: 8, padding: "7px 0", borderRadius: 4, border: "1px solid rgba(255,236,196,.6)", background: seaOk ? primaryBg(accent) : "rgba(220,100,80,.18)", color: seaOk ? C.ink : C.redText, fontFamily: FONT_SERIF, fontWeight: 900, fontSize: 13, cursor: "pointer" }}>
+                            {seaOk ? t({ zh: "推進大修（消耗 1 天）", en: "Push overhaul (1 day)" }) : t({ zh: "仍要推進（空耗待命費）", en: "Push anyway (burn standby)" })}
+                          </button>
+                        </div>
+                      );
+                    })()}
                     {/* 接單 / 下一關 動作 */}
                     {stage === "available" && (
                       <button onClick={() => { Sfx.click(); dispatch({ type: "ACCEPT_QUEST" }); if (data.customQuest) say({ speaker: "narrator_girl", expr: "happy", line: { zh: `工單已接下！前往 ${quest.unit}，從中央「出海航行」出發！`, en: `Accepted! Head to ${quest.unit} via Set Sail.` } }); else say(mission.intro); }} style={{ width: "100%", marginTop: 8, padding: "7px 0", borderRadius: 4, border: "1px solid rgba(255,236,196,.6)", background: primaryBg(accent), color: C.ink, fontFamily: FONT_SERIF, fontWeight: 900, fontSize: 13, cursor: "pointer" }}>{t(S.btn.accept)}</button>

@@ -25,6 +25,17 @@ const SEA: Record<SeaState, { c: string; label: I18n }> = {
   closed: { c: C.red, label: S.status.closed },
 };
 
+// 三日預報迷你點（#2）：海象晶片下方一眼掌握未來天氣窗
+function ForecastDots({ forecast }: { forecast: SeaState[] }) {
+  return (
+    <div style={{ display: "flex", gap: 3, marginTop: 2 }}>
+      {forecast.map((s, i) => (
+        <span key={i} title={t(SEA[s].label)} style={{ width: 7, height: 7, borderRadius: "50%", background: SEA[s].c, opacity: 0.9 }} />
+      ))}
+    </div>
+  );
+}
+
 export default function TopBar({
   screen,
   setScreen,
@@ -148,6 +159,7 @@ export default function TopBar({
             </div>
             <div style={{ color: C.mist, fontSize: 10 }}>{t(S.hud.seaSub)}</div>
           </div>
+          <ForecastDots forecast={data.forecast} />
         </div>
         <div style={chip}>
           <span style={{ color: C.gold }}>◷</span>
