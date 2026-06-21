@@ -114,6 +114,12 @@ export default function FleetOpsModal({ open, onClose }: { open: boolean; onClos
         <div style={{ marginBottom: 12, padding: "10px 12px", borderRadius: 6, background: "rgba(192,70,58,.1)", border: "1px solid rgba(192,70,58,.35)" }}>
           <div style={{ fontSize: 13.5, fontWeight: 700, color: C.cream }}>{selT.id} · {t(inc.name)} <span style={{ color: C.mist, fontWeight: 400, fontSize: 12 }}>（{t(DISC[inc.discipline])} · {t({ zh: "工期", en: "duration" })} {inc.repairDays} {t({ zh: "天", en: "d" })}）</span></div>
           <div style={{ fontSize: 11.5, color: C.amber2, margin: "4px 0 8px" }}>{t({ zh: "停機中每日損失約", en: "Losing ~" })} {selT.gen} MWh/{t({ zh: "天", en: "day" })}</div>
+          {inc.resettable && (
+            <button onClick={() => { Sfx.success(); dispatch({ type: "OPS_RESET", turbine: selT.id }); setSel(null); }} style={{ width: "100%", marginBottom: 8, padding: "8px 0", borderRadius: 5, border: "1px solid rgba(95,168,217,.6)", background: "rgba(95,168,217,.18)", color: C.cream, fontFamily: FONT_SERIF, fontWeight: 900, fontSize: 13, cursor: "pointer" }}>
+              ⟳ {t({ zh: "遠端重啟（1 天・免技師）", en: "Remote restart (1 day, no crew)" })}
+            </button>
+          )}
+          <div style={{ fontSize: 11, color: C.mist, marginBottom: 4 }}>{inc.resettable ? t({ zh: "或派技師現場處理：", en: "Or dispatch crew on site:" }) : t({ zh: "需派對應科別技師：", en: "Dispatch matching crew:" })}</div>
           {candidates.length === 0 ? (
             <div style={{ fontSize: 12, color: C.mist }}>{t({ zh: `無可用的「${DISC[inc.discipline].zh}」技師（過勞或不足）。可靠港休整或到技師公會招募同科別技師。`, en: `No available ${DISC[inc.discipline].en} crew (fatigued or none). Rest in port or hire one at the Tech Guild.` })}</div>
           ) : (
@@ -139,7 +145,7 @@ export default function FleetOpsModal({ open, onClose }: { open: boolean; onClos
               <div key={j.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "5px 8px", borderRadius: 4, background: "rgba(255,255,255,.04)", marginBottom: 4, fontSize: 12.5 }}>
                 <span style={{ color: C.goldText, fontWeight: 700 }}>{j.turbine}</span>
                 <span style={{ color: C.cream }}>{ic ? t(ic.name) : ""}</span>
-                <span style={{ color: C.mist }}>· {e?.name ?? "?"} ({t(DISC[j.discipline])})</span>
+                <span style={{ color: C.mist }}>· {j.remote ? t({ zh: "遠端重啟", en: "Remote restart" }) : `${e?.name ?? "?"} (${t(DISC[j.discipline])})`}</span>
                 <span style={{ marginLeft: "auto", color: C.amber2 }}>{t({ zh: "剩", en: "" })} {j.daysLeft} {t({ zh: "天", en: "d left" })}</span>
               </div>
             );
