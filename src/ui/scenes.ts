@@ -24,23 +24,22 @@ export interface SceneTheme {
   pier: boolean; // 前景碼頭
 }
 
+// 近景：少而大的風機（鏡頭拉近 #32）
 const ROW_A: TurbineCfg[] = [
-  { left: "16%", bottom: "45.5%", opacity: 0.32, scale: 0.75, spin: 13, base: 10 },
-  { left: "33%", bottom: "46%", opacity: 0.45, scale: 0.95, spin: 11, base: 40 },
-  { left: "51%", bottom: "45.2%", opacity: 0.5, scale: 1.1, spin: 9, base: 0 },
-  { left: "67%", bottom: "46.3%", opacity: 0.4, scale: 0.85, spin: 12, base: 20 },
-  { left: "80%", bottom: "45.6%", opacity: 0.3, scale: 0.7, spin: 14, base: 60 },
+  { left: "29%", bottom: "40%", opacity: 0.82, scale: 1.7, spin: 10, base: 0 },
+  { left: "45%", bottom: "35%", opacity: 0.95, scale: 2.4, spin: 8.5, base: 40 },
+  { left: "62%", bottom: "39%", opacity: 0.86, scale: 1.9, spin: 11, base: 20 },
+  { left: "76%", bottom: "44%", opacity: 0.6, scale: 1.25, spin: 12.5, base: 60 },
 ];
 
-// 較密集的機群（不同風場配置）
+// 較密集的機群（不同風場配置，仍偏近景）
 const ROW_DENSE: TurbineCfg[] = [
-  { left: "10%", bottom: "45.4%", opacity: 0.28, scale: 0.62, spin: 14, base: 10 },
-  { left: "23%", bottom: "46.2%", opacity: 0.4, scale: 0.82, spin: 11, base: 35 },
-  { left: "37%", bottom: "45.3%", opacity: 0.5, scale: 1.0, spin: 9, base: 0 },
-  { left: "50%", bottom: "46.4%", opacity: 0.46, scale: 0.9, spin: 10, base: 50 },
-  { left: "63%", bottom: "45.2%", opacity: 0.52, scale: 1.08, spin: 8.5, base: 20 },
-  { left: "77%", bottom: "46%", opacity: 0.38, scale: 0.8, spin: 12, base: 60 },
-  { left: "88%", bottom: "45.5%", opacity: 0.28, scale: 0.64, spin: 13.5, base: 90 },
+  { left: "20%", bottom: "43%", opacity: 0.6, scale: 1.25, spin: 13, base: 10 },
+  { left: "33%", bottom: "39%", opacity: 0.82, scale: 1.7, spin: 11, base: 35 },
+  { left: "46%", bottom: "35.5%", opacity: 0.95, scale: 2.3, spin: 9, base: 0 },
+  { left: "59%", bottom: "38.5%", opacity: 0.84, scale: 1.85, spin: 10, base: 50 },
+  { left: "71%", bottom: "42%", opacity: 0.64, scale: 1.35, spin: 8.5, base: 20 },
+  { left: "82%", bottom: "45%", opacity: 0.46, scale: 1.0, spin: 12, base: 60 },
 ];
 
 export const SCENES: SceneTheme[] = [

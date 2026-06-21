@@ -33,6 +33,7 @@ export default function App() {
   const [facility, setFacility] = useState<Facility | null>(null);
   const [loggedIn, setLoggedIn] = useState(() => getProfile() != null);
   const [sceneId, setSceneId] = useState(getSceneId);
+  const [aerial, setAerial] = useState(false); // 俯瞰風場全景模式（#32）
 
   // 切換海域背景（#32）：循環到下一個主題並記住選擇
   const cycleScene = () => {
@@ -89,9 +90,9 @@ export default function App() {
             overflow: "hidden",
           }}
         >
-          {showSharedBg && <SceneBackground sceneId={sceneId} />}
+          {showSharedBg && <SceneBackground sceneId={sceneId} aerial={aerial && screen === "hub"} />}
 
-          {screen === "hub" && <HubScreen setScreen={setScreen} accent={accent} onDispatch={() => setShowDispatch(true)} onFacility={(k) => setFacility(k)} sceneId={sceneId} onCycleScene={cycleScene} />}
+          {screen === "hub" && <HubScreen setScreen={setScreen} accent={accent} onDispatch={() => setShowDispatch(true)} onFacility={(k) => setFacility(k)} sceneId={sceneId} onCycleScene={cycleScene} aerial={aerial} onToggleView={() => setAerial((v) => !v)} />}
           {screen === "market" && <MarketScreen accent={accent} />}
           {screen === "sail" && <SailScreen setScreen={setScreen} accent={accent} />}
           {screen === "repair" && <RepairScreen setScreen={setScreen} />}
