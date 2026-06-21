@@ -55,7 +55,7 @@ function OpsBlock({ title, children }: { title: I18n; children: ReactNode }) {
 
 const kvRow: CSSProperties = { display: "flex", justifyContent: "space-between", fontSize: 13, color: C.cream, padding: "3px 0" };
 
-export default function HubScreen({ setScreen, accent, onDispatch, onFacility, sceneId, onCycleScene, aerial, onToggleView }: { setScreen: (s: Screen) => void; accent: string; onDispatch?: () => void; onFacility?: (k: "vessel" | "tech" | "tool" | "codex" | "ranking" | "farms") => void; sceneId?: string; onCycleScene?: () => void; aerial?: boolean; onToggleView?: () => void }) {
+export default function HubScreen({ setScreen, accent, onDispatch, onFacility, sceneId, onCycleScene, aerial, onToggleView, realistic, onToggleRealistic }: { setScreen: (s: Screen) => void; accent: string; onDispatch?: () => void; onFacility?: (k: "vessel" | "tech" | "tool" | "codex" | "ranking" | "farms") => void; sceneId?: string; onCycleScene?: () => void; aerial?: boolean; onToggleView?: () => void; realistic?: boolean; onToggleRealistic?: () => void }) {
   useLang();
   const { data, dispatch } = useGame();
   const { say } = useDialogue();
@@ -231,11 +231,17 @@ export default function HubScreen({ setScreen, accent, onDispatch, onFacility, s
           {aerial ? t({ zh: "港景視角", en: "Port view" }) : t({ zh: "俯瞰全景", en: "Aerial view" })}
         </div>
         {!aerial && (
-          <div onClick={() => { Sfx.click(); onCycleScene?.(); }} style={{ display: "flex", alignItems: "center", gap: 7, padding: "7px 15px", borderRadius: 20, background: "rgba(10,28,36,.72)", border: "1px solid rgba(214,167,84,.4)", color: C.cream, fontSize: 13, fontWeight: 700, cursor: "pointer", backdropFilter: "blur(3px)", whiteSpace: "nowrap" }}>
-            <span style={{ color: C.gold, fontSize: 15 }}>🎨</span>
-            {t({ zh: "海域", en: "Scene" })}：{t(sceneById(sceneId ?? "").name)}
-            <span style={{ color: C.mist2 }}>↻</span>
-          </div>
+          <>
+            <div onClick={() => { Sfx.click(); onToggleRealistic?.(); }} style={{ display: "flex", alignItems: "center", gap: 7, padding: "7px 15px", borderRadius: 20, background: realistic ? "linear-gradient(180deg,#e8c074,#d9a441)" : "rgba(10,28,36,.72)", border: "1px solid rgba(214,167,84,.45)", color: realistic ? C.ink : C.cream, fontSize: 13, fontWeight: 700, cursor: "pointer", backdropFilter: "blur(3px)", whiteSpace: "nowrap" }}>
+              <span style={{ fontSize: 15 }}>{realistic ? "📷" : "✏️"}</span>
+              {realistic ? t({ zh: "實境模式", en: "Realistic" }) : t({ zh: "模擬模式", en: "Simulation" })}
+            </div>
+            <div onClick={() => { Sfx.click(); onCycleScene?.(); }} style={{ display: "flex", alignItems: "center", gap: 7, padding: "7px 15px", borderRadius: 20, background: "rgba(10,28,36,.72)", border: "1px solid rgba(214,167,84,.4)", color: C.cream, fontSize: 13, fontWeight: 700, cursor: "pointer", backdropFilter: "blur(3px)", whiteSpace: "nowrap" }}>
+              <span style={{ color: C.gold, fontSize: 15 }}>🎨</span>
+              {t({ zh: "海域", en: "Scene" })}：{t(sceneById(sceneId ?? "").name)}
+              <span style={{ color: C.mist2 }}>↻</span>
+            </div>
+          </>
         )}
       </div>
 

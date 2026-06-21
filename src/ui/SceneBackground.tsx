@@ -49,10 +49,20 @@ function FleetShip({ left, bottom, scale = 1, opacity = 0.7 }: { left: string; b
   );
 }
 
-// 共用背景場景（可切換海域主題 #32 + 俯瞰模式），永遠在 z0。
-export default function SceneBackground({ showTurbines = true, sceneId = "changhua_dawn", aerial = false }: { showTurbines?: boolean; sceneId?: string; aerial?: boolean }) {
+// 共用背景場景（可切換海域主題 #32 + 俯瞰 + 實境模式），永遠在 z0。
+export default function SceneBackground({ showTurbines = true, sceneId = "changhua_dawn", aerial = false, realistic = false }: { showTurbines?: boolean; sceneId?: string; aerial?: boolean; realistic?: boolean }) {
   const s = sceneById(sceneId);
   if (aerial) return <AerialFarm />;
+  // 實境模式：用實景照片當背景（照片本身已含風機/船/基礎）
+  if (realistic) {
+    const url = `${import.meta.env.BASE_URL}assets/scenes/${s.realImg}`;
+    return (
+      <div style={{ position: "absolute", inset: 0, zIndex: 0 }}>
+        <div style={{ position: "absolute", inset: 0, backgroundImage: `url("${url}")`, backgroundSize: "cover", backgroundPosition: "center" }} />
+        <div style={{ position: "absolute", inset: 0, background: "radial-gradient(circle at 50% 42%, rgba(6,18,24,0) 56%, rgba(6,18,24,.45) 100%)", pointerEvents: "none" }} />
+      </div>
+    );
+  }
   return (
     <div style={{ position: "absolute", inset: 0, zIndex: 0 }}>
       <div style={{ position: "absolute", left: 0, right: 0, top: 0, height: "58%", background: s.sky }} />

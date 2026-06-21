@@ -19,7 +19,7 @@ import { GameProvider } from "./state/GameContext";
 import { DialogueProvider } from "./state/DialogueContext";
 import { Bgm } from "./audio/bgm";
 import { getProfile, clearProfile } from "./state/profile";
-import { SCENES, getSceneId, setSceneId as persistSceneId } from "./ui/scenes";
+import { SCENES, getSceneId, setSceneId as persistSceneId, getRealistic, setRealistic as persistRealistic } from "./ui/scenes";
 
 export type Screen = "hub" | "market" | "sail" | "repair";
 
@@ -34,6 +34,8 @@ export default function App() {
   const [loggedIn, setLoggedIn] = useState(() => getProfile() != null);
   const [sceneId, setSceneId] = useState(getSceneId);
   const [aerial, setAerial] = useState(false); // 俯瞰風場全景模式（#32）
+  const [realistic, setRealistic] = useState(getRealistic); // 模擬/實境模式（#32）
+  const toggleRealistic = () => setRealistic((v) => { persistRealistic(!v); return !v; });
 
   // 切換海域背景（#32）：循環到下一個主題並記住選擇
   const cycleScene = () => {
@@ -90,9 +92,9 @@ export default function App() {
             overflow: "hidden",
           }}
         >
-          {showSharedBg && <SceneBackground sceneId={sceneId} aerial={aerial && screen === "hub"} />}
+          {showSharedBg && <SceneBackground sceneId={sceneId} aerial={aerial && screen === "hub"} realistic={realistic} />}
 
-          {screen === "hub" && <HubScreen setScreen={setScreen} accent={accent} onDispatch={() => setShowDispatch(true)} onFacility={(k) => setFacility(k)} sceneId={sceneId} onCycleScene={cycleScene} aerial={aerial} onToggleView={() => setAerial((v) => !v)} />}
+          {screen === "hub" && <HubScreen setScreen={setScreen} accent={accent} onDispatch={() => setShowDispatch(true)} onFacility={(k) => setFacility(k)} sceneId={sceneId} onCycleScene={cycleScene} aerial={aerial} onToggleView={() => setAerial((v) => !v)} realistic={realistic} onToggleRealistic={toggleRealistic} />}
           {screen === "market" && <MarketScreen accent={accent} />}
           {screen === "sail" && <SailScreen setScreen={setScreen} accent={accent} />}
           {screen === "repair" && <RepairScreen setScreen={setScreen} />}
