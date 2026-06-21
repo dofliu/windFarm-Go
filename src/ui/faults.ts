@@ -1,5 +1,5 @@
 import type { I18n } from "../game/systems/types";
-import type { Quest } from "../state/game";
+import type { Quest, Discipline } from "../state/game";
 
 // 故障題庫（B1/B2）：每個故障 = SCADA 告警 + 診斷測驗 + SOP 步驟
 export interface Fault {
@@ -11,6 +11,7 @@ export interface Fault {
   sop: I18n[]; // 5 步驟（前兩步預設完成）
   knowledge_point: string;
   part: string; // 完成維修所需的必備備品 id（對應 data.ts PARTS）
+  discipline: Discipline; // 需對應科別的技師（#27）
 }
 
 export const FAULTS: Record<string, Fault> = {
@@ -43,6 +44,7 @@ export const FAULTS: Record<string, Fault> = {
     ],
     knowledge_point: "gearbox_thermal",
     part: "gearbox_oil",
+    discipline: "mechanical",
   },
   yaw_misalign: {
     id: "yaw_misalign",
@@ -73,6 +75,7 @@ export const FAULTS: Record<string, Fault> = {
     ],
     knowledge_point: "yaw_brake",
     part: "yaw_motor",
+    discipline: "control",
   },
   gen_vibration: {
     id: "gen_vibration",
@@ -103,6 +106,7 @@ export const FAULTS: Record<string, Fault> = {
     ],
     knowledge_point: "vibration_bpfi",
     part: "pitch_bearing",
+    discipline: "mechanical",
   },
   pitch_fault: {
     id: "pitch_fault",
@@ -133,6 +137,7 @@ export const FAULTS: Record<string, Fault> = {
     ],
     knowledge_point: "pitch_backup",
     part: "hydraulic_oil",
+    discipline: "control",
   },
   converter_fault: {
     id: "converter_fault",
@@ -163,6 +168,7 @@ export const FAULTS: Record<string, Fault> = {
     ],
     knowledge_point: "converter_cooling",
     part: "converter",
+    discipline: "electrical",
   },
 };
 

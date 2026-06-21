@@ -3,6 +3,19 @@ import type { I18n } from "../game/systems/types";
 // ───────── 全域遊戲狀態模型（A1 工單系統 / A2 採購 / A3 結算 / D1 存檔）─────────
 export type SeaState = "workable" | "caution" | "closed";
 export type QuestStage = "available" | "active" | "done";
+export type JobPhase = "office" | "enroute" | "onsite"; // 出勤階段（#25）
+export type Discipline = "mechanical" | "electrical" | "control" | "structural" | "hse";
+
+export interface Engineer {
+  id: string;
+  name: string;
+  discipline: Discipline;
+  level: number;
+}
+
+export const SEA_INDEX: Record<SeaState, number> = { workable: 0, caution: 1, closed: 2 };
+export const vesselSeaTol = (ownsSOV: boolean) => (ownsSOV ? 2 : 1); // CTV 可到 caution；SOV 可到 closed
+export const BASE_GEN_PER_DAY = 120; // 100% 可用率每日發電量 (MWh)
 
 export interface Quest {
   id: string;
@@ -37,6 +50,10 @@ export interface GameData {
   seenFaults: string[]; // 圖鑑：已修復過的故障
   missionsDone: number; // 排行榜 KPI
   pendingOrders: { partId: string; arriveDay: number; qty: number }[]; // 備品在途（lead time，C）
+  engineers: Engineer[]; // 已招募技師（#27）
+  ownsSOV: boolean; // 是否擁有 SOV（#26，可在高海象出航）
+  jobPhase: JobPhase; // 出勤階段（#25）：office→enroute→onsite
+  generationMWh: number; // 累積發電量（#28 KPI）
 }
 
 export const DOWNTIME_PER_DAY = 30_000; // 機組停機每日損失（C）
@@ -64,6 +81,10 @@ export const INITIAL: GameData = {
   seenFaults: [],
   missionsDone: 0,
   pendingOrders: [],
+  engineers: [{ id: "eng_start", name: "阿銘", discipline: "mechanical", level: 1 }], // 起始機械技師
+  ownsSOV: false,
+  jobPhase: "office",
+  generationMWh: 0,
 };
 
 // 推進 N 天：交付到貨的備品 + 扣除停機成本（C）
@@ -79,7 +100,8 @@ function advance(s: GameData, days = 1): Partial<GameData> {
     } else pend.push(o);
   }
   const downtime = s.questStage === "active" && !s.repairDone ? DOWNTIME_PER_DAY * days : 0;
-  return { day, pendingOrders: pend, inventory: inv, cargoUsed: cargo, budget: Math.max(0, s.budget - downtime) };
+  const gen = s.generationMWh + Math.round((s.availability / 100) * BASE_GEN_PER_DAY * days); // 發電量隨可用率累積（#28）
+  return { day, pendingOrders: pend, inventory: inv, cargoUsed: cargo, budget: Math.max(0, s.budget - downtime), generationMWh: gen };
 }
 
 export type Action =
@@ -89,6 +111,10 @@ export type Action =
   | { type: "FINISH_REPAIR"; quest: Quest; part?: string } // 維修完成 → 結算（A3）+ 消耗備品
   | { type: "DO_ROUTINE"; budget: number; xp: number } // 調度中心例行小任務（#21）
   | { type: "UPGRADE"; kind: "vessel" | "tech" | "tool"; cost: number } // 設施升級（A）
+  | { type: "HIRE"; engineer: Engineer; cost: number } // 招募技師（#27）
+  | { type: "BUY_SOV"; cost: number } // 購置 SOV（#26）
+  | { type: "DEPART" } // 出航 → enroute（#25）
+  | { type: "ARRIVE" } // 抵達 → onsite（#25）
   | { type: "FAIL_REPAIR" } // 天氣窗關閉、撤離（#17）
   | { type: "REST" } // 靠港休整：進日 + 重新擲海象（#18）
   | { type: "NEXT_QUEST"; poolSize: number } // 下一關（#20 主線推進）
@@ -105,9 +131,19 @@ function rollSea(): SeaState {
 export function reducer(s: GameData, a: Action): GameData {
   switch (a.type) {
     case "ACCEPT_QUEST":
-      return { ...s, questStage: "active", repairDone: false, seaState: rollSea() };
+      return { ...s, questStage: "active", repairDone: false, jobPhase: "office", seaState: rollSea() };
+    case "HIRE":
+      if (a.cost > s.budget) return s;
+      return { ...s, budget: s.budget - a.cost, engineers: [...s.engineers, a.engineer] };
+    case "BUY_SOV":
+      if (a.cost > s.budget || s.ownsSOV) return s;
+      return { ...s, budget: s.budget - a.cost, ownsSOV: true };
+    case "DEPART":
+      return { ...s, jobPhase: "enroute" };
+    case "ARRIVE":
+      return { ...s, jobPhase: "onsite" };
     case "FAIL_REPAIR":
-      return { ...s, availability: Math.max(0, s.availability - 4) };
+      return { ...s, jobPhase: "office", availability: Math.max(0, s.availability - 4) };
     case "REST":
       return { ...s, ...advance(s, 1), seaState: rollSea(), availability: Math.min(100, s.availability + 1) };
     case "BUY": {
@@ -133,7 +169,7 @@ export function reducer(s: GameData, a: Action): GameData {
         cargo = Math.max(0, cargo - 1);
       }
       const seen = s.seenFaults.includes(a.quest.targetFault) ? s.seenFaults : [...s.seenFaults, a.quest.targetFault];
-      return { ...s, repairDone: true, questStage: "done", budget: s.budget + a.quest.rewardBudget, xp: s.xp + a.quest.rewardXp, availability: Math.min(100, s.availability + 8 + s.techLevel * 2), inventory: inv, cargoUsed: cargo, seenFaults: seen, missionsDone: s.missionsDone + 1 };
+      return { ...s, repairDone: true, questStage: "done", jobPhase: "office", budget: s.budget + a.quest.rewardBudget, xp: s.xp + a.quest.rewardXp, availability: Math.min(100, s.availability + 8 + s.techLevel * 2), inventory: inv, cargoUsed: cargo, seenFaults: seen, missionsDone: s.missionsDone + 1 };
     }
     case "DO_ROUTINE": {
       const adv = advance(s, 1);
@@ -149,12 +185,12 @@ export function reducer(s: GameData, a: Action): GameData {
       if (s.questStage !== "done") return s;
       const last = a.poolSize - 1;
       if (s.campaignIndex >= last) return { ...s, campaignDone: true, customQuest: null };
-      return { ...s, ...advance(s, 1), customQuest: null, campaignIndex: s.campaignIndex + 1, questStage: "available", repairDone: false, seaState: rollSea() };
+      return { ...s, ...advance(s, 1), customQuest: null, campaignIndex: s.campaignIndex + 1, questStage: "available", repairDone: false, jobPhase: "office", seaState: rollSea() };
     }
     case "RESTART_CAMPAIGN":
-      return { ...s, campaignIndex: 0, campaignDone: false, customQuest: null, questStage: "available", repairDone: false };
+      return { ...s, campaignIndex: 0, campaignDone: false, customQuest: null, questStage: "available", repairDone: false, jobPhase: "office" };
     case "ASSIGN_QUEST":
-      return { ...s, customQuest: a.quest, questStage: "available", repairDone: false, seaState: rollSea() };
+      return { ...s, customQuest: a.quest, questStage: "available", repairDone: false, jobPhase: "office", seaState: rollSea() };
     case "RESET":
       return { ...INITIAL };
     default:

@@ -82,6 +82,25 @@ export default function RepairScreen({ setScreen }: { setScreen: (s: Screen) => 
     setScreen("hub");
   };
 
+  // #25 出勤就緒閘門：未抵達機組不可維修
+  if (data.jobPhase !== "onsite") {
+    return (
+      <div style={{ position: "absolute", inset: 0, zIndex: 2 }}>
+        <div style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg,#34435e 0%,#5a5d72 38%,#1c4151 100%)" }} />
+        <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div style={{ ...panel, padding: "26px 30px", textAlign: "center", maxWidth: 420 }}>
+            <div style={{ fontSize: 40, marginBottom: 8 }}>🔒</div>
+            <div style={{ fontFamily: FONT_SERIF, fontSize: 18, fontWeight: 900, color: C.cream, marginBottom: 8 }}>{t({ zh: "尚未出勤抵達機組", en: "Not on site yet" })}</div>
+            <div style={{ fontSize: 13, color: C.mist, lineHeight: 1.6, marginBottom: 16 }}>{t({ zh: "維修需先在「出海航行」完成出勤就緒檢查並航行抵達機組。", en: "Complete the mobilization check in Set Sail and travel to the unit before repairing." })}</div>
+            <button onClick={() => setScreen("sail")} style={{ padding: "10px 24px", borderRadius: 6, border: "1px solid rgba(255,236,196,.6)", background: primaryBg(), color: C.ink, fontFamily: FONT_SERIF, fontWeight: 900, fontSize: 14, cursor: "pointer" }}>
+              {t({ zh: "前往出海航行", en: "Go to Set Sail" })}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div style={{ position: "absolute", inset: 0, zIndex: 2 }}>
       {/* dusk bg */}
