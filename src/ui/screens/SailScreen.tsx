@@ -54,16 +54,15 @@ export default function SailScreen({ setScreen, accent }: { setScreen: (s: Scree
   const [progress, setProgress] = useState(0);
   useEffect(() => {
     if (data.jobPhase !== "enroute") return;
+    let p = 0;
     setProgress(0);
     const id = window.setInterval(() => {
-      setProgress((p) => {
-        if (p >= 100) {
-          window.clearInterval(id);
-          dispatch({ type: "ARRIVE" });
-          return 100;
-        }
-        return p + 4;
-      });
+      p += 4;
+      setProgress(p);
+      if (p >= 100) {
+        window.clearInterval(id);
+        dispatch({ type: "ARRIVE" }); // 在回呼內 dispatch，非渲染期間
+      }
     }, 80);
     return () => window.clearInterval(id);
   }, [data.jobPhase, dispatch]);
