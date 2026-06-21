@@ -2,9 +2,9 @@
 // doPost 寫入試算表、doGet 回排行榜 JSON。繞開 Google 表單的登入限制。
 // 教師部署後把 /exec 網址填入 webAppUrl 並把 enabled 改 true。設定見 docs/LEADERBOARD_SETUP.md。
 export const SHEET_CONFIG = {
-  enabled: false, // ← 部署完成填好 webAppUrl 後改 true
+  enabled: true,
   // Apps Script Web App 的 /exec 網址（部署為「任何人皆可存取」）
-  webAppUrl: "",
+  webAppUrl: "https://script.google.com/macros/s/AKfycbxgy2ugDT1IRSE1vrYSpG-MH8uYm1ZMJbOm5_DSMSf6fcGDYO3nQ2qS-32IPvCwU-wexw/exec",
 };
 
 export interface ScorePayload {
