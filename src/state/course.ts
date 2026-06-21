@@ -7,10 +7,11 @@ export const WEEKS_TOTAL = Math.ceil(CAMPAIGN.length / MISSIONS_PER_WEEK);
 
 export function getWeek(): number {
   try {
-    const v = parseInt(localStorage.getItem(KEY) || "1", 10);
-    return isNaN(v) ? 1 : Math.max(1, Math.min(WEEKS_TOTAL, v));
+    // 預設全開（教師要分週授課再於課程模式調低）
+    const v = parseInt(localStorage.getItem(KEY) || String(WEEKS_TOTAL), 10);
+    return isNaN(v) ? WEEKS_TOTAL : Math.max(1, Math.min(WEEKS_TOTAL, v));
   } catch {
-    return 1;
+    return WEEKS_TOTAL;
   }
 }
 export function setWeek(w: number): void {

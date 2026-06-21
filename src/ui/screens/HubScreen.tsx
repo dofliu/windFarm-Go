@@ -103,8 +103,9 @@ export default function HubScreen({ setScreen, accent, onDispatch, onFacility, s
     <div style={{ position: "absolute", inset: 0, zIndex: 2 }}>
       {/* 中央：風場風景由 SceneBackground 提供，這裡僅放大型出海 CTA */}
 
-      {/* ───── 左側：設施選單 ───── */}
-      <div style={{ ...panel, position: "absolute", left: 26, top: 84, width: 286 }}>
+      {/* ───── 左側：設施 + 風場動態（單一可捲動欄，避免重疊） ───── */}
+      <div style={{ position: "absolute", left: 26, top: 84, width: 292, bottom: 28, overflowY: "auto", overflowX: "hidden", display: "flex", flexDirection: "column", gap: 12 }}>
+      <div style={{ ...panel, flex: "none" }}>
         <div style={panelHeader}><span style={panelTitle}>{t({ zh: "設施", en: "Facilities" })}</span></div>
         <div style={{ padding: "10px 10px 6px" }}>
           <FacRow char="調" label={{ zh: "調度中心", en: "Dispatch" }} stat={stage === "available" ? { zh: "有新工單可接", en: "New order available" } : stage === "active" ? { zh: "工單進行中", en: "Order active" } : { zh: "本關已完成", en: "Stage done" }} onClick={() => { Sfx.click(); onDispatch?.(); }} />
@@ -122,7 +123,7 @@ export default function HubScreen({ setScreen, accent, onDispatch, onFacility, s
       </div>
 
       {/* ───── 左側：風場動態 + 班級動態 ───── */}
-      <div style={{ ...panel, position: "absolute", left: 26, top: 470, width: 286 }}>
+      <div style={{ ...panel, flex: "none" }}>
         <div style={panelHeader}><span style={panelTitle}>{t({ zh: "風場動態", en: "Farm Status" })}</span></div>
         <div style={{ padding: "10px 12px" }}>
           <div style={kvRow}><span style={{ color: C.mist }}>{t({ zh: "海象", en: "Sea" })}</span><span style={{ color: seaColor, fontWeight: 700 }}>{t(seaLabel)}</span></div>
@@ -164,6 +165,7 @@ export default function HubScreen({ setScreen, accent, onDispatch, onFacility, s
             )}
           </div>
         </div>
+      </div>
       </div>
 
       {/* ───── 右側：我的營運（可收納抽屜 #6）───── */}
