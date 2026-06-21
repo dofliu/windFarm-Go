@@ -58,6 +58,9 @@ docs/                       # GDD、schema、設計交付、人物規格
 ## 人物
 十位角色（維修／工安／電氣／監控工程師、風場經理與老闆、資深技師、CTV 船長、競爭運維商，以及嚮導少女「莉莉」）。詳見 [docs/CHARACTERS.md](docs/CHARACTERS.md)。
 
+## 設計文件
+完整遊戲設計（出勤就緒閘門、船隊/技師/備品、天氣與 KPI）見 **[docs/GAME_DESIGN.md](docs/GAME_DESIGN.md)**。
+
 ## 後續工作
 工作項目於 [GitHub Issues](https://github.com/dofliu/windFarm-Go/issues) 追蹤。重點：採購結算流程、工單／任務系統、劇情對話腳本、更多角色表情集、UI 轉向後的文件校正。
 

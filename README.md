@@ -58,6 +58,9 @@ docs/                       # GDD, schema, design handoff, character spec
 ## Characters
 Ten characters (maintenance / safety / electrical / SCADA engineers, farm manager & owner, veteran tech, CTV captain, rival operator, and the guide girl *Lily*). See [docs/CHARACTERS.md](docs/CHARACTERS.md).
 
+## Design
+The authoritative game design (mobilization-gated O&M loop, fleet/engineers/parts, weather & KPIs) is in **[docs/GAME_DESIGN.md](docs/GAME_DESIGN.md)**.
+
 ## Roadmap
 Work items are tracked in [GitHub Issues](https://github.com/dofliu/windFarm-Go/issues). Highlights: purchase checkout flow, work-order/quest system, narrative dialogue scripting, expression sets for more characters, and docs reconciliation after the UI pivot.
 
