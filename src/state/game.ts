@@ -59,6 +59,7 @@ export interface GameData {
   farmsOwned: number; // 營運中的風場數（#34，預設 1）
   safetyIncidents: number; // 安全事件次數（#34，扣績效分）
   lastEvent: EventStamp | null; // 最近一次突發事件（#34）
+  fleetHealth: number; // 機組健康度 0-100（#1）：忽略預兆/未修故障會衰退，提高連鎖故障機率
 }
 
 export const DOWNTIME_PER_DAY = 30_000; // 機組停機每日損失（C）
@@ -105,7 +106,10 @@ export const INITIAL: GameData = {
   farmsOwned: 1,
   safetyIncidents: 0,
   lastEvent: null,
+  fleetHealth: 88,
 };
+
+const clampN = (n: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, n));
 
 // 推進 N 天：交付到貨備品 + 扣停機成本 + 多風場發電 + 人力回復 + 突發事件（C / #34）
 function advance(s: GameData, days = 1): Partial<GameData> {
@@ -130,8 +134,13 @@ function advance(s: GameData, days = 1): Partial<GameData> {
     generationMWh: gen,
     techAvail: Math.min(s.techTotal, s.techAvail + days), // 人力每日緩慢回復
   };
-  // 突發隨機事件（#34）
-  const ev = rollEvent();
+  // 機組健康度衰退（#1）：自然磨耗；未修故障加速劣化（連鎖反應的根源）
+  const neglect = s.questStage === "active" && !s.repairDone ? 1.5 : 0;
+  const health = clampN(s.fleetHealth - (0.5 + neglect) * days, 0, 100);
+  patch.fleetHealth = health;
+  // 健康度越低 → 突發事件機率越高、且偏向壞事件（連鎖故障）
+  const riskBoost = ((100 - health) / 100) * 0.4;
+  const ev = rollEvent(riskBoost, health);
   if (ev) {
     const evPatch = ev.apply({ ...s, ...patch } as GameData);
     patch = { ...patch, ...evPatch, lastEvent: { id: ev.id, name: ev.name, desc: ev.desc, good: !!ev.good, day } };
@@ -156,7 +165,7 @@ export type Action =
   | { type: "NEXT_QUEST"; poolSize: number } // 下一關（#20 主線推進）
   | { type: "RESTART_CAMPAIGN" } // 重玩戰役（#20）
   | { type: "ASSIGN_QUEST"; quest: Quest } // 課程模式臨時指派（#6）
-  | { type: "RESOLVE_TASK"; dAvail: number; dBudget: number; dSafety: number; dGen: number; xp: number } // 自由營運沙盒任務結算
+  | { type: "RESOLVE_TASK"; dAvail: number; dBudget: number; dSafety: number; dGen: number; dHealth: number; xp: number } // 自由營運沙盒任務結算
   | { type: "LOAD_STATE"; state: Partial<GameData> } // 雲端存檔載入（#31）
   | { type: "RESET" };
 
@@ -186,8 +195,10 @@ export function reducer(s: GameData, a: Action): GameData {
     case "FAIL_REPAIR":
       // 撤離/返航改期 = 安全近失事件（#34），可用率小扣 + 安全計分
       return { ...s, jobPhase: "office", availability: Math.max(0, s.availability - 4), safetyIncidents: s.safetyIncidents + 1 };
-    case "REST":
-      return { ...s, ...advance(s, 1), seaState: rollSea(), availability: Math.min(100, s.availability + 1) };
+    case "REST": {
+      const adv = advance(s, 1);
+      return { ...s, ...adv, seaState: rollSea(), availability: Math.min(100, s.availability + 1), fleetHealth: clampN((adv.fleetHealth ?? s.fleetHealth) + 1.5, 0, 100) };
+    }
     case "BUY": {
       if (a.cost > s.budget) return s;
       if (a.leadDays > 0) {
@@ -211,7 +222,7 @@ export function reducer(s: GameData, a: Action): GameData {
         cargo = Math.max(0, cargo - 1);
       }
       const seen = s.seenFaults.includes(a.quest.targetFault) ? s.seenFaults : [...s.seenFaults, a.quest.targetFault];
-      return { ...s, repairDone: true, questStage: "done", jobPhase: "office", budget: s.budget + a.quest.rewardBudget, xp: s.xp + a.quest.rewardXp, availability: Math.min(100, s.availability + 8 + s.techLevel * 2), inventory: inv, cargoUsed: cargo, seenFaults: seen, missionsDone: s.missionsDone + 1 };
+      return { ...s, repairDone: true, questStage: "done", jobPhase: "office", budget: s.budget + a.quest.rewardBudget, xp: s.xp + a.quest.rewardXp, availability: Math.min(100, s.availability + 8 + s.techLevel * 2), fleetHealth: clampN(s.fleetHealth + 8, 0, 100), inventory: inv, cargoUsed: cargo, seenFaults: seen, missionsDone: s.missionsDone + 1 };
     }
     case "DO_ROUTINE": {
       const adv = advance(s, 1);
@@ -243,6 +254,7 @@ export function reducer(s: GameData, a: Action): GameData {
         budget: Math.max(0, (adv.budget ?? s.budget) + a.dBudget),
         generationMWh: Math.max(0, (adv.generationMWh ?? s.generationMWh) + a.dGen),
         safetyIncidents: s.safetyIncidents + a.dSafety,
+        fleetHealth: clampN((adv.fleetHealth ?? s.fleetHealth) + a.dHealth, 0, 100),
         xp: s.xp + a.xp,
         missionsDone: s.missionsDone + 1,
       };

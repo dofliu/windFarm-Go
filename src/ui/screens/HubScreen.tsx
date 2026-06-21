@@ -131,6 +131,17 @@ export default function HubScreen({ setScreen, accent, onDispatch, onFacility, s
           <div style={kvRow}><span style={{ color: C.mist }}>{t({ zh: "可用率", en: "Availability" })}</span><span style={{ fontWeight: 700 }}>{data.availability}%</span></div>
           <div style={kvRow}><span style={{ color: C.mist }}>{t({ zh: "發電量", en: "Generation" })}</span><span style={{ fontWeight: 700 }}>{data.generationMWh} MWh</span></div>
           <div style={kvRow}><span style={{ color: C.mist }}>{t({ zh: "安全事件", en: "Safety incidents" })}</span><span style={{ fontWeight: 700, color: data.safetyIncidents > 0 ? C.red : C.green }}>{data.safetyIncidents}</span></div>
+          {(() => {
+            const h = Math.round(data.fleetHealth);
+            const hc = h >= 70 ? C.green : h >= 40 ? C.amber : C.red;
+            return (
+              <>
+                <div style={kvRow}><span style={{ color: C.mist }}>{t({ zh: "機組健康度", en: "Fleet health" })}</span><span style={{ fontWeight: 700, color: hc }}>{h}%</span></div>
+                <div style={{ height: 5, borderRadius: 3, background: "rgba(255,255,255,.1)", overflow: "hidden", margin: "1px 0 2px" }}><div style={{ width: `${h}%`, height: "100%", background: hc }} /></div>
+                {h < 40 && <div style={{ fontSize: 11, color: C.red, marginTop: 2 }}>⚠ {t({ zh: "健康度偏低：突發故障機率上升，盡快預防保養/搶修", en: "Low health: failures more likely — do preventive/repair work" })}</div>}
+              </>
+            );
+          })()}
           {data.lastEvent && (
             <div style={{ marginTop: 8, padding: "7px 9px", borderRadius: 4, background: data.lastEvent.good ? "rgba(127,206,142,.1)" : "rgba(227,173,66,.12)", border: `1px solid ${data.lastEvent.good ? "rgba(127,206,142,.28)" : "rgba(227,173,66,.32)"}` }}>
               <div style={{ fontSize: 11.5, fontWeight: 700, color: data.lastEvent.good ? C.green : C.amber2 }}>📣 {t({ zh: "最新事件", en: "Latest event" })} · {t(data.lastEvent.name)}</div>

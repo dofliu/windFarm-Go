@@ -66,12 +66,18 @@ export const EVENTS: GameEvent[] = [
 ];
 
 const TOTAL_WEIGHT = EVENTS.reduce((a, e) => a + e.weight, 0);
+const BAD = EVENTS.filter((e) => !e.good);
 
-// 約 35% 機率觸發一個事件（依權重），否則回 null（平靜的一天）。
-export function rollEvent(): GameEvent | null {
-  if (Math.random() > 0.35) return null;
-  let r = Math.random() * TOTAL_WEIGHT;
-  for (const e of EVENTS) {
+// 觸發機率隨健康度下降而上升（#1 連鎖反應）；健康度過低時偏向壞事件。
+// riskBoost：0~0.4 由 advance 依健康度算出；health：目前機組健康度。
+export function rollEvent(riskBoost = 0, health = 100): GameEvent | null {
+  const prob = Math.min(0.85, 0.35 + riskBoost);
+  if (Math.random() > prob) return null;
+  // 健康度低（<40）時，較高機率直接觸發壞事件（連鎖故障）
+  const pool = health < 40 && Math.random() < 0.65 ? BAD : EVENTS;
+  const total = pool.reduce((a, e) => a + e.weight, 0) || TOTAL_WEIGHT;
+  let r = Math.random() * total;
+  for (const e of pool) {
     r -= e.weight;
     if (r <= 0) return e;
   }
