@@ -12,16 +12,15 @@ import { FAULTS } from "../faults";
 import { missionAt } from "../campaign";
 import { DISC, hasEngineer } from "../disc";
 import { PARTS } from "../data";
+import Vessel, { vesselTypeOf, type VesselType } from "../Vessel";
 import type { Screen } from "../../App";
 
-function CtvShip({ left, top, scale, opacity }: { left: string; top: number; scale: number; opacity: number }) {
+function CtvShip({ left, top, scale, opacity, type }: { left: string; top: number; scale: number; opacity: number; type: VesselType }) {
   return (
     <div style={{ position: "absolute", left, top, transform: `scale(${scale})`, opacity }}>
-      <div style={{ position: "absolute", left: "50%", top: 14, transform: "translateX(-50%)", width: 30, height: 90, background: "linear-gradient(180deg, rgba(255,255,255,.6), rgba(255,255,255,0))", clipPath: "polygon(36% 0,64% 0,100% 100%,0 100%)", filter: "blur(1px)" }} />
-      <div style={{ position: "relative", width: 46, height: 18, margin: "0 auto", background: "linear-gradient(180deg,#46586a,#1c2730)", borderRadius: "6px 6px 14px 14px/6px 6px 22px 22px", boxShadow: "0 4px 8px rgba(0,0,0,.35)" }}>
-        <div style={{ position: "absolute", top: -8, left: "50%", transform: "translateX(-50%)", width: 20, height: 9, background: "linear-gradient(180deg,#f1f4f5,#c4ced2)", borderRadius: "3px 3px 0 0" }} />
-        <div style={{ position: "absolute", top: 6, left: 0, right: 0, height: 3, background: "#e0a83e" }} />
-      </div>
+      {/* 航跡 */}
+      <div style={{ position: "absolute", left: "50%", top: 24, transform: "translateX(-50%)", width: 30, height: 90, background: "linear-gradient(180deg, rgba(255,255,255,.6), rgba(255,255,255,0))", clipPath: "polygon(36% 0,64% 0,100% 100%,0 100%)", filter: "blur(1px)" }} />
+      <Vessel type={type} />
     </div>
   );
 }
@@ -39,6 +38,7 @@ function Check({ ok, label, hint }: { ok: boolean; label: string; hint?: string 
 export default function SailScreen({ setScreen, accent }: { setScreen: (s: Screen) => void; accent: string }) {
   useLang();
   const { data, dispatch } = useGame();
+  const fleetType = vesselTypeOf(data.ownsSOV);
   const active = data.questStage === "active";
   const quest = data.customQuest ?? missionAt(data.campaignIndex);
   const fault = FAULTS[quest.targetFault];
@@ -81,9 +81,9 @@ export default function SailScreen({ setScreen, accent }: { setScreen: (s: Scree
         <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: "66%", background: "repeating-linear-gradient(178deg, rgba(255,255,255,.06) 0 2px, rgba(255,255,255,0) 2px 28px)" }} />
         <div style={{ position: "absolute", left: 0, right: 0, top: "33.6%", height: 1, background: "rgba(255,255,255,.45)" }} />
         <SailTurbines />
-        <CtvShip left="47%" top={300} scale={0.66} opacity={0.9} />
-        <CtvShip left="43%" top={360} scale={0.9} opacity={0.96} />
-        <CtvShip left="38.5%" top={432} scale={1.18} opacity={1} />
+        <CtvShip left="47%" top={300} scale={0.66} opacity={0.9} type={fleetType} />
+        <CtvShip left="43%" top={360} scale={0.9} opacity={0.96} type={fleetType} />
+        <CtvShip left="38.5%" top={432} scale={1.18} opacity={1} type={fleetType} />
         <div style={{ position: "absolute", inset: 0, background: "radial-gradient(circle at 50% 46%, rgba(6,18,24,0) 55%, rgba(6,18,24,.42) 100%)", pointerEvents: "none" }} />
       </div>
 

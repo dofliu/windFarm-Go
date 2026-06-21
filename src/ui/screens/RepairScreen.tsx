@@ -10,6 +10,7 @@ import { Sfx } from "../../audio/sfx";
 import { exprUrl } from "../characters";
 import { FAULTS, LOCATION_LABEL, locationOf } from "../faults";
 import RepairScene from "../RepairScene";
+import Vessel, { vesselTypeOf } from "../Vessel";
 import { PARTS } from "../data";
 import { missionAt } from "../campaign";
 import type { Screen } from "../../App";
@@ -31,6 +32,7 @@ export default function RepairScreen({ setScreen }: { setScreen: (s: Screen) => 
 
   // #33 登船事件 + 作業地點
   const location = locationOf(fault.id);
+  const fleetType = vesselTypeOf(data.ownsSOV);
   const roughBoarding = data.seaState !== "workable"; // 浪高 → 登船延誤
   const [boarded, setBoarded] = useState(false);
 
@@ -115,12 +117,9 @@ export default function RepairScreen({ setScreen }: { setScreen: (s: Screen) => 
         {/* 風機基礎（登船平台） */}
         <div style={{ position: "absolute", left: "50%", bottom: "30%", transform: "translateX(-50%)", width: 40, height: 260, background: "linear-gradient(90deg,#c9a23a,#e8c45a 50%,#a8801f)", borderRadius: 3, opacity: 0.92 }} />
         <div style={{ position: "absolute", left: "calc(50% - 70px)", bottom: "31%", width: 140, height: 16, background: "#caa83e", borderRadius: 2 }} />
-        {/* CTV 隨浪起伏 */}
-        <div style={{ position: "absolute", left: "calc(50% - 120px)", bottom: "26%", animation: roughBoarding ? "bob 1.1s ease-in-out infinite" : "bob 3.2s ease-in-out infinite" }}>
-          <div style={{ width: 66, height: 22, background: "linear-gradient(180deg,#46586a,#1c2730)", borderRadius: "6px 8px 16px 16px/6px 6px 22px 22px", boxShadow: "0 4px 8px rgba(0,0,0,.4)" }}>
-            <div style={{ position: "absolute", top: -10, left: 26, width: 12, height: 11, background: "#eef2f3", borderRadius: "3px 3px 0 0" }} />
-            <div style={{ position: "absolute", top: 7, left: 0, right: 0, height: 3, background: "#e0a83e" }} />
-          </div>
+        {/* 登靠船隻（依船型）隨浪起伏 */}
+        <div style={{ position: "absolute", left: "calc(50% - 150px)", bottom: "24%", transform: "scale(1.3)", animation: roughBoarding ? "bob 1.1s ease-in-out infinite" : "bob 3.2s ease-in-out infinite" }}>
+          <Vessel type={fleetType} />
         </div>
 
         <div style={{ position: "absolute", right: 26, top: 92, width: 360 }}>
