@@ -58,6 +58,42 @@ export async function submitScore(raw: ScorePayload): Promise<void> {
   }
 }
 
+// ───────── 完整存檔雲端同步（#31，選配；預設關閉）─────────
+// 開啟需：Code.gs 支援 kind:'save' 與 ?load= 並重新部署。開啟後存檔跨裝置同步、教師可備援。
+export const SAVE_SYNC = false;
+
+interface SyncProfile {
+  nickname: string;
+  classCode: string;
+}
+
+// 上傳完整存檔（JSON 字串）。no-cors，靜默。
+export async function saveCloudState(profile: SyncProfile | null, stateJson: string): Promise<void> {
+  if (!SHEET_CONFIG.enabled || !SAVE_SYNC || !SHEET_CONFIG.webAppUrl || !profile) return;
+  try {
+    await fetch(SHEET_CONFIG.webAppUrl, {
+      method: "POST",
+      mode: "no-cors",
+      body: JSON.stringify({ kind: "save", nickname: profile.nickname, classCode: profile.classCode, state: stateJson }),
+    });
+  } catch {
+    // 靜默
+  }
+}
+
+// 讀取雲端存檔（回 JSON 字串或 null）。
+export async function loadCloudState(profile: SyncProfile | null): Promise<string | null> {
+  if (!SHEET_CONFIG.enabled || !SAVE_SYNC || !SHEET_CONFIG.webAppUrl || !profile) return null;
+  try {
+    const u = `${SHEET_CONFIG.webAppUrl}?load=${encodeURIComponent(profile.classCode + "/" + profile.nickname)}`;
+    const r = await fetch(u);
+    const j = await r.json();
+    return j && typeof j.state === "string" ? j.state : null;
+  } catch {
+    return null;
+  }
+}
+
 export interface Row {
   nickname: string;
   classCode: string;

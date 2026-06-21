@@ -156,6 +156,7 @@ export type Action =
   | { type: "NEXT_QUEST"; poolSize: number } // 下一關（#20 主線推進）
   | { type: "RESTART_CAMPAIGN" } // 重玩戰役（#20）
   | { type: "ASSIGN_QUEST"; quest: Quest } // 課程模式臨時指派（#6）
+  | { type: "LOAD_STATE"; state: Partial<GameData> } // 雲端存檔載入（#31）
   | { type: "RESET" };
 
 // 擲海象：約 6 成可作業、3 成警戒、1 成停航
@@ -231,6 +232,8 @@ export function reducer(s: GameData, a: Action): GameData {
       return { ...s, campaignIndex: 0, campaignDone: false, customQuest: null, questStage: "available", repairDone: false, jobPhase: "office" };
     case "ASSIGN_QUEST":
       return { ...s, customQuest: a.quest, questStage: "available", repairDone: false, jobPhase: "office", seaState: rollSea() };
+    case "LOAD_STATE":
+      return { ...INITIAL, ...a.state };
     case "RESET":
       return { ...INITIAL };
     default:

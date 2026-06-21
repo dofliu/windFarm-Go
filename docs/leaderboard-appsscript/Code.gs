@@ -18,10 +18,28 @@ function djb2(str) {
   return h.toString(36);
 }
 
-// doPost：遊戲送分時呼叫，通過驗證才附加一列。
+// doPost：送分（預設）或完整存檔同步（kind:'save'，#31 選配）。
 function doPost(e) {
   try {
     var p = JSON.parse(e.postData.contents);
+
+    // #31 完整存檔同步：寫入/更新「saves」分頁，每人一列（upsert）
+    if (p.kind === 'save') {
+      var nick = String(p.nickname || '').trim().slice(0, 16);
+      var cls = String(p.classCode || '').trim().slice(0, 12);
+      if (!nick) return json({ ok: false, err: 'no-nickname' });
+      var ss = SpreadsheetApp.getActiveSpreadsheet();
+      var sh = ss.getSheetByName('saves') || ss.insertSheet('saves');
+      var key = cls + '/' + nick;
+      var data = sh.getDataRange().getValues();
+      var rowIdx = -1;
+      for (var r = 0; r < data.length; r++) { if (data[r][0] === key) { rowIdx = r + 1; break; } }
+      var state = String(p.state || '').slice(0, 45000); // 試算表單格上限保護
+      if (rowIdx > 0) sh.getRange(rowIdx, 1, 1, 3).setValues([[key, new Date(), state]]);
+      else sh.appendRow([key, new Date(), state]);
+      return json({ ok: true });
+    }
+
     var nickname = String(p.nickname || '').trim().slice(0, 16);
     var classCode = String(p.classCode || '').trim().slice(0, 12);
     var day = clampInt(p.day, 0, 3650);
@@ -49,8 +67,18 @@ function doPost(e) {
   }
 }
 
-// doGet：回傳每人最高分、依績效分排序（前 50）。僅揭露暱稱/班級/分數，不外洩 email/時間戳。
+// doGet：?load=班級/暱稱 → 回該人雲端存檔（#31）；否則回排行榜。
 function doGet(e) {
+  if (e && e.parameter && e.parameter.load) {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var sh = ss.getSheetByName('saves');
+    if (!sh) return json({ state: null });
+    var rows = sh.getDataRange().getValues();
+    for (var r = 0; r < rows.length; r++) {
+      if (rows[r][0] === e.parameter.load) return json({ state: String(rows[r][2] || '') });
+    }
+    return json({ state: null });
+  }
   var values = SpreadsheetApp.getActiveSpreadsheet().getSheets()[0].getDataRange().getValues();
   var best = {};
   for (var i = 1; i < values.length; i++) { // 跳過標題列
