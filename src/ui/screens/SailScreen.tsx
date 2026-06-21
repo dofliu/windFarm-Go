@@ -9,7 +9,7 @@ import { useGame } from "../../state/GameContext";
 import { Sfx } from "../../audio/sfx";
 import { SEA_INDEX, vesselSeaTol, availableEngineer } from "../../state/game";
 import { FAULTS, isMajorFault } from "../faults";
-import { missionAt } from "../campaign";
+import { missionInstance } from "../campaign";
 import { DISC, hasEngineer } from "../disc";
 import { PARTS } from "../data";
 import Vessel, { vesselTypeOf, type VesselType } from "../Vessel";
@@ -41,7 +41,7 @@ export default function SailScreen({ setScreen, accent, mode = "sim" }: { setScr
   useLang();
   const { data, dispatch } = useGame();
   const active = data.questStage === "active";
-  const quest = data.customQuest ?? missionAt(data.campaignIndex);
+  const quest = data.customQuest ?? missionInstance(data.campaignIndex);
   const fault = FAULTS[quest.targetFault];
   const part = PARTS.find((p) => p.id === fault?.part);
   // 重大作業出動安裝船(jack-up)，否則依擁有船型

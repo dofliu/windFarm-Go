@@ -13,14 +13,14 @@ import RepairScene from "../RepairScene";
 import { vesselWindowPenalty } from "../../state/game";
 import Vessel, { vesselTypeOf } from "../Vessel";
 import { PARTS } from "../data";
-import { missionAt } from "../campaign";
+import { missionInstance } from "../campaign";
 import type { Screen } from "../../App";
 
 export default function RepairScreen({ setScreen, mode = "sim" }: { setScreen: (s: Screen) => void; mode?: "sim" | "real" | "comic" }) {
   useLang();
   const { data, dispatch } = useGame();
   const { say } = useDialogue();
-  const quest = data.customQuest ?? missionAt(data.campaignIndex);
+  const quest = data.customQuest ?? missionInstance(data.campaignIndex);
   const fault = FAULTS[quest.targetFault] ?? FAULTS.gearbox_overheat;
   const q = fault.quiz;
 
@@ -89,7 +89,7 @@ export default function RepairScreen({ setScreen, mode = "sim" }: { setScreen: (
     }
     Sfx.success();
     dispatch({ type: "FINISH_REPAIR", quest, part: need, discipline: fault.discipline });
-    const m = data.customQuest ? null : missionAt(data.campaignIndex);
+    const m = data.customQuest ? null : missionInstance(data.campaignIndex);
     say(
       m
         ? m.outro
