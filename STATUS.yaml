@@ -4,7 +4,7 @@ category: edtech
 progress: 100
 status: active
 last_updated: "2026-06-21"
-next_milestone: "進階擬真(見 GAME_DESIGN §14):已完成 機組健康度/連鎖反應(#1)、微觀天氣預報(#2)、合約SLA(#3)、多回合大修工期+船舶待命費(#4)；下一步 倉儲折舊、動態SCADA趨勢、技師疲勞"
+next_milestone: "進階擬真(見 GAME_DESIGN §14)已全數完成:機組健康度/連鎖反應、微觀天氣預報、合約SLA、多回合大修+待命費、倉儲折舊、動態SCADA趨勢+進階檢測、技師疲勞+船舶保養；後續可加 CC0實體音樂、每機獨立健康度"
 technologies:
   - React
   - TypeScript

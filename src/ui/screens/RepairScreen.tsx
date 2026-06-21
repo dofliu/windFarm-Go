@@ -10,6 +10,7 @@ import { Sfx } from "../../audio/sfx";
 import { exprUrl } from "../characters";
 import { FAULTS, LOCATION_LABEL, locationOf, isMajorFault } from "../faults";
 import RepairScene from "../RepairScene";
+import { vesselWindowPenalty } from "../../state/game";
 import Vessel, { vesselTypeOf } from "../Vessel";
 import { PARTS } from "../data";
 import { missionAt } from "../campaign";
@@ -26,8 +27,8 @@ export default function RepairScreen({ setScreen, mode = "sim" }: { setScreen: (
   const [pick, setPick] = useState<number | null>(null);
   // 前兩步預設完成；步驟 3~5 可點擊完成
   const [steps, setSteps] = useState<boolean[]>(fault.sop.map((_, i) => i < 2));
-  // 作業窗（#17）：海象越差，可用時段越少
-  const windowMax = (data.seaState === "closed" ? 6 : data.seaState === "caution" ? 8 : 10) + data.vesselLevel * 2; // 船隊升級加窗
+  // 作業窗（#17）：海象越差，可用時段越少；船隊升級加窗；船舶磨耗扣窗（#7）
+  const windowMax = Math.max(4, (data.seaState === "closed" ? 6 : data.seaState === "caution" ? 8 : 10) + data.vesselLevel * 2 - vesselWindowPenalty(data.vesselWear));
   const [win, setWin] = useState(windowMax);
 
   // #33 登船事件 + 作業地點
@@ -78,7 +79,7 @@ export default function RepairScreen({ setScreen, mode = "sim" }: { setScreen: (
     // 重大故障（大組件更換）：拆檢完成後轉入多回合大修（#4），需於母港逐日推進
     if (isMajorFault(fault.id)) {
       Sfx.success();
-      dispatch({ type: "START_OVERHAUL", quest, part: need });
+      dispatch({ type: "START_OVERHAUL", quest, part: need, discipline: fault.discipline });
       say([
         { speaker: "repair_eng", expr: "confident", line: { zh: `${quest.unit} 拆檢完成、大組件已定位。接下來要吊裝更換，需連續 ${3} 個可作業天氣窗。`, en: `${quest.unit} stripped down and the major component is located. The swap needs ${3} consecutive workable weather windows.` } },
         { speaker: "veteran_sailor", expr: "talking", line: { zh: "回母港看三日預報、逐日推進大修。惡劣海象只能停滯，安裝船還是得付待命費！", en: "Back to port — watch the 3-day forecast and push the overhaul daily. Bad weather only stalls it, and the jack-up still bills standby!" } },
@@ -87,7 +88,7 @@ export default function RepairScreen({ setScreen, mode = "sim" }: { setScreen: (
       return;
     }
     Sfx.success();
-    dispatch({ type: "FINISH_REPAIR", quest, part: need });
+    dispatch({ type: "FINISH_REPAIR", quest, part: need, discipline: fault.discipline });
     const m = data.customQuest ? null : missionAt(data.campaignIndex);
     say(
       m

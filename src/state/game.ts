@@ -13,6 +13,24 @@ export interface Engineer {
   name: string;
   discipline: Discipline;
   level: number;
+  fatigue?: number; // 疲勞 0-100（#7）：出勤累積、休整回復；達上限不得派工（shift limit）
+}
+
+// 技師疲勞（#7）
+export const FATIGUE_LIMIT = 80; // 輪班上限：達此值不得再派工
+export const FATIGUE_PER_JOB = 34; // 完成一趟維修/大修工日累積的疲勞
+export const FATIGUE_RECOVERY = 12; // 每日休整回復的疲勞
+export const fatigueOf = (e: Engineer) => e.fatigue ?? 0;
+// 可派工：對應科別、等級足夠、且未超過輪班上限
+export const availableEngineer = (engs: Engineer[], d: Discipline, lvl = 1) =>
+  engs.some((e) => e.discipline === d && e.level >= lvl && fatigueOf(e) < FATIGUE_LIMIT);
+// 讓該科別中「最不疲勞者」出勤並累積疲勞（回傳新陣列）
+function deployFatigue(engs: Engineer[], d: Discipline, amount = FATIGUE_PER_JOB): Engineer[] {
+  let id: string | null = null;
+  let lowest = Infinity;
+  for (const e of engs) if (e.discipline === d && fatigueOf(e) < lowest) { lowest = fatigueOf(e); id = e.id; }
+  if (!id) return engs;
+  return engs.map((e) => (e.id === id ? { ...e, fatigue: clampN(fatigueOf(e) + amount, 0, 100) } : e));
 }
 
 export const SEA_INDEX: Record<SeaState, number> = { workable: 0, caution: 1, closed: 2 };
@@ -77,6 +95,9 @@ export interface GameData {
   slaSamples: number; // 本季取樣天數（#3）
   slaPenalties: number; // 累計 SLA 違約次數（#3，扣績效分）
   lastSla: SlaResult | null; // 最近一次季度結算（#3）
+  lastSpoil: { part: string; day: number } | null; // 最近一次備品折舊報廢（#warehouse）
+  diagLevel: number; // 進階檢測等級 0/1（#scada）：付費解鎖更清晰的 SCADA 趨勢判讀
+  vesselWear: number; // 船舶磨耗 0-100（#7）：每趟出勤累積，需定期保養，過高縮短作業窗
 }
 
 // 多回合大修（#4）：重大組件更換需多個「可作業天氣窗」工日才完成。
@@ -84,6 +105,7 @@ export interface Overhaul {
   questId: string;
   unit: string; // 機組編號（顯示）
   fault: string; // 故障 id（完成後計入圖鑑）
+  discipline: Discipline; // 出勤科別（#7 疲勞累積對象）
   progress: number; // 已完成的可作業工日
   need: number; // 需要的可作業工日
   demurrageDays: number; // 因惡劣海象停滯（已付待命費）的天數
@@ -108,6 +130,20 @@ export const SLA_FLOOR = 90; // 季度可用率底線 %（#3）
 export const SLA_PENALTY = 5_000_000; // 違約金 ◎（#3）
 
 export const DOWNTIME_PER_DAY = 30_000; // 機組停機每日損失（C）
+
+// 倉儲折舊（#warehouse）：持有備品每日維持費 + 折舊報廢機率
+export const STORAGE_COST_PER_UNIT = 2_000; // 每件備品每日倉儲維持費 ◎
+export const SPOIL_CHANCE = 0.04; // 每類備品每日折舊報廢 1 件的機率
+export const inventoryUnits = (inv: Record<string, number>) => Object.values(inv).reduce((a, n) => a + Math.max(0, n ?? 0), 0);
+export const dailyStorageCost = (inv: Record<string, number>) => inventoryUnits(inv) * STORAGE_COST_PER_UNIT;
+
+// 進階檢測（#scada）
+export const DIAG_COST = 8_000_000; // 解鎖進階檢測一次性費用 ◎
+
+// 船舶保養（#7）
+export const VESSEL_WEAR_PER_SORTIE = 16; // 每趟出航累積磨耗
+export const VESSEL_SERVICE_COST = 2_000_000; // 進廠保養費用 ◎
+export const vesselWindowPenalty = (wear: number) => (wear >= 85 ? 2 : wear >= 55 ? 1 : 0); // 磨耗縮短作業窗時段
 
 // 多風場每日基準發電總和（owned 座風場的 genPerDay 加總）
 function ownedFarmGen(farmsOwned: number): number {
@@ -144,7 +180,7 @@ export const INITIAL: GameData = {
   seenFaults: [],
   missionsDone: 0,
   pendingOrders: [],
-  engineers: [{ id: "eng_start", name: "阿銘", discipline: "mechanical", level: 1 }], // 起始機械技師
+  engineers: [{ id: "eng_start", name: "阿銘", discipline: "mechanical", level: 1, fatigue: 0 }], // 起始機械技師
   ownsSOV: false,
   jobPhase: "office",
   generationMWh: 0,
@@ -160,6 +196,9 @@ export const INITIAL: GameData = {
   slaSamples: 0,
   slaPenalties: 0,
   lastSla: null,
+  lastSpoil: null,
+  diagLevel: 0,
+  vesselWear: 0,
 };
 
 const clampN = (n: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, n));
@@ -176,16 +215,30 @@ function advance(s: GameData, days = 1): Partial<GameData> {
       cargo = Math.min(s.cargoCap, cargo + o.qty);
     } else pend.push(o);
   }
+  // 倉儲折舊（#warehouse）：備品逐日折舊，偶有報廢；持有量越大、維持費與耗損越高（考驗 JIT vs 安全庫存）
+  let lastSpoil = s.lastSpoil;
+  for (let d = 0; d < days; d++) {
+    for (const [pid, qty] of Object.entries(inv)) {
+      if ((qty ?? 0) > 0 && Math.random() < SPOIL_CHANCE) {
+        inv = { ...inv, [pid]: qty - 1 };
+        cargo = Math.max(0, cargo - 1);
+        lastSpoil = { part: pid, day }; // 以本次推進後的絕對天數標記，供 UI 去重通知
+      }
+    }
+  }
   const downtime = s.questStage === "active" && !s.repairDone ? DOWNTIME_PER_DAY * days : 0;
+  const storage = dailyStorageCost(inv) * days; // 倉儲維持費（#warehouse）
   const gen = s.generationMWh + Math.round((s.availability / 100) * ownedFarmGen(s.farmsOwned) * days); // 多風場發電累積（#28/#34）
   let patch: Partial<GameData> = {
     day,
     pendingOrders: pend,
     inventory: inv,
     cargoUsed: cargo,
-    budget: Math.max(0, s.budget - downtime),
+    lastSpoil,
+    budget: Math.max(0, s.budget - downtime - storage),
     generationMWh: gen,
     techAvail: Math.min(s.techTotal, s.techAvail + days), // 人力每日緩慢回復
+    engineers: s.engineers.map((e) => ({ ...e, fatigue: clampN(fatigueOf(e) - FATIGUE_RECOVERY * days, 0, 100) })), // 技師休整回復疲勞（#7）
   };
   // 機組健康度衰退（#1）：自然磨耗；未修故障加速劣化（連鎖反應的根源）
   const neglect = s.questStage === "active" && !s.repairDone ? 1.5 : 0;
@@ -237,9 +290,11 @@ export type Action =
   | { type: "ACCEPT_QUEST" }
   | { type: "BUY"; partId: string; qty: number; cost: number; leadDays: number }
   | { type: "SELL"; partId: string; gain: number } // 賣出 1 件（#18）
-  | { type: "FINISH_REPAIR"; quest: Quest; part?: string } // 維修完成 → 結算（A3）+ 消耗備品
-  | { type: "START_OVERHAUL"; quest: Quest; part?: string } // 重大故障：拆檢完成後啟動多回合大修（#4）
+  | { type: "FINISH_REPAIR"; quest: Quest; part?: string; discipline?: Discipline } // 維修完成 → 結算（A3）+ 消耗備品
+  | { type: "START_OVERHAUL"; quest: Quest; part?: string; discipline?: Discipline } // 重大故障：拆檢完成後啟動多回合大修（#4）
   | { type: "ADVANCE_OVERHAUL" } // 推進大修一天（#4）：可作業窗 → 進度+1；惡劣海象 → 停滯+待命費
+  | { type: "SERVICE_VESSEL"; cost: number } // 船舶進廠保養：歸零磨耗（#7）
+  | { type: "BUY_DIAGNOSTICS"; cost: number } // 解鎖進階檢測（#scada）
   | { type: "DO_ROUTINE"; budget: number; xp: number } // 調度中心例行小任務（#21）
   | { type: "UPGRADE"; kind: "vessel" | "tech" | "tool"; cost: number } // 設施升級（A）
   | { type: "HIRE"; engineer: Engineer; cost: number } // 招募技師（#27）
@@ -307,7 +362,14 @@ export function reducer(s: GameData, a: Action): GameData {
       if (a.cost > s.budget || s.farmsOwned >= FARMS.length) return s;
       return { ...s, budget: s.budget - a.cost, farmsOwned: s.farmsOwned + 1 };
     case "DEPART":
-      return { ...s, jobPhase: "enroute" };
+      // 出航累積船舶磨耗（#7）
+      return { ...s, jobPhase: "enroute", vesselWear: clampN(s.vesselWear + VESSEL_WEAR_PER_SORTIE, 0, 100) };
+    case "SERVICE_VESSEL":
+      if (a.cost > s.budget || s.vesselWear === 0) return s;
+      return { ...s, budget: s.budget - a.cost, vesselWear: 0 };
+    case "BUY_DIAGNOSTICS":
+      if (a.cost > s.budget || s.diagLevel > 0) return s;
+      return { ...s, budget: s.budget - a.cost, diagLevel: 1 };
     case "ARRIVE":
       return { ...s, jobPhase: "onsite" };
     case "FAIL_REPAIR":
@@ -340,7 +402,8 @@ export function reducer(s: GameData, a: Action): GameData {
         cargo = Math.max(0, cargo - 1);
       }
       const seen = s.seenFaults.includes(a.quest.targetFault) ? s.seenFaults : [...s.seenFaults, a.quest.targetFault];
-      return { ...s, repairDone: true, questStage: "done", jobPhase: "office", budget: s.budget + a.quest.rewardBudget, xp: s.xp + a.quest.rewardXp, availability: Math.min(100, s.availability + 8 + s.techLevel * 2), fleetHealth: clampN(s.fleetHealth + 8, 0, 100), inventory: inv, cargoUsed: cargo, seenFaults: seen, missionsDone: s.missionsDone + 1 };
+      const engs = a.discipline ? deployFatigue(s.engineers, a.discipline) : s.engineers; // 出勤技師累積疲勞（#7）
+      return { ...s, repairDone: true, questStage: "done", jobPhase: "office", budget: s.budget + a.quest.rewardBudget, xp: s.xp + a.quest.rewardXp, availability: Math.min(100, s.availability + 8 + s.techLevel * 2), fleetHealth: clampN(s.fleetHealth + 8, 0, 100), inventory: inv, cargoUsed: cargo, seenFaults: seen, missionsDone: s.missionsDone + 1, engineers: engs };
     }
     case "START_OVERHAUL": {
       if (s.questStage !== "active" || s.overhaul) return s;
@@ -355,7 +418,7 @@ export function reducer(s: GameData, a: Action): GameData {
         jobPhase: "office",
         inventory: inv,
         cargoUsed: cargo,
-        overhaul: { questId: a.quest.id, unit: a.quest.unit, fault: a.quest.targetFault, progress: 0, need: OVERHAUL_NEED, demurrageDays: 0, rewardBudget: a.quest.rewardBudget, rewardXp: a.quest.rewardXp },
+        overhaul: { questId: a.quest.id, unit: a.quest.unit, fault: a.quest.targetFault, discipline: a.discipline ?? "mechanical", progress: 0, need: OVERHAUL_NEED, demurrageDays: 0, rewardBudget: a.quest.rewardBudget, rewardXp: a.quest.rewardXp },
       };
     }
     case "ADVANCE_OVERHAUL": {
@@ -364,6 +427,7 @@ export function reducer(s: GameData, a: Action): GameData {
       const sea = (adv.seaState ?? s.seaState) as SeaState;
       const oh = s.overhaul;
       if (sea === "workable") {
+        const workedEngs = deployFatigue(adv.engineers ?? s.engineers, oh.discipline); // 大修工日累積疲勞（#7）
         const progress = oh.progress + 1;
         if (progress >= oh.need) {
           const seen = s.seenFaults.includes(oh.fault) ? s.seenFaults : [...s.seenFaults, oh.fault];
@@ -380,9 +444,10 @@ export function reducer(s: GameData, a: Action): GameData {
             fleetHealth: clampN((adv.fleetHealth ?? s.fleetHealth) + 12, 0, 100),
             seenFaults: seen,
             missionsDone: s.missionsDone + 1,
+            engineers: workedEngs,
           };
         }
-        return { ...s, ...adv, overhaul: { ...oh, progress } };
+        return { ...s, ...adv, overhaul: { ...oh, progress }, engineers: workedEngs };
       }
       // 惡劣海象：大修停滯（進度不前），待命費已於 advance() 計入；累計停滯天數供顯示
       return { ...s, ...adv, overhaul: { ...oh, demurrageDays: oh.demurrageDays + 1 } };
