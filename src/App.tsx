@@ -11,6 +11,7 @@ import IntroRunner from "./ui/IntroRunner";
 import CourseModal from "./ui/CourseModal";
 import DispatchModal from "./ui/DispatchModal";
 import OpsCenterModal from "./ui/OpsCenterModal";
+import FleetOpsModal from "./ui/FleetOpsModal";
 import FacilityModal, { type Facility } from "./ui/FacilityModal";
 import Toaster from "./ui/Toaster";
 import LoginScreen from "./ui/LoginScreen";
@@ -33,6 +34,7 @@ export default function App() {
   const [showCourse, setShowCourse] = useState(false);
   const [showDispatch, setShowDispatch] = useState(false);
   const [showOps, setShowOps] = useState(false);
+  const [showFleet, setShowFleet] = useState(false);
   const [facility, setFacility] = useState<Facility | null>(null);
   const [loggedIn, setLoggedIn] = useState(() => getProfile() != null);
   const [sceneId, setSceneId] = useState(getSceneId);
@@ -113,7 +115,7 @@ export default function App() {
         >
           {(mode !== "sim" || showSharedBg) && <SceneBackground sceneId={sceneId} aerial={aerial && screen === "hub"} mode={mode} imageFile={imageFile} />}
 
-          {screen === "hub" && <HubScreen setScreen={setScreen} accent={accent} onDispatch={() => setShowDispatch(true)} onFacility={(k) => setFacility(k)} sceneName={sceneName} onCycleScene={cycleScene} aerial={aerial} onToggleView={() => setAerial((v) => !v)} mode={mode} onCycleMode={cycleMode} onOps={() => setShowOps(true)} week={week} />}
+          {screen === "hub" && <HubScreen setScreen={setScreen} accent={accent} onDispatch={() => setShowDispatch(true)} onFacility={(k) => setFacility(k)} sceneName={sceneName} onCycleScene={cycleScene} aerial={aerial} onToggleView={() => setAerial((v) => !v)} mode={mode} onCycleMode={cycleMode} onOps={() => setShowOps(true)} onFleet={() => setShowFleet(true)} week={week} />}
           {screen === "market" && <MarketScreen accent={accent} />}
           {screen === "sail" && <SailScreen setScreen={setScreen} accent={accent} mode={mode} />}
           {screen === "repair" && <RepairScreen setScreen={setScreen} mode={mode} />}
@@ -124,6 +126,7 @@ export default function App() {
           <CourseModal open={showCourse} onClose={() => setShowCourse(false)} week={week} onSetWeek={changeWeek} />
           <DispatchModal open={showDispatch} onClose={() => setShowDispatch(false)} />
           <OpsCenterModal open={showOps} onClose={() => setShowOps(false)} />
+          <FleetOpsModal open={showFleet} onClose={() => setShowFleet(false)} />
           <FacilityModal kind={facility} onClose={() => setFacility(null)} />
           <ScoreSync />
           <WelcomeOnLogin />
