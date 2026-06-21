@@ -1,6 +1,7 @@
 import type { I18n } from "../game/systems/types";
 import { FARMS } from "./farms";
 import { rollEvent, type EventStamp } from "./events";
+import { incidentAt, randomIncidentId } from "./incidents";
 
 // ───────── 全域遊戲狀態模型（A1 工單系統 / A2 採購 / A3 結算 / D1 存檔）─────────
 export type SeaState = "workable" | "caution" | "closed";
@@ -32,6 +33,45 @@ function deployFatigue(engs: Engineer[], d: Discipline, amount = FATIGUE_PER_JOB
   if (!id) return engs;
   return engs.map((e) => (e.id === id ? { ...e, fatigue: clampN(fatigueOf(e) + amount, 0, 100) } : e));
 }
+
+// ───────── 活體戰情層：機組個體模型 + 並行工單（Phase C）─────────
+export type TurbineStatus = "ok" | "fault" | "repair"; // 正常 / 故障待派 / 維修中
+export interface Turbine {
+  id: string; // 機組編號（如 CH-07）
+  farm: number; // 所屬風場索引
+  status: TurbineStatus;
+  faultId?: string; // 故障型錄 id（incidents.ts）
+  gen: number; // 此機組每日發電佔比 (MWh, 100%)
+}
+export interface OpsJob {
+  id: string;
+  turbine: string; // 機組 id
+  engineerId: string; // 派遣的技師
+  discipline: Discipline;
+  daysLeft: number; // 剩餘工日
+}
+export const FAULT_RATE_BASE = 0.45; // 每日新增故障的基礎機率（隨健康度上升）
+export const FLEET_INIT_FAULTS = 3; // 開局即有的故障數（給玩家可立即處理的事件）
+
+// 依擁有風場建立機組陣列（每座 farm.units 台，發電佔比 = genPerDay/units）
+export function buildFleetForFarm(f: number): Turbine[] {
+  const farm = FARMS[f];
+  if (!farm) return [];
+  const share = Math.round((farm.genPerDay / farm.units) * 10) / 10;
+  return Array.from({ length: farm.units }, (_, i) => ({ id: `${farm.code}${String(i + 1).padStart(2, "0")}`, farm: f, status: "ok" as TurbineStatus, gen: share }));
+}
+export function buildFleet(farmsOwned: number): Turbine[] {
+  let out: Turbine[] = [];
+  for (let f = 0; f < Math.min(farmsOwned, FARMS.length); f++) out = out.concat(buildFleetForFarm(f));
+  // 開局植入數台故障，讓戰情室一開始就有事件可處理
+  for (let k = 0; k < FLEET_INIT_FAULTS && k < out.length; k++) {
+    const i = Math.floor((out.length / FLEET_INIT_FAULTS) * k) + k;
+    if (out[i]) out[i] = { ...out[i], status: "fault", faultId: randomIncidentId() };
+  }
+  return out;
+}
+export const fleetUptime = (fleet: Turbine[]): number => (fleet.length ? Math.round((fleet.filter((t) => t.status === "ok").length / fleet.length) * 100) : 100);
+export const engineerBusy = (jobs: OpsJob[], id: string): boolean => jobs.some((j) => j.engineerId === id);
 
 export const SEA_INDEX: Record<SeaState, number> = { workable: 0, caution: 1, closed: 2 };
 export const vesselSeaTol = (ownsSOV: boolean) => (ownsSOV ? 2 : 1); // CTV 可到 caution；SOV 可到 closed
@@ -98,6 +138,10 @@ export interface GameData {
   lastSpoil: { part: string; day: number } | null; // 最近一次備品折舊報廢（#warehouse）
   diagLevel: number; // 進階檢測等級 0/1（#scada）：付費解鎖更清晰的 SCADA 趨勢判讀
   vesselWear: number; // 船舶磨耗 0-100（#7）：每趟出勤累積，需定期保養，過高縮短作業窗
+  fleet: Turbine[]; // 機組個體（Phase C 活體戰情層）
+  opsJobs: OpsJob[]; // 進行中的並行維修工單（Phase C）
+  fleetLostMWh: number; // 累積因停機損失的發電量（教學：差異化停機損失，回饋 #4）
+  fleetResolved: number; // 累積在戰情室修復的機組數（績效加分）
 }
 
 // 多回合大修（#4）：重大組件更換需多個「可作業天氣窗」工日才完成。
@@ -152,9 +196,9 @@ function ownedFarmGen(farmsOwned: number): number {
   return g;
 }
 
-// 綜合績效分（單一真實來源，#28/#34/#3）：發電量 + 可用率×5 + 完成任務×30 − 安全事件×20 + 風場×10 − SLA違約×25
+// 綜合績效分（單一真實來源，#28/#34/#3/Phase C）：發電量 + 可用率×5 + 完成任務×30 − 安全事件×20 + 風場×10 − SLA違約×25 + 戰情室修復×8
 export function computeScore(d: GameData): number {
-  return Math.max(0, d.generationMWh + d.availability * 5 + d.missionsDone * 30 - d.safetyIncidents * 20 + d.farmsOwned * 10 - (d.slaPenalties ?? 0) * 25);
+  return Math.max(0, d.generationMWh + d.availability * 5 + d.missionsDone * 30 - d.safetyIncidents * 20 + d.farmsOwned * 10 - (d.slaPenalties ?? 0) * 25 + (d.fleetResolved ?? 0) * 8);
 }
 
 export const INITIAL: GameData = {
@@ -199,6 +243,10 @@ export const INITIAL: GameData = {
   lastSpoil: null,
   diagLevel: 0,
   vesselWear: 0,
+  fleet: buildFleet(1),
+  opsJobs: [],
+  fleetLostMWh: 0,
+  fleetResolved: 0,
 };
 
 const clampN = (n: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, n));
@@ -257,6 +305,41 @@ function advance(s: GameData, days = 1): Partial<GameData> {
     const evPatch = ev.apply({ ...s, ...patch } as GameData);
     patch = { ...patch, ...evPatch, lastEvent: { id: ev.id, name: ev.name, desc: ev.desc, good: !!ev.good, day } };
   }
+  // 活體戰情層（Phase C）：每日推進並行工單、隨機新增故障、累計停機發電損失
+  if (s.fleet.length) {
+    let fleet = s.fleet.map((tt) => ({ ...tt }));
+    let jobs = s.opsJobs.map((j) => ({ ...j }));
+    let resolved = s.fleetResolved;
+    let engs = patch.engineers ?? s.engineers;
+    for (let dd = 0; dd < days; dd++) {
+      // 並行工單推進；完工 → 機組復歸 + 出勤技師累積疲勞
+      jobs = jobs.map((j) => ({ ...j, daysLeft: j.daysLeft - 1 }));
+      for (const j of jobs.filter((j) => j.daysLeft <= 0)) {
+        const ti = fleet.findIndex((t) => t.id === j.turbine);
+        if (ti >= 0) fleet[ti] = { ...fleet[ti], status: "ok", faultId: undefined };
+        resolved += 1;
+        engs = deployFatigue(engs, j.discipline);
+      }
+      jobs = jobs.filter((j) => j.daysLeft > 0);
+      // 隨機新增故障（機率隨健康度下降而上升），鎖定一台正常且未在維修的機組
+      const faultProb = Math.min(0.85, FAULT_RATE_BASE + ((100 - health) / 100) * 0.4);
+      if (Math.random() < faultProb) {
+        const oks = fleet.filter((t) => t.status === "ok");
+        if (oks.length) {
+          const pick = oks[Math.floor(Math.random() * oks.length)];
+          const fi = fleet.findIndex((t) => t.id === pick.id);
+          fleet[fi] = { ...fleet[fi], status: "fault", faultId: randomIncidentId() };
+        }
+      }
+    }
+    // 停機（故障/維修中）機組損失發電
+    const lost = Math.round(fleet.filter((t) => t.status !== "ok").reduce((a, t) => a + t.gen, 0) * days);
+    patch.fleet = fleet;
+    patch.opsJobs = jobs;
+    patch.fleetResolved = resolved;
+    patch.fleetLostMWh = s.fleetLostMWh + lost;
+    patch.engineers = engs;
+  }
   // 合約 SLA（#3）：每日累計可用率，跨季結算；平均低於底線 → 扣違約金
   const avail = patch.availability ?? s.availability;
   let qStart = s.quarterStartDay;
@@ -305,6 +388,8 @@ export type Action =
   | { type: "FAIL_REPAIR" } // 天氣窗關閉、撤離（#17）
   | { type: "REST" } // 靠港休整：進日 + 重新擲海象（#18）
   | { type: "REMOTE_CHECK" } // 每日遠端 SCADA 巡檢（Phase A #2）：消耗 1 天、累積 XP、早期偵測微幅回復健康度
+  | { type: "OPS_DISPATCH"; turbine: string; engineerId: string } // 戰情室派工：指派技師維修某故障機組（Phase C）
+  | { type: "OPS_ADVANCE" } // 戰情室推進一天（Phase C）：並行工單前進、隨機新增故障
   | { type: "NEXT_QUEST"; poolSize: number } // 下一關（#20 主線推進）
   | { type: "RESTART_CAMPAIGN" } // 重玩戰役（#20）
   | { type: "ASSIGN_QUEST"; quest: Quest } // 課程模式臨時指派（#6）
@@ -366,7 +451,7 @@ export function reducer(s: GameData, a: Action): GameData {
     case "UNLOCK_FARM": {
       if (a.cost > s.budget || s.farmsOwned >= FARMS.length) return s;
       const adv = advance(s, 2); // 拓展/動員新風場耗時 2 天
-      return { ...s, ...adv, budget: Math.max(0, (adv.budget ?? s.budget) - a.cost), farmsOwned: s.farmsOwned + 1 };
+      return { ...s, ...adv, budget: Math.max(0, (adv.budget ?? s.budget) - a.cost), farmsOwned: s.farmsOwned + 1, fleet: [...(adv.fleet ?? s.fleet), ...buildFleetForFarm(s.farmsOwned)] };
     }
     case "DEPART":
       // 出航累積船舶磨耗（#7）
@@ -396,6 +481,22 @@ export function reducer(s: GameData, a: Action): GameData {
       // 遠端巡檢：不派船、消耗 1 天，早期偵測微幅回復健康度並累積經驗
       const adv = advance(s, 1);
       return { ...s, ...adv, xp: s.xp + 15, fleetHealth: clampN((adv.fleetHealth ?? s.fleetHealth) + 2, 0, 100) };
+    }
+    case "OPS_ADVANCE":
+      // 戰情室推進一天（並行工單前進、隨機新增故障皆於 advance() 內處理）
+      return { ...s, ...advance(s, 1) };
+    case "OPS_DISPATCH": {
+      const tb = s.fleet.find((x) => x.id === a.turbine);
+      if (!tb || tb.status !== "fault") return s;
+      const eng = s.engineers.find((e) => e.id === a.engineerId);
+      if (!eng) return s;
+      const inc = incidentAt(tb.faultId);
+      if (!inc || eng.discipline !== inc.discipline) return s; // 需對應科別技師
+      if (fatigueOf(eng) >= FATIGUE_LIMIT) return s; // 過勞不可派
+      if (engineerBusy(s.opsJobs, eng.id)) return s; // 該技師已在執行工單
+      const fleet = s.fleet.map((x) => (x.id === tb.id ? { ...x, status: "repair" as TurbineStatus } : x));
+      const job: OpsJob = { id: "job_" + Math.random().toString(36).slice(2, 9), turbine: tb.id, engineerId: eng.id, discipline: eng.discipline, daysLeft: inc.repairDays };
+      return { ...s, fleet, opsJobs: [...s.opsJobs, job] };
     }
     case "BUY": {
       if (a.cost > s.budget) return s;
