@@ -1,10 +1,10 @@
 name: Wind Knights - Offshore Guardians
 name_zh: 風電勇者：離岸守護者
 category: edtech
-progress: 99
+progress: 98
 status: active
 last_updated: "2026-06-21"
-next_milestone: "依GAME_DESIGN實作：出勤就緒閘門(#25)、船隊系統(#26)、技師招募(#27)、發電量KPI(#28)"
+next_milestone: "登入+雲端紀錄+真排行榜(L1-L3, 需Supabase金鑰)；選配:多回合工期、CC0音樂"
 technologies:
   - React
   - TypeScript
