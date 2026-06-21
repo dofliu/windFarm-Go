@@ -18,6 +18,7 @@ import { FARMS } from "../../state/farms";
 import { fetchLeaderboard, type Row } from "../../cloud/sheet";
 import { getProfile } from "../../state/profile";
 import { sceneById } from "../scenes";
+import { missionWeek } from "../../state/course";
 import type { I18n } from "../../game/systems/types";
 import type { Screen } from "../../App";
 
@@ -55,7 +56,7 @@ function OpsBlock({ title, children }: { title: I18n; children: ReactNode }) {
 
 const kvRow: CSSProperties = { display: "flex", justifyContent: "space-between", fontSize: 13, color: C.cream, padding: "3px 0" };
 
-export default function HubScreen({ setScreen, accent, onDispatch, onFacility, sceneId, onCycleScene, aerial, onToggleView, realistic, onToggleRealistic, onOps }: { setScreen: (s: Screen) => void; accent: string; onDispatch?: () => void; onFacility?: (k: "vessel" | "tech" | "tool" | "codex" | "ranking" | "farms") => void; sceneId?: string; onCycleScene?: () => void; aerial?: boolean; onToggleView?: () => void; realistic?: boolean; onToggleRealistic?: () => void; onOps?: () => void }) {
+export default function HubScreen({ setScreen, accent, onDispatch, onFacility, sceneId, onCycleScene, aerial, onToggleView, realistic, onToggleRealistic, onOps, week = 1 }: { setScreen: (s: Screen) => void; accent: string; onDispatch?: () => void; onFacility?: (k: "vessel" | "tech" | "tool" | "codex" | "ranking" | "farms") => void; sceneId?: string; onCycleScene?: () => void; aerial?: boolean; onToggleView?: () => void; realistic?: boolean; onToggleRealistic?: () => void; onOps?: () => void; week?: number }) {
   useLang();
   const { data, dispatch } = useGame();
   const { say } = useDialogue();
@@ -92,6 +93,8 @@ export default function HubScreen({ setScreen, accent, onDispatch, onFacility, s
   }, [data.lastEvent]);
 
   const me = getProfile();
+  // #3 每週開放：下一關屬下週時鎖定（沙盒不受限；課程臨時任務不鎖）
+  const nextLocked = !data.customQuest && !data.campaignDone && missionWeek(data.campaignIndex + 1) > week;
   const invItems = Object.entries(data.inventory).filter(([, n]) => (n ?? 0) > 0);
   const seaLabel = data.seaState === "workable" ? { zh: "可作業", en: "Workable" } : data.seaState === "caution" ? { zh: "警戒", en: "Caution" } : { zh: "停航", en: "Closed" };
   const seaColor = data.seaState === "workable" ? C.green : data.seaState === "caution" ? C.amber : C.red;
@@ -186,6 +189,10 @@ export default function HubScreen({ setScreen, accent, onDispatch, onFacility, s
                     )}
                     {stage === "done" && (data.campaignDone ? (
                       <button onClick={() => { Sfx.success(); dispatch({ type: "RESTART_CAMPAIGN" }); }} style={{ width: "100%", marginTop: 8, padding: "7px 0", borderRadius: 4, border: "1px solid rgba(255,236,196,.6)", background: primaryBg(accent), color: C.ink, fontFamily: FONT_SERIF, fontWeight: 900, fontSize: 13, cursor: "pointer" }}>🎉 {t({ zh: "戰役完成 · 重玩", en: "Clear · Replay" })}</button>
+                    ) : nextLocked ? (
+                      <div style={{ marginTop: 8, padding: "8px 10px", borderRadius: 4, background: "rgba(95,168,217,.12)", border: "1px solid rgba(95,168,217,.32)", fontSize: 11.5, color: C.mist, lineHeight: 1.5 }}>
+                        🔒 {t({ zh: `本週計分任務已完成，第 ${missionWeek(data.campaignIndex + 1)} 週開放後繼續。先去『自由營運中心』衝排行吧！`, en: `Weekly graded tasks done — resume when week ${missionWeek(data.campaignIndex + 1)} opens. Meanwhile, try the Ops Center!` })}
+                      </div>
                     ) : (
                       <button onClick={() => { Sfx.click(); dispatch({ type: "NEXT_QUEST", poolSize: CAMPAIGN.length }); }} style={{ width: "100%", marginTop: 8, padding: "7px 0", borderRadius: 4, border: "1px solid rgba(214,167,84,.5)", background: "rgba(15,40,50,.82)", color: C.cream, fontFamily: FONT_SERIF, fontWeight: 700, fontSize: 13, cursor: "pointer" }}>✅ {t(S.btn.nextOrder)}</button>
                     ))}

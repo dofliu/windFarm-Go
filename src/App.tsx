@@ -21,6 +21,7 @@ import { DialogueProvider } from "./state/DialogueContext";
 import { Bgm } from "./audio/bgm";
 import { getProfile, clearProfile } from "./state/profile";
 import { SCENES, getSceneId, setSceneId as persistSceneId, getRealistic, setRealistic as persistRealistic } from "./ui/scenes";
+import { getWeek, setWeek as persistWeek } from "./state/course";
 
 export type Screen = "hub" | "market" | "sail" | "repair";
 
@@ -38,6 +39,8 @@ export default function App() {
   const [aerial, setAerial] = useState(false); // 俯瞰風場全景模式（#32）
   const [realistic, setRealistic] = useState(getRealistic); // 模擬/實境模式（#32）
   const toggleRealistic = () => setRealistic((v) => { persistRealistic(!v); return !v; });
+  const [week, setWeekState] = useState(getWeek); // 教師端開放週次（#3）
+  const changeWeek = (w: number) => { persistWeek(w); setWeekState(w); };
 
   // 切換海域背景（#32）：循環到下一個主題並記住選擇
   const cycleScene = () => {
@@ -96,7 +99,7 @@ export default function App() {
         >
           {showSharedBg && <SceneBackground sceneId={sceneId} aerial={aerial && screen === "hub"} realistic={realistic} />}
 
-          {screen === "hub" && <HubScreen setScreen={setScreen} accent={accent} onDispatch={() => setShowDispatch(true)} onFacility={(k) => setFacility(k)} sceneId={sceneId} onCycleScene={cycleScene} aerial={aerial} onToggleView={() => setAerial((v) => !v)} realistic={realistic} onToggleRealistic={toggleRealistic} onOps={() => setShowOps(true)} />}
+          {screen === "hub" && <HubScreen setScreen={setScreen} accent={accent} onDispatch={() => setShowDispatch(true)} onFacility={(k) => setFacility(k)} sceneId={sceneId} onCycleScene={cycleScene} aerial={aerial} onToggleView={() => setAerial((v) => !v)} realistic={realistic} onToggleRealistic={toggleRealistic} onOps={() => setShowOps(true)} week={week} />}
           {screen === "market" && <MarketScreen accent={accent} />}
           {screen === "sail" && <SailScreen setScreen={setScreen} accent={accent} />}
           {screen === "repair" && <RepairScreen setScreen={setScreen} />}
@@ -104,7 +107,7 @@ export default function App() {
           <TopBar screen={screen} setScreen={setScreen} accent={accent} onGear={() => setShowCourse(true)} onLogout={logout} />
           <DialogueLayer />
           <IntroRunner />
-          <CourseModal open={showCourse} onClose={() => setShowCourse(false)} />
+          <CourseModal open={showCourse} onClose={() => setShowCourse(false)} week={week} onSetWeek={changeWeek} />
           <DispatchModal open={showDispatch} onClose={() => setShowDispatch(false)} />
           <OpsCenterModal open={showOps} onClose={() => setShowOps(false)} />
           <FacilityModal kind={facility} onClose={() => setFacility(null)} />

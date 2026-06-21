@@ -6,6 +6,7 @@ import { useGame } from "../state/GameContext";
 import { Sfx } from "../audio/sfx";
 import { COURSE_WEEKS } from "./courseMap";
 import { FAULTS } from "./faults";
+import { WEEKS_TOTAL, MISSIONS_PER_WEEK } from "../state/course";
 import type { Quest } from "../state/game";
 import type { I18n } from "../game/systems/types";
 
@@ -16,7 +17,7 @@ function toI18n(v: unknown, fallback: I18n): I18n {
 }
 
 // 課程模式（#6）：一鍵把某週故障指派為下一筆工單，或匯入自訂任務 JSON。
-export default function CourseModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+export default function CourseModal({ open, onClose, week = 1, onSetWeek }: { open: boolean; onClose: () => void; week?: number; onSetWeek?: (w: number) => void }) {
   useLang();
   const { dispatch } = useGame();
   const [text, setText] = useState("");
@@ -73,6 +74,19 @@ export default function CourseModal({ open, onClose }: { open: boolean; onClose:
         </div>
 
         <div style={{ padding: "14px 16px" }}>
+          {/* 教師端：目前開放週次（鎖定計分主線；沙盒不受限） */}
+          <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 6, background: "rgba(217,164,65,.1)", border: "1px solid rgba(214,167,84,.4)", marginBottom: 14 }}>
+            <div style={{ flex: 1 }}>
+              <div style={{ color: C.goldText, fontWeight: 900, fontFamily: FONT_SERIF, fontSize: 14 }}>{t({ zh: "教師 · 開放週次", en: "Instructor · Open week" })}</div>
+              <div style={{ color: C.mist, fontSize: 11.5, marginTop: 2 }}>{t({ zh: `目前開放計分主線至第 ${week} 週（每週 ${MISSIONS_PER_WEEK} 關）。沙盒『自由營運中心』不受限。`, en: `Graded campaign open through week ${week} (${MISSIONS_PER_WEEK}/wk). Sandbox is always open.` })}</div>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <button onClick={() => { Sfx.click(); onSetWeek?.(Math.max(1, week - 1)); }} style={{ width: 30, height: 30, borderRadius: 5, border: "1px solid rgba(214,167,84,.5)", background: "rgba(15,40,50,.82)", color: C.cream, fontSize: 18, fontWeight: 900, cursor: "pointer" }}>−</button>
+              <span style={{ minWidth: 56, textAlign: "center", color: C.goldText, fontWeight: 900, fontFamily: FONT_SERIF, fontSize: 16 }}>{t({ zh: `第 ${week} 週`, en: `Wk ${week}` })}</span>
+              <button onClick={() => { Sfx.click(); onSetWeek?.(Math.min(WEEKS_TOTAL, week + 1)); }} style={{ width: 30, height: 30, borderRadius: 5, border: "1px solid rgba(214,167,84,.5)", background: "rgba(15,40,50,.82)", color: C.cream, fontSize: 18, fontWeight: 900, cursor: "pointer" }}>＋</button>
+            </div>
+          </div>
+
           <div style={{ fontSize: 12, color: C.mist, marginBottom: 10 }}>{t({ zh: "選一週的主題，一鍵指派為下一筆工單（不影響原本的工單池）。", en: "Pick a week to assign its fault as the next work order (the main pool is untouched)." })}</div>
           {COURSE_WEEKS.map((w) => (
             <div key={w.week} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 10px", borderRadius: 5, background: "rgba(255,255,255,.04)", border: "1px solid rgba(214,167,84,.25)", marginBottom: 8 }}>
