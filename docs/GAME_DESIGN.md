@@ -101,8 +101,10 @@
 ## 12. 技術
 React + TypeScript + Vite + Tailwind；純 DOM/CSS UI；Web Audio 合成音效音樂；localStorage 存檔；GitHub Pages 自動部署。畫面：母港/交易所/出海/維修 + 對話層 + 設施 modal。
 
-## 13. 下一步規劃：登入 + 雲端紀錄 + 真排行榜
+## 13. 登入 + 雲端紀錄 + 真排行榜
 **目標**：學生登入後，系統記錄每位使用者的營運狀況（可用率/發電量/績效分/進度），匯整成**全班雲端排行榜**；教師可檢視。
+
+> **已採用方案（2026-06-21）：Google 表單 + 試算表（完全免費、免後端、免信用卡）。** 因 Supabase 免費額度用罄、不採付費方案。程式已實作：登入閘門(暱稱+班級碼)、結算自動送分、排行榜讀 CSV。教師設定步驟見 **[LEADERBOARD_SETUP.md](LEADERBOARD_SETUP.md)**。下方 Supabase/Firebase 比較保留為替代參考。
 
 ### 方案比較
 | 方案 | 優點 | 缺點 | 建議 |
