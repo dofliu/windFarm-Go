@@ -1,10 +1,10 @@
 name: Offshore O&M Legend
 name_zh: 離岸風場・運維傳說
 category: edtech
-progress: 99
+progress: 100
 status: active
 last_updated: "2026-06-21"
-next_milestone: "教師設定 Google 表單啟用班級排行榜(見 docs/LEADERBOARD_SETUP.md)；選配:多回合工期、CC0音樂"
+next_milestone: "進階擬真(見 GAME_DESIGN §14):多回合大修工期、天氣預報、機組健康度/連鎖反應、合約SLA"
 technologies:
   - React
   - TypeScript
@@ -16,4 +16,4 @@ outputs:
   - presentation
 description: "An Uncharted-Waters-style educational game for offshore wind O&M training."
 description_zh: "大航海時代風格、以離岸風電運維為核心的教學遊戲。"
-key_metrics: "大航海時代式UI四畫面(母港/交易所/出海/維修)、金色×深海設計系統、故障診斷隨堂測驗、1600×900等比舞台、中英雙語"
+key_metrics: "四畫面UI+三模式背景(模擬/實境/漫畫)+俯瞰60°、151題判斷型任務引擎(7類)、雙層架構(計分主線+無限沙盒)、多風場+突發事件+安全KPI、雲端班級排行榜(Apps Script)、每週開放、中英雙語"

@@ -19,17 +19,15 @@ An educational, *Uncharted-Waters*-style game that reframes offshore **wind-farm
 | **Repair** — fault diagnosis quiz + SOP steps | |
 
 ## Features
+- **Two-layer design** — a graded **7-mission campaign** (teacher opens it week by week) plus an always-open **Ops Center sandbox** that streams endless situations and feeds the leaderboard.
 - **Four interconnected screens**: Home Port, Parts Market, Set Sail, Repair.
-- **7-mission story campaign** (4 acts) — escalating faults reveal a shared firmware root cause, told through character dialogue.
-- **Mobilization gate** — you can't teleport to a turbine: repair is locked until you've assigned a vessel, a matching-discipline engineer, the required part in stock and a weather window, then sailed out (with travel time).
-- **Fleet & crew & economy** — buy/upgrade vessels (CTV/SOV sea-tolerance), hire engineers by discipline, manage parts with delivery lead-time & downtime cost; KPIs: availability, generation (MWh), score.
-- **Weather-window mechanic** — dynamic sea state; a work-window countdown in repair that wrong answers/steps deplete (retreat if it closes).
-- **Diagnosis quiz** as the teaching core — SCADA alarm → choose the correct first check → instant feedback.
-- **Character / dialogue system** with painterly portraits, speech bubbles and switchable facial expressions.
-- **Bilingual (繁中 / English)** — every UI string toggles live.
-- **Course Mode** (teacher tool) — assign any week's fault as the next task, or import a custom JSON task on the fly.
-- **Procedural Web Audio SFX** with a mute toggle (no audio files).
-- **Gold × deep-sea design system**, 1600×900 stage that scales to any viewport.
+- **Mobilization gate** — no teleporting: repair is locked until you've assigned a vessel, a matching-discipline engineer, the required part in stock and a weather window, then sailed out (travel time + boarding delay in rough seas).
+- **151-template judgment-task engine** across 7 categories (corrective / predictive / preventive / operational / weather / logistics / incident), most with trade-off choices, teaching feedback, and aid charts (trend / spectrum / radar).
+- **Multi-farm operations & random events** — expand to 4 farms (unlock by budget + seniority); ~8 incident types (crew shortage, strike, delivery delay, overhaul…) fire on day-advance; **safety KPI**.
+- **Fleet & crew & economy** — CTV / SOV / Jack-up vessels (jack-up mobilises for major works), hire engineers by discipline, parts with delivery lead-time & downtime cost.
+- **Three background modes** — Simulation (animated CSS), Realistic (photos) and Comic (Uncharted-Waters illustrations); plus a 60° **aerial farm view**; turbines, vessels & substation rendered per scene.
+- **Cloud class leaderboard** (free, no backend) via a Google Apps Script Web App with server-side validation; **nickname + class-code login**, per-user save isolation.
+- **Bilingual (繁中 / English)**, character/dialogue system, Course Mode (teacher tools), procedural Web Audio SFX/BGM, 1600×900 scaling stage.
 
 ## Tech stack
 React + TypeScript + Vite + Tailwind CSS. UI is pure DOM/CSS (no game engine); art is layered SVG/CSS plus transparent PNG portraits.
