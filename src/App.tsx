@@ -10,6 +10,7 @@ import DialogueLayer from "./ui/DialogueLayer";
 import IntroRunner from "./ui/IntroRunner";
 import CourseModal from "./ui/CourseModal";
 import DispatchModal from "./ui/DispatchModal";
+import FacilityModal, { type Facility } from "./ui/FacilityModal";
 import Toaster from "./ui/Toaster";
 import { GameProvider } from "./state/GameContext";
 import { DialogueProvider } from "./state/DialogueContext";
@@ -24,6 +25,7 @@ export default function App() {
   const [scale, setScale] = useState(1);
   const [showCourse, setShowCourse] = useState(false);
   const [showDispatch, setShowDispatch] = useState(false);
+  const [facility, setFacility] = useState<Facility | null>(null);
 
   // 1600×900 舞台等比縮放置中
   useEffect(() => {
@@ -70,7 +72,7 @@ export default function App() {
         >
           {showSharedBg && <SceneBackground />}
 
-          {screen === "hub" && <HubScreen setScreen={setScreen} accent={accent} onDispatch={() => setShowDispatch(true)} />}
+          {screen === "hub" && <HubScreen setScreen={setScreen} accent={accent} onDispatch={() => setShowDispatch(true)} onFacility={(k) => setFacility(k)} />}
           {screen === "market" && <MarketScreen accent={accent} />}
           {screen === "sail" && <SailScreen setScreen={setScreen} accent={accent} />}
           {screen === "repair" && <RepairScreen setScreen={setScreen} />}
@@ -80,6 +82,7 @@ export default function App() {
           <IntroRunner />
           <CourseModal open={showCourse} onClose={() => setShowCourse(false)} />
           <DispatchModal open={showDispatch} onClose={() => setShowDispatch(false)} />
+          <FacilityModal kind={facility} onClose={() => setFacility(null)} />
           <Toaster />
         </div>
       </div>

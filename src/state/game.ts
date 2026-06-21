@@ -31,6 +31,11 @@ export interface GameData {
   cargoUsed: number;
   cargoCap: number;
   inventory: Record<string, number>; // partId -> 數量
+  vesselLevel: number; // 船隊：每級 +2 作業窗（耐海象/效率）
+  techLevel: number; // 技師公會：每級 +2 妥善率回復、+2 技師
+  toolLevel: number; // 機具工坊：每級 SOP 步驟 -1 時段（最低 1）
+  seenFaults: string[]; // 圖鑑：已修復過的故障
+  missionsDone: number; // 排行榜 KPI
 }
 
 export const INITIAL: GameData = {
@@ -50,6 +55,11 @@ export const INITIAL: GameData = {
   cargoUsed: 620,
   cargoCap: 1000,
   inventory: {},
+  vesselLevel: 0,
+  techLevel: 0,
+  toolLevel: 0,
+  seenFaults: [],
+  missionsDone: 0,
 };
 
 export type Action =
@@ -58,6 +68,7 @@ export type Action =
   | { type: "SELL"; partId: string; gain: number } // 賣出 1 件（#18）
   | { type: "FINISH_REPAIR"; quest: Quest; part?: string } // 維修完成 → 結算（A3）+ 消耗備品
   | { type: "DO_ROUTINE"; budget: number; xp: number } // 調度中心例行小任務（#21）
+  | { type: "UPGRADE"; kind: "vessel" | "tech" | "tool"; cost: number } // 設施升級（A）
   | { type: "FAIL_REPAIR" } // 天氣窗關閉、撤離（#17）
   | { type: "REST" } // 靠港休整：進日 + 重新擲海象（#18）
   | { type: "NEXT_QUEST"; poolSize: number } // 下一關（#20 主線推進）
@@ -97,10 +108,17 @@ export function reducer(s: GameData, a: Action): GameData {
         inv[a.part] = (inv[a.part] ?? 0) - 1; // 消耗 1 件必備備品
         cargo = Math.max(0, cargo - 1);
       }
-      return { ...s, repairDone: true, questStage: "done", budget: s.budget + a.quest.rewardBudget, xp: s.xp + a.quest.rewardXp, availability: Math.min(100, s.availability + 8), inventory: inv, cargoUsed: cargo };
+      const seen = s.seenFaults.includes(a.quest.targetFault) ? s.seenFaults : [...s.seenFaults, a.quest.targetFault];
+      return { ...s, repairDone: true, questStage: "done", budget: s.budget + a.quest.rewardBudget, xp: s.xp + a.quest.rewardXp, availability: Math.min(100, s.availability + 8 + s.techLevel * 2), inventory: inv, cargoUsed: cargo, seenFaults: seen, missionsDone: s.missionsDone + 1 };
     }
     case "DO_ROUTINE":
-      return { ...s, budget: s.budget + a.budget, xp: s.xp + a.xp, day: s.day + 1, availability: Math.min(100, s.availability + 1) };
+      return { ...s, budget: s.budget + a.budget, xp: s.xp + a.xp, day: s.day + 1, availability: Math.min(100, s.availability + 1), missionsDone: s.missionsDone + 1 };
+    case "UPGRADE": {
+      if (a.cost > s.budget) return s;
+      const patch =
+        a.kind === "vessel" ? { vesselLevel: s.vesselLevel + 1 } : a.kind === "tech" ? { techLevel: s.techLevel + 1, techTotal: s.techTotal + 2 } : { toolLevel: s.toolLevel + 1 };
+      return { ...s, budget: s.budget - a.cost, ...patch };
+    }
     case "NEXT_QUEST": {
       if (s.questStage !== "done") return s;
       const last = a.poolSize - 1;

@@ -39,7 +39,7 @@ export default function RepairScreen({ setScreen }: { setScreen: (s: Screen) => 
   // 前兩步預設完成；步驟 3~5 可點擊完成
   const [steps, setSteps] = useState<boolean[]>(fault.sop.map((_, i) => i < 2));
   // 作業窗（#17）：海象越差，可用時段越少
-  const windowMax = data.seaState === "closed" ? 6 : data.seaState === "caution" ? 8 : 10;
+  const windowMax = (data.seaState === "closed" ? 6 : data.seaState === "caution" ? 8 : 10) + data.vesselLevel * 2; // 船隊升級加窗
   const [win, setWin] = useState(windowMax);
 
   const need = fault.part; // 必備備品
@@ -57,7 +57,7 @@ export default function RepairScreen({ setScreen }: { setScreen: (s: Screen) => 
   const completeStep = (i: number) => {
     if (i < 2 || steps[i] || failed) return; // 前兩步固定、已完成、已撤離不可再動
     setSteps((s) => s.map((v, idx) => (idx === i ? true : v)));
-    spend(2); // 每個 SOP 步驟耗 2 時段
+    spend(Math.max(1, 2 - data.toolLevel)); // 工坊升級降低每步耗時
   };
 
   const retreat = () => {

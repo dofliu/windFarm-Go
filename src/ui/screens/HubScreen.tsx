@@ -98,7 +98,7 @@ function TickerRow({ stars, name, price, farm, pct, onClick }: { stars: string; 
   );
 }
 
-export default function HubScreen({ setScreen, accent, onDispatch }: { setScreen: (s: Screen) => void; accent: string; onDispatch?: () => void }) {
+export default function HubScreen({ setScreen, accent, onDispatch, onFacility }: { setScreen: (s: Screen) => void; accent: string; onDispatch?: () => void; onFacility?: (k: "vessel" | "tech" | "tool" | "codex" | "ranking") => void }) {
   useLang();
   const { data, dispatch } = useGame();
   const { say } = useDialogue();
@@ -114,10 +114,10 @@ export default function HubScreen({ setScreen, accent, onDispatch }: { setScreen
     <div style={{ position: "absolute", inset: 0, zIndex: 2 }}>
       {/* location markers */}
       <Marker char="備" label={{ zh: "備品交易所", en: "Parts Market" }} left={560} top={300} bob={4} onClick={() => { Sfx.click(); goMarket(); }} />
-      <Marker char="工" label={{ zh: "機具工坊", en: "Workshop" }} left={760} top={230} bob={4.6} onClick={() => { Sfx.click(); toast(SOON); }} />
+      <Marker char="工" label={{ zh: "機具工坊", en: "Workshop" }} left={760} top={230} bob={4.6} onClick={() => { Sfx.click(); onFacility?.("tool"); }} />
       <Marker char="調" label={{ zh: "調度中心", en: "Dispatch" }} left={940} top={296} bob={5.2} onClick={() => { Sfx.click(); onDispatch?.(); }} />
-      <Marker char="師" label={{ zh: "技師公會", en: "Tech Guild" }} left={650} top={430} bob={4.2} onClick={() => { Sfx.click(); toast(SOON); }} />
-      <Marker char="船" label={{ zh: "CTV 整備廠", en: "CTV Yard" }} left={880} top={452} bob={4.8} onClick={() => { Sfx.click(); toast(SOON); }} />
+      <Marker char="師" label={{ zh: "技師公會", en: "Tech Guild" }} left={650} top={430} bob={4.2} onClick={() => { Sfx.click(); onFacility?.("tech"); }} />
+      <Marker char="船" label={{ zh: "CTV 整備廠", en: "CTV Yard" }} left={880} top={452} bob={4.8} onClick={() => { Sfx.click(); onFacility?.("vessel"); }} />
 
       {/* LEFT: market ticker */}
       <div style={{ ...panel, position: "absolute", left: 28, top: 92, width: 312 }}>
@@ -153,11 +153,11 @@ export default function HubScreen({ setScreen, accent, onDispatch }: { setScreen
 
       {/* RIGHT: action rail */}
       <div style={{ position: "absolute", right: 26, top: 108, display: "flex", flexDirection: "column", gap: 14, alignItems: "center" }}>
-        <RailBtn char="任" label={{ zh: "任務", en: "Quests" }} onClick={() => { Sfx.click(); toast(SOON); }} />
-        <RailBtn char="船" label={{ zh: "船隊", en: "Fleet" }} onClick={() => { Sfx.click(); toast(SOON); }} />
+        <RailBtn char="任" label={{ zh: "任務", en: "Quests" }} onClick={() => { Sfx.click(); onDispatch?.(); }} />
+        <RailBtn char="船" label={{ zh: "船隊", en: "Fleet" }} onClick={() => { Sfx.click(); onFacility?.("vessel"); }} />
         <RailBtn char="倉" label={{ zh: "倉庫", en: "Storage" }} onClick={() => { Sfx.click(); setScreen("market"); toast({ zh: "切到交易所「賣出」分頁可檢視庫存", en: "See inventory under the Market 'Sell' tab" }); }} />
-        <RailBtn char="鑑" label={{ zh: "圖鑑", en: "Codex" }} onClick={() => { Sfx.click(); toast(SOON); }} />
-        <RailBtn char="榜" label={{ zh: "排行", en: "Ranking" }} onClick={() => { Sfx.click(); toast(SOON); }} />
+        <RailBtn char="鑑" label={{ zh: "圖鑑", en: "Codex" }} onClick={() => { Sfx.click(); onFacility?.("codex"); }} />
+        <RailBtn char="榜" label={{ zh: "排行", en: "Ranking" }} onClick={() => { Sfx.click(); onFacility?.("ranking"); }} />
       </div>
 
       {/* BOTTOM-LEFT: quest card（依工單階段動態） */}
