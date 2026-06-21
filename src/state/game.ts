@@ -46,12 +46,16 @@ export interface Turbine {
 export interface OpsJob {
   id: string;
   turbine: string; // 機組 id
-  engineerId: string; // 派遣的技師
+  engineerId: string; // 派遣的技師（遠端重啟為 "__remote__"）
   discipline: Discipline;
   daysLeft: number; // 剩餘工日
+  remote?: boolean; // 遠端重啟工單（免技師、不累積疲勞）
 }
-export const FAULT_RATE_BASE = 0.45; // 每日新增故障的基礎機率（隨健康度上升）
+export const FAULT_RATE_BASE = 0.16; // 每日新增故障的基礎機率（隨健康度上升）
 export const FLEET_INIT_FAULTS = 3; // 開局即有的故障數（給玩家可立即處理的事件）
+export const REMOTE_RESET_DAYS = 1; // 遠端重啟工期（免技師、較短）
+export const FLEET_FIX_REWARD = 120_000; // 每修復一台機組的維運報酬 ◎（Phase C 經濟）
+export const ELECTRICITY_PRICE = 3_000; // 售電單價 ◎/MWh（每日發電量 → 收入）
 
 // 依擁有風場建立機組陣列（每座 farm.units 台，發電佔比 = genPerDay/units）
 export function buildFleetForFarm(f: number): Turbine[] {
@@ -201,6 +205,11 @@ export function computeScore(d: GameData): number {
   return Math.max(0, d.generationMWh + d.availability * 5 + d.missionsDone * 30 - d.safetyIncidents * 20 + d.farmsOwned * 10 - (d.slaPenalties ?? 0) * 25 + (d.fleetResolved ?? 0) * 8);
 }
 
+// 預估每日售電收入（◎）：可用率 × owned 風場基準發電 × 單價
+export function dailyRevenue(d: GameData): number {
+  return Math.round((d.availability / 100) * ownedFarmGen(d.farmsOwned)) * ELECTRICITY_PRICE;
+}
+
 export const INITIAL: GameData = {
   budget: 84_200_000,
   xp: 0,
@@ -276,15 +285,16 @@ function advance(s: GameData, days = 1): Partial<GameData> {
   }
   const downtime = s.questStage === "active" && !s.repairDone ? DOWNTIME_PER_DAY * days : 0;
   const storage = dailyStorageCost(inv) * days; // 倉儲維持費（#warehouse）
-  const gen = s.generationMWh + Math.round((s.availability / 100) * ownedFarmGen(s.farmsOwned) * days); // 多風場發電累積（#28/#34）
+  const genDelta = Math.round((s.availability / 100) * ownedFarmGen(s.farmsOwned) * days); // 本次發電量（#28/#34）
+  const revenue = genDelta * ELECTRICITY_PRICE; // 售電收入（Phase C 經濟：每日發電量 → 現金流）
   let patch: Partial<GameData> = {
     day,
     pendingOrders: pend,
     inventory: inv,
     cargoUsed: cargo,
     lastSpoil,
-    budget: Math.max(0, s.budget - downtime - storage),
-    generationMWh: gen,
+    budget: Math.max(0, s.budget - downtime - storage + revenue),
+    generationMWh: s.generationMWh + genDelta,
     techAvail: Math.min(s.techTotal, s.techAvail + days), // 人力每日緩慢回復
     engineers: s.engineers.map((e) => ({ ...e, fatigue: clampN(fatigueOf(e) - FATIGUE_RECOVERY * days, 0, 100) })), // 技師休整回復疲勞（#7）
   };
@@ -311,18 +321,20 @@ function advance(s: GameData, days = 1): Partial<GameData> {
     let jobs = s.opsJobs.map((j) => ({ ...j }));
     let resolved = s.fleetResolved;
     let engs = patch.engineers ?? s.engineers;
+    let fixPay = 0;
     for (let dd = 0; dd < days; dd++) {
-      // 並行工單推進；完工 → 機組復歸 + 出勤技師累積疲勞
+      // 並行工單推進；完工 → 機組復歸 + 維運報酬；派工(非遠端)累積疲勞
       jobs = jobs.map((j) => ({ ...j, daysLeft: j.daysLeft - 1 }));
       for (const j of jobs.filter((j) => j.daysLeft <= 0)) {
         const ti = fleet.findIndex((t) => t.id === j.turbine);
         if (ti >= 0) fleet[ti] = { ...fleet[ti], status: "ok", faultId: undefined };
         resolved += 1;
-        engs = deployFatigue(engs, j.discipline);
+        fixPay += FLEET_FIX_REWARD;
+        if (!j.remote) engs = deployFatigue(engs, j.discipline);
       }
       jobs = jobs.filter((j) => j.daysLeft > 0);
       // 隨機新增故障（機率隨健康度下降而上升），鎖定一台正常且未在維修的機組
-      const faultProb = Math.min(0.85, FAULT_RATE_BASE + ((100 - health) / 100) * 0.4);
+      const faultProb = Math.min(0.6, FAULT_RATE_BASE + ((100 - health) / 100) * 0.25);
       if (Math.random() < faultProb) {
         const oks = fleet.filter((t) => t.status === "ok");
         if (oks.length) {
@@ -339,6 +351,7 @@ function advance(s: GameData, days = 1): Partial<GameData> {
     patch.fleetResolved = resolved;
     patch.fleetLostMWh = s.fleetLostMWh + lost;
     patch.engineers = engs;
+    if (fixPay > 0) patch.budget = Math.max(0, (patch.budget ?? s.budget) + fixPay);
   }
   // 合約 SLA（#3）：每日累計可用率，跨季結算；平均低於底線 → 扣違約金
   const avail = patch.availability ?? s.availability;
@@ -389,6 +402,7 @@ export type Action =
   | { type: "REST" } // 靠港休整：進日 + 重新擲海象（#18）
   | { type: "REMOTE_CHECK" } // 每日遠端 SCADA 巡檢（Phase A #2）：消耗 1 天、累積 XP、早期偵測微幅回復健康度
   | { type: "OPS_DISPATCH"; turbine: string; engineerId: string } // 戰情室派工：指派技師維修某故障機組（Phase C）
+  | { type: "OPS_RESET"; turbine: string } // 戰情室遠端重啟：清除可重啟的軟性故障（免技師、較快）
   | { type: "OPS_ADVANCE" } // 戰情室推進一天（Phase C）：並行工單前進、隨機新增故障
   | { type: "NEXT_QUEST"; poolSize: number } // 下一關（#20 主線推進）
   | { type: "RESTART_CAMPAIGN" } // 重玩戰役（#20）
@@ -496,6 +510,15 @@ export function reducer(s: GameData, a: Action): GameData {
       if (engineerBusy(s.opsJobs, eng.id)) return s; // 該技師已在執行工單
       const fleet = s.fleet.map((x) => (x.id === tb.id ? { ...x, status: "repair" as TurbineStatus } : x));
       const job: OpsJob = { id: "job_" + Math.random().toString(36).slice(2, 9), turbine: tb.id, engineerId: eng.id, discipline: eng.discipline, daysLeft: inc.repairDays };
+      return { ...s, fleet, opsJobs: [...s.opsJobs, job] };
+    }
+    case "OPS_RESET": {
+      const tb = s.fleet.find((x) => x.id === a.turbine);
+      if (!tb || tb.status !== "fault") return s;
+      const inc = incidentAt(tb.faultId);
+      if (!inc || !inc.resettable) return s; // 僅軟性故障可遠端重啟
+      const fleet = s.fleet.map((x) => (x.id === tb.id ? { ...x, status: "repair" as TurbineStatus } : x));
+      const job: OpsJob = { id: "rst_" + Math.random().toString(36).slice(2, 9), turbine: tb.id, engineerId: "__remote__", discipline: inc.discipline, daysLeft: REMOTE_RESET_DAYS, remote: true };
       return { ...s, fleet, opsJobs: [...s.opsJobs, job] };
     }
     case "BUY": {

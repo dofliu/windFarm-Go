@@ -4,7 +4,7 @@ category: edtech
 progress: 100
 status: active
 last_updated: "2026-06-21"
-next_milestone: "真實營運深化(見 GAME_DESIGN §15):Phase A/B 已完成；Phase C 核心(風場戰情室:機組個體模型+並行工單/多組人力派遣+有界隨機故障+差異化停機損失) 已實作；可選 C2:預防定檢/每週事件池/船舶並行限制/平衡微調"
+next_milestone: "真實營運深化(見 GAME_DESIGN §15):Phase A/B/C 已完成並依試玩微調(降故障率+遠端重啟+每日售電收入經濟);可選 C2:預防定檢/每週事件池/船舶並行限制/戰情室停機折抵收入"
 technologies:
   - React
   - TypeScript
