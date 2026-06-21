@@ -9,23 +9,10 @@ import { S } from "../../i18n/strings";
 import { Sfx } from "../../audio/sfx";
 import { exprUrl } from "../characters";
 import { FAULTS, LOCATION_LABEL, locationOf } from "../faults";
+import RepairScene from "../RepairScene";
 import { PARTS } from "../data";
 import { missionAt } from "../campaign";
 import type { Screen } from "../../App";
-
-function Hotspot({ left, top, label, color, alarm }: { left: number; top: number; label: { zh: string; en: string }; color: string; alarm?: boolean }) {
-  const dot = <span style={{ width: alarm ? 13 : 11, height: alarm ? 13 : 11, borderRadius: "50%", background: color, boxShadow: `0 0 6px ${color}`, animation: alarm ? "shimmer 1.2s ease-in-out infinite" : undefined }} />;
-  const tag = (
-    <div style={{ padding: "3px 9px", borderRadius: 3, background: alarm ? "rgba(40,16,14,.92)" : "rgba(12,30,38,.9)", border: `1px solid ${color}`, color: alarm ? C.redText : color === C.green ? "#cdeccf" : color === C.amber ? "#f4e0b4" : "#cdeccf", fontSize: 11, fontWeight: alarm ? 700 : 400, whiteSpace: "nowrap" }}>
-      {t(label)}
-    </div>
-  );
-  return (
-    <div style={{ position: "absolute", left, top, display: "flex", alignItems: "center", gap: 6, zIndex: 3 }}>
-      {alarm ? (<>{dot}{tag}</>) : (<>{tag}{dot}</>)}
-    </div>
-  );
-}
 
 export default function RepairScreen({ setScreen }: { setScreen: (s: Screen) => void }) {
   useLang();
@@ -183,24 +170,8 @@ export default function RepairScreen({ setScreen }: { setScreen: (s: Screen) => 
         <span style={{ color: C.gold }}>📍</span> {t({ zh: "作業地點", en: "Work area" })}：{t(LOCATION_LABEL[location])} · {quest.unit}
       </div>
 
-      {/* turbine schematic */}
-      <div style={{ position: "absolute", left: 120, top: 110, width: 430, height: 680 }}>
-        <div style={{ position: "absolute", left: 198, top: 472, width: 34, height: 120, background: "linear-gradient(90deg,#3d4a52,#566570,#2c363d)", borderRadius: 3 }} />
-        <div style={{ position: "absolute", left: 175, top: 150, width: 80, height: 330, background: "linear-gradient(90deg,#5a6770,#8a98a0 45%,#4a565d)", clipPath: "polygon(40% 0,60% 0,72% 100%,28% 100%)" }} />
-        <div style={{ position: "absolute", left: 150, top: 128, width: 130, height: 42, background: "linear-gradient(180deg,#e7edef,#aab7bd)", borderRadius: "10px 16px 16px 10px", boxShadow: "0 4px 10px rgba(0,0,0,.3)" }} />
-        <div style={{ position: "absolute", left: 138, top: 135, width: 26, height: 26, borderRadius: "50%", background: "radial-gradient(circle at 40% 35%,#f2f6f7,#9aa8ae)", border: "1px solid #7d8b91", zIndex: 2 }} />
-        <div style={{ position: "absolute", left: 151, top: 148, width: 0, height: 0, animation: "spin 16s linear infinite", zIndex: 1 }}>
-          {[0, 120, 240].map((d) => (
-            <div key={d} style={{ position: "absolute", left: -8, top: 0, width: 16, height: 160, background: "linear-gradient(180deg,#eef3f4,#aebbc0)", clipPath: "polygon(22% 0,78% 0,56% 100%,44% 100%)", transformOrigin: "8px 0", transform: `rotate(${d}deg)` }} />
-          ))}
-        </div>
-        <Hotspot left={96} top={128} label={{ zh: "變槳系統 · 正常", en: "Pitch · OK" }} color={C.green} />
-        <Hotspot left={286} top={118} label={fault.name} color={C.red} alarm />
-        <Hotspot left={286} top={152} label={{ zh: "發電機 · 注意", en: "Generator · Watch" }} color={C.amber} />
-        <Hotspot left={262} top={196} label={{ zh: "偏航系統 · 正常", en: "Yaw · OK" }} color={C.green} />
-        <Hotspot left={262} top={320} label={{ zh: "塔筒結構 · 正常", en: "Tower · OK" }} color={C.green} />
-        <Hotspot left={248} top={500} label={{ zh: "基礎/海纜 · 正常", en: "Foundation · OK" }} color={C.green} />
-      </div>
+      {/* 依作業地點變化的場景（#5）：機艙內/塔架內/輪轂/甲板 */}
+      <RepairScene location={location} alarm={fault.name} />
 
       {/* left bottom cards */}
       <div style={{ position: "absolute", left: 40, bottom: 28, width: 300, display: "flex", gap: 12 }}>

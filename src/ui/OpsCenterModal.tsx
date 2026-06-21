@@ -87,6 +87,9 @@ export default function OpsCenterModal({ open, onClose }: { open: boolean; onClo
   if (!open) return null;
 
   const tpl = task.template;
+  // #4 接圖：B/D/E 類預設帶輔助圖（個別 template.chart 可覆寫）
+  const DEFAULT_CHART: Record<string, string> = { B: "trend", D: "bars", E: "radar" };
+  const chart = tpl.chart ?? DEFAULT_CHART[tpl.cat];
   const resolve = (ci: number, c: TaskChoice) => {
     if (picked !== null) return;
     (c.good ? Sfx.success : Sfx.error)();
@@ -118,7 +121,7 @@ export default function OpsCenterModal({ open, onClose }: { open: boolean; onClo
           <span style={{ marginLeft: "auto", fontSize: 11, color: C.mist }}>{task.unit}</span>
         </div>
         <div style={{ padding: "12px 14px" }}>
-          {tpl.chart && <TaskChart kind={tpl.chart} />}
+          {chart && <TaskChart kind={chart} />}
           <div style={{ color: C.cream, fontSize: 13.5, lineHeight: 1.6, marginBottom: 12 }}>{t(tpl.scenario)}</div>
           {tpl.choices.map((c, i) => {
             const isPick = picked === i;
