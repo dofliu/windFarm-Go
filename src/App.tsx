@@ -7,6 +7,7 @@ import MarketScreen from "./ui/screens/MarketScreen";
 import SailScreen from "./ui/screens/SailScreen";
 import RepairScreen from "./ui/screens/RepairScreen";
 import DialogueLayer from "./ui/DialogueLayer";
+import IntroRunner from "./ui/IntroRunner";
 import CourseModal from "./ui/CourseModal";
 import DispatchModal from "./ui/DispatchModal";
 import Toaster from "./ui/Toaster";
@@ -76,6 +77,7 @@ export default function App() {
 
           <TopBar screen={screen} setScreen={setScreen} accent={accent} onGear={() => setShowCourse(true)} />
           <DialogueLayer />
+          <IntroRunner />
           <CourseModal open={showCourse} onClose={() => setShowCourse(false)} />
           <DispatchModal open={showDispatch} onClose={() => setShowDispatch(false)} />
           <Toaster />
