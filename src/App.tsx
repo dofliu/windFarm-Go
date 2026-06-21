@@ -12,9 +12,12 @@ import CourseModal from "./ui/CourseModal";
 import DispatchModal from "./ui/DispatchModal";
 import FacilityModal, { type Facility } from "./ui/FacilityModal";
 import Toaster from "./ui/Toaster";
+import LoginScreen from "./ui/LoginScreen";
+import ScoreSync from "./ui/ScoreSync";
 import { GameProvider } from "./state/GameContext";
 import { DialogueProvider } from "./state/DialogueContext";
 import { Bgm } from "./audio/bgm";
+import { getProfile } from "./state/profile";
 
 export type Screen = "hub" | "market" | "sail" | "repair";
 
@@ -26,6 +29,7 @@ export default function App() {
   const [showCourse, setShowCourse] = useState(false);
   const [showDispatch, setShowDispatch] = useState(false);
   const [facility, setFacility] = useState<Facility | null>(null);
+  const [loggedIn, setLoggedIn] = useState(() => getProfile() != null);
 
   // 1600×900 舞台等比縮放置中
   useEffect(() => {
@@ -41,6 +45,8 @@ export default function App() {
   }, [screen]);
 
   const showSharedBg = screen === "hub" || screen === "market";
+
+  if (!loggedIn) return <LoginScreen onDone={() => setLoggedIn(true)} />;
 
   return (
     <GameProvider>
@@ -83,6 +89,7 @@ export default function App() {
           <CourseModal open={showCourse} onClose={() => setShowCourse(false)} />
           <DispatchModal open={showDispatch} onClose={() => setShowDispatch(false)} />
           <FacilityModal kind={facility} onClose={() => setFacility(null)} />
+          <ScoreSync />
           <Toaster />
         </div>
       </div>

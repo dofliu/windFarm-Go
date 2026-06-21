@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { C, FONT_SERIF, primaryBg, panel } from "./tokens";
 import { t } from "../game/systems/i18n";
 import { useLang } from "./useLang";
@@ -8,6 +8,8 @@ import { Sfx } from "../audio/sfx";
 import { FAULTS } from "./faults";
 import { DISC } from "./disc";
 import type { I18n } from "../game/systems/types";
+import { getProfile } from "../state/profile";
+import { SHEET_CONFIG, fetchLeaderboard, type Row } from "../cloud/sheet";
 
 export type Facility = "vessel" | "tech" | "tool" | "codex" | "ranking";
 
@@ -41,6 +43,15 @@ export default function FacilityModal({ kind, onClose }: { kind: Facility | null
   useLang();
   const { data, dispatch } = useGame();
   const [cands, setCands] = useState<Engineer[]>(genCandidates);
+  // 雲端排行榜（#30）：開啟排行且已設定時抓取
+  const [cloudRows, setCloudRows] = useState<Row[]>([]);
+  const [cloudLoading, setCloudLoading] = useState(false);
+  useEffect(() => {
+    if (kind === "ranking" && SHEET_CONFIG.enabled) {
+      setCloudLoading(true);
+      fetchLeaderboard().then((r) => { setCloudRows(r); setCloudLoading(false); });
+    }
+  }, [kind]);
   if (!kind) return null;
 
   // 機具工坊（工具升級）
@@ -152,7 +163,30 @@ export default function FacilityModal({ kind, onClose }: { kind: Facility | null
           <span style={{ color: i === 0 ? C.goldText : C.cream, fontWeight: i === 0 ? 900 : 700, fontVariantNumeric: "tabular-nums" }}>{val}</span>
         </div>
       ))}
-      <div style={{ fontSize: 11, color: C.mist, marginTop: 10 }}>{t({ zh: "（班級雲端排行待登入系統；目前為本機）", en: "(Cloud leaderboard pending login; local for now)" })}</div>
+      {SHEET_CONFIG.enabled ? (
+        <div style={{ marginTop: 16 }}>
+          <div style={{ fontFamily: FONT_SERIF, fontWeight: 900, color: C.goldText, fontSize: 14, marginBottom: 6 }}>{t({ zh: "班級雲端排行", en: "Class Leaderboard" })}</div>
+          {cloudLoading ? (
+            <div style={{ fontSize: 12, color: C.mist, padding: "8px 0" }}>{t({ zh: "讀取中…", en: "Loading…" })}</div>
+          ) : cloudRows.length === 0 ? (
+            <div style={{ fontSize: 12, color: C.mist, padding: "8px 0" }}>{t({ zh: "尚無資料", en: "No data yet" })}</div>
+          ) : (
+            cloudRows.slice(0, 20).map((r, i) => {
+              const me = getProfile();
+              const mine = me && r.nickname === me.nickname && r.classCode === me.classCode;
+              return (
+                <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 8px", borderRadius: 4, background: mine ? "rgba(217,164,65,.16)" : undefined, fontSize: 13 }}>
+                  <span style={{ width: 22, color: i < 3 ? C.goldText : C.mist, fontWeight: 900, fontVariantNumeric: "tabular-nums" }}>{i + 1}</span>
+                  <span style={{ flex: 1, color: mine ? C.goldText : C.cream, fontWeight: mine ? 900 : 400 }}>{r.nickname}{r.classCode && <span style={{ color: C.mist, fontSize: 11 }}> · {r.classCode}</span>}</span>
+                  <span style={{ color: C.cream, fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>{r.score}</span>
+                </div>
+              );
+            })
+          )}
+        </div>
+      ) : (
+        <div style={{ fontSize: 11, color: C.mist, marginTop: 10 }}>{t({ zh: "（班級雲端排行需教師設定 Google 表單；目前為本機）", en: "(Class cloud leaderboard needs teacher's Google Form; local for now)" })}</div>
+      )}
     </div>
   ));
 }
