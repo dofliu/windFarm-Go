@@ -22,3 +22,17 @@ export function setProfile(p: Profile): void {
     // 隱私模式可能無法寫入；忽略
   }
 }
+
+export function clearProfile(): void {
+  try {
+    localStorage.removeItem(KEY);
+  } catch {
+    // 忽略
+  }
+}
+
+// 每位使用者獨立存檔的 key（依班級碼 + 暱稱命名空間化）。
+export function saveKeyFor(p: Profile | null): string {
+  const id = p ? `${p.classCode}/${p.nickname}` : "guest";
+  return `windfarm-go-save::${id}`;
+}

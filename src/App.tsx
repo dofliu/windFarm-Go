@@ -14,10 +14,11 @@ import FacilityModal, { type Facility } from "./ui/FacilityModal";
 import Toaster from "./ui/Toaster";
 import LoginScreen from "./ui/LoginScreen";
 import ScoreSync from "./ui/ScoreSync";
+import WelcomeOnLogin from "./ui/WelcomeOnLogin";
 import { GameProvider } from "./state/GameContext";
 import { DialogueProvider } from "./state/DialogueContext";
 import { Bgm } from "./audio/bgm";
-import { getProfile } from "./state/profile";
+import { getProfile, clearProfile } from "./state/profile";
 
 export type Screen = "hub" | "market" | "sail" | "repair";
 
@@ -47,6 +48,8 @@ export default function App() {
   const showSharedBg = screen === "hub" || screen === "market";
 
   if (!loggedIn) return <LoginScreen onDone={() => setLoggedIn(true)} />;
+
+  const logout = () => { clearProfile(); setScreen("hub"); setLoggedIn(false); };
 
   return (
     <GameProvider>
@@ -83,13 +86,14 @@ export default function App() {
           {screen === "sail" && <SailScreen setScreen={setScreen} accent={accent} />}
           {screen === "repair" && <RepairScreen setScreen={setScreen} />}
 
-          <TopBar screen={screen} setScreen={setScreen} accent={accent} onGear={() => setShowCourse(true)} />
+          <TopBar screen={screen} setScreen={setScreen} accent={accent} onGear={() => setShowCourse(true)} onLogout={logout} />
           <DialogueLayer />
           <IntroRunner />
           <CourseModal open={showCourse} onClose={() => setShowCourse(false)} />
           <DispatchModal open={showDispatch} onClose={() => setShowDispatch(false)} />
           <FacilityModal kind={facility} onClose={() => setFacility(null)} />
           <ScoreSync />
+          <WelcomeOnLogin />
           <Toaster />
         </div>
       </div>

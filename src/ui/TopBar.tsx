@@ -7,6 +7,7 @@ import { getLang, toggleLang } from "../game/systems/i18n";
 import { useLang } from "./useLang";
 import { useGame } from "../state/GameContext";
 import { toWan, type SeaState } from "../state/game";
+import { getProfile } from "../state/profile";
 import { S } from "../i18n/strings";
 import type { I18n } from "../game/systems/types";
 import type { Screen } from "../App";
@@ -29,15 +30,18 @@ export default function TopBar({
   setScreen,
   accent,
   onGear,
+  onLogout,
 }: {
   screen: Screen;
   setScreen: (s: Screen) => void;
   accent: string;
   onGear?: () => void;
+  onLogout?: () => void;
 }) {
   useLang();
   const { data } = useGame();
   const sea = SEA[data.seaState as SeaState];
+  const profile = getProfile();
 
   return (
     <div
@@ -95,12 +99,10 @@ export default function TopBar({
         </div>
       </div>
 
-      {/* center tabs */}
+      {/* nav tabs（靠左接 logo，避免與右側 HUD 重疊） */}
       <div
         style={{
-          position: "absolute",
-          left: "50%",
-          transform: "translateX(-50%)",
+          marginLeft: 28,
           display: "flex",
           gap: 4,
           background: "rgba(10,28,36,.7)",
@@ -118,7 +120,7 @@ export default function TopBar({
             }}
             style={{
               position: "relative",
-              padding: "8px 26px",
+              padding: "8px 18px",
               borderRadius: 4,
               cursor: "pointer",
               whiteSpace: "nowrap",
@@ -137,7 +139,7 @@ export default function TopBar({
       </div>
 
       {/* right resources */}
-      <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 14, whiteSpace: "nowrap" }}>
+      <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 10, whiteSpace: "nowrap" }}>
         <div style={chip}>
           <span style={{ width: 10, height: 10, borderRadius: "50%", background: sea.c, boxShadow: `0 0 8px ${sea.c}`, animation: "shimmer 2.4s ease-in-out infinite" }} />
           <div style={{ lineHeight: 1.15 }}>
@@ -163,9 +165,21 @@ export default function TopBar({
             {toWan(data.budget)} {t(S.hud.wan)}
           </span>
         </div>
+        {profile && (
+          <div style={{ ...chip, gap: 8 }} title={t({ zh: "點登出可切換帳號", en: "Click logout to switch account" })}>
+            <span style={{ width: 24, height: 24, borderRadius: "50%", background: "radial-gradient(circle at 50% 35%, #2a6275, #103039)", border: `1px solid ${C.gold}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, color: C.goldText, fontWeight: 900 }}>
+              {profile.nickname.slice(0, 1)}
+            </span>
+            <div style={{ lineHeight: 1.15 }}>
+              <div style={{ color: C.cream, fontSize: 13, fontWeight: 700, maxWidth: 90, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{profile.nickname}</div>
+              {profile.classCode && <div style={{ color: C.mist, fontSize: 10 }}>{t({ zh: "班級", en: "Class" })} {profile.classCode}</div>}
+            </div>
+          </div>
+        )}
         <Btn onClick={() => toggleLang()}>{getLang() === "zh" ? "中" : "EN"}</Btn>
         <MuteBtn />
         <Btn onClick={onGear}>⚙</Btn>
+        <Btn onClick={() => { Sfx.click(); onLogout?.(); }}>⎋</Btn>
       </div>
     </div>
   );
