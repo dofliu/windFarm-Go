@@ -304,6 +304,7 @@ export type Action =
   | { type: "ARRIVE" } // 抵達 → onsite（#25）
   | { type: "FAIL_REPAIR" } // 天氣窗關閉、撤離（#17）
   | { type: "REST" } // 靠港休整：進日 + 重新擲海象（#18）
+  | { type: "REMOTE_CHECK" } // 每日遠端 SCADA 巡檢（Phase A #2）：消耗 1 天、累積 XP、早期偵測微幅回復健康度
   | { type: "NEXT_QUEST"; poolSize: number } // 下一關（#20 主線推進）
   | { type: "RESTART_CAMPAIGN" } // 重玩戰役（#20）
   | { type: "ASSIGN_QUEST"; quest: Quest } // 課程模式臨時指派（#6）
@@ -378,6 +379,11 @@ export function reducer(s: GameData, a: Action): GameData {
     case "REST": {
       const adv = advance(s, 1);
       return { ...s, ...adv, availability: Math.min(100, s.availability + 1), fleetHealth: clampN((adv.fleetHealth ?? s.fleetHealth) + 1.5, 0, 100) };
+    }
+    case "REMOTE_CHECK": {
+      // 遠端巡檢：不派船、消耗 1 天，早期偵測微幅回復健康度並累積經驗
+      const adv = advance(s, 1);
+      return { ...s, ...adv, xp: s.xp + 15, fleetHealth: clampN((adv.fleetHealth ?? s.fleetHealth) + 2, 0, 100) };
     }
     case "BUY": {
       if (a.cost > s.budget) return s;
