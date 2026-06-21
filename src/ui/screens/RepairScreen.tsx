@@ -8,7 +8,7 @@ import { useDialogue } from "../../state/DialogueContext";
 import { S } from "../../i18n/strings";
 import { Sfx } from "../../audio/sfx";
 import { exprUrl } from "../characters";
-import { FAULTS } from "../faults";
+import { FAULTS, LOCATION_LABEL, locationOf } from "../faults";
 import { PARTS } from "../data";
 import { missionAt } from "../campaign";
 import type { Screen } from "../../App";
@@ -42,6 +42,11 @@ export default function RepairScreen({ setScreen }: { setScreen: (s: Screen) => 
   const windowMax = (data.seaState === "closed" ? 6 : data.seaState === "caution" ? 8 : 10) + data.vesselLevel * 2; // 船隊升級加窗
   const [win, setWin] = useState(windowMax);
 
+  // #33 登船事件 + 作業地點
+  const location = locationOf(fault.id);
+  const roughBoarding = data.seaState !== "workable"; // 浪高 → 登船延誤
+  const [boarded, setBoarded] = useState(false);
+
   const need = fault.part; // 必備備品
   const needPart = PARTS.find((p) => p.id === need);
   const hasPart = (data.inventory[need] ?? 0) > 0;
@@ -65,6 +70,19 @@ export default function RepairScreen({ setScreen }: { setScreen: (s: Screen) => 
     dispatch({ type: "FAIL_REPAIR" });
     say({ speaker: "veteran_sailor", line: { zh: "海象變差、作業窗關了！先撤離，擇日再來。", en: "Weather's turned — window's shut. Retreat and try another day." } });
     setScreen("hub");
+  };
+
+  // #33 登船 / 返航改期
+  const board = () => {
+    Sfx.click();
+    if (roughBoarding) setWin((w) => Math.max(3, w - 3)); // 登船延誤：耗去部分作業窗
+    setBoarded(true);
+  };
+  const abortBoarding = () => {
+    Sfx.error();
+    dispatch({ type: "FAIL_REPAIR" }); // 返航改期：回辦公室、可用率小扣
+    say({ speaker: "veteran_sailor", line: { zh: "浪太大、登船風險高，先返航改期吧。", en: "Seas too rough to board safely — return and reschedule." } });
+    setScreen("sail");
   };
 
   const finish = () => {
@@ -101,6 +119,54 @@ export default function RepairScreen({ setScreen }: { setScreen: (s: Screen) => 
     );
   }
 
+  // #33 登船事件：抵達後、開工前的登船場景（浪高可能延誤）
+  if (!boarded) {
+    return (
+      <div style={{ position: "absolute", inset: 0, zIndex: 2 }}>
+        <div style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg,#3a4a63 0%, #587089 40%, #2a6173 70%, #143f4c 100%)" }} />
+        <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: "46%", background: "repeating-linear-gradient(178deg, rgba(255,255,255,.05) 0 2px, rgba(255,255,255,0) 2px 26px)" }} />
+        {/* 風機基礎（登船平台） */}
+        <div style={{ position: "absolute", left: "50%", bottom: "30%", transform: "translateX(-50%)", width: 40, height: 260, background: "linear-gradient(90deg,#c9a23a,#e8c45a 50%,#a8801f)", borderRadius: 3, opacity: 0.92 }} />
+        <div style={{ position: "absolute", left: "calc(50% - 70px)", bottom: "31%", width: 140, height: 16, background: "#caa83e", borderRadius: 2 }} />
+        {/* CTV 隨浪起伏 */}
+        <div style={{ position: "absolute", left: "calc(50% - 120px)", bottom: "26%", animation: roughBoarding ? "bob 1.1s ease-in-out infinite" : "bob 3.2s ease-in-out infinite" }}>
+          <div style={{ width: 66, height: 22, background: "linear-gradient(180deg,#46586a,#1c2730)", borderRadius: "6px 8px 16px 16px/6px 6px 22px 22px", boxShadow: "0 4px 8px rgba(0,0,0,.4)" }}>
+            <div style={{ position: "absolute", top: -10, left: 26, width: 12, height: 11, background: "#eef2f3", borderRadius: "3px 3px 0 0" }} />
+            <div style={{ position: "absolute", top: 7, left: 0, right: 0, height: 3, background: "#e0a83e" }} />
+          </div>
+        </div>
+
+        <div style={{ position: "absolute", right: 26, top: 92, width: 360 }}>
+          <div style={{ ...panel }}>
+            <div style={{ ...panelHeader }}>
+              <span style={panelTitle}>{t({ zh: "登船登塔", en: "Boarding" })}</span>
+              <span style={{ marginLeft: "auto", fontSize: 12, color: C.goldText }}>{quest.unit} · {t(LOCATION_LABEL[location])}</span>
+            </div>
+            <div style={{ padding: "14px 16px" }}>
+              <div style={{ fontSize: 13, color: C.mist, marginBottom: 4 }}>{t({ zh: "海象", en: "Sea" })}：<span style={{ color: roughBoarding ? C.amber2 : C.green, fontWeight: 700 }}>{t(S.status[data.seaState])}</span></div>
+              <div style={{ fontSize: 13.5, color: C.cream, lineHeight: 1.6, marginBottom: 14 }}>
+                {roughBoarding
+                  ? t({ zh: "浪高使船隻上下起伏，登船困難、需抓準浪間空檔——登船延誤將耗去部分作業窗。", en: "Swell makes the vessel heave; boarding is hard and timing the gap costs part of the work window." })
+                  : t({ zh: "海象平穩，可安全登船，前往作業地點。", en: "Calm seas — board safely and proceed to the work area." })}
+              </div>
+              <div style={{ fontSize: 12, color: C.mist, marginBottom: 12 }}>{t({ zh: "作業地點", en: "Work area" })}：<b style={{ color: C.cream }}>{t(LOCATION_LABEL[location])}</b></div>
+              <button onClick={board} style={{ width: "100%", padding: "12px 0", borderRadius: 6, border: "1px solid rgba(255,236,196,.6)", background: primaryBg(), color: C.ink, fontFamily: FONT_SERIF, fontWeight: 900, fontSize: 15, cursor: "pointer" }}>
+                {roughBoarding ? t({ zh: "頂浪登船（延誤 −3 時段）", en: "Board in swell (−3 slots)" }) : t({ zh: "登船登塔，開始作業", en: "Board & start work" })}
+              </button>
+              {roughBoarding && (
+                <button onClick={abortBoarding} style={{ width: "100%", marginTop: 8, padding: "9px 0", borderRadius: 6, border: "1px solid rgba(220,100,80,.5)", background: "rgba(220,100,80,.14)", color: C.redText, fontFamily: FONT_SERIF, fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
+                  {t({ zh: "返航改期（可用率小扣）", en: "Return & reschedule (avail. penalty)" })}
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <AdvisorPopup id="veteran_sailor" src={exprUrl("veteran_sailor", roughBoarding ? "alert" : "talking")} line={roughBoarding ? { zh: "抓浪間空檔上！手要穩，別硬跳。", en: "Step across on the lull — steady, don't jump." } : { zh: "海面平穩，登船吧。", en: "Calm water — let's board." }} style={{ left: 372, bottom: 12 }} portraitH={300} bubbleSide="left" />
+      </div>
+    );
+  }
+
   return (
     <div style={{ position: "absolute", inset: 0, zIndex: 2 }}>
       {/* dusk bg */}
@@ -110,6 +176,11 @@ export default function RepairScreen({ setScreen }: { setScreen: (s: Screen) => 
         <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: "44%", background: "linear-gradient(180deg,#2b5566 0%, #1c4151 40%, #122f3b 100%)" }} />
         <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: "44%", background: "repeating-linear-gradient(178deg, rgba(255,255,255,.04) 0 2px, rgba(255,255,255,0) 2px 30px)" }} />
         <div style={{ position: "absolute", inset: 0, background: "radial-gradient(circle at 30% 40%, rgba(6,16,22,0) 50%, rgba(6,16,22,.55) 100%)", pointerEvents: "none" }} />
+      </div>
+
+      {/* 作業地點標籤（#33） */}
+      <div style={{ position: "absolute", left: 40, top: 92, padding: "7px 14px", borderRadius: 20, background: "rgba(10,28,36,.75)", border: "1px solid rgba(214,167,84,.4)", color: C.cream, fontSize: 13, fontWeight: 700, zIndex: 3 }}>
+        <span style={{ color: C.gold }}>📍</span> {t({ zh: "作業地點", en: "Work area" })}：{t(LOCATION_LABEL[location])} · {quest.unit}
       </div>
 
       {/* turbine schematic */}

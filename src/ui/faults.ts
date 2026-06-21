@@ -172,6 +172,23 @@ export const FAULTS: Record<string, Fault> = {
   },
 };
 
+// 作業地點（#33）：故障 → 維修場景。資料驅動，可擴充更多場景。
+export type RepairLocation = "nacelle" | "hub" | "tower" | "deck";
+export const LOCATION_LABEL: Record<RepairLocation, I18n> = {
+  nacelle: { zh: "機艙內", en: "Nacelle" },
+  hub: { zh: "輪轂/葉根", en: "Hub" },
+  tower: { zh: "塔架內", en: "Tower" },
+  deck: { zh: "甲板/基礎", en: "Deck" },
+};
+export const FAULT_LOCATION: Record<string, RepairLocation> = {
+  gearbox_overheat: "nacelle",
+  yaw_misalign: "nacelle",
+  gen_vibration: "nacelle",
+  pitch_fault: "hub",
+  converter_fault: "tower",
+};
+export const locationOf = (faultId: string): RepairLocation => FAULT_LOCATION[faultId] ?? "nacelle";
+
 // 工單池（#4）：每筆工單對應一種故障，完成後輪替到下一筆。
 export const QUEST_POOL: Quest[] = [
   {
