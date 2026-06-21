@@ -3,7 +3,8 @@ import { C, FONT_SERIF, primaryBg, panel } from "./tokens";
 import { t } from "../game/systems/i18n";
 import { useLang } from "./useLang";
 import { useGame } from "../state/GameContext";
-import { toWan, type Discipline, type Engineer } from "../state/game";
+import { toWan, computeScore, type Discipline, type Engineer } from "../state/game";
+import { FARMS } from "../state/farms";
 import { Sfx } from "../audio/sfx";
 import { FAULTS } from "./faults";
 import { DISC } from "./disc";
@@ -11,7 +12,7 @@ import type { I18n } from "../game/systems/types";
 import { getProfile } from "../state/profile";
 import { SHEET_CONFIG, fetchLeaderboard, type Row } from "../cloud/sheet";
 
-export type Facility = "vessel" | "tech" | "tool" | "codex" | "ranking";
+export type Facility = "vessel" | "tech" | "tool" | "codex" | "ranking" | "farms";
 
 const NAMES = ["阿傑", "小林", "志明", "美玲", "建宏", "淑芬", "俊傑", "雅婷", "宗翰", "怡君"];
 const DISCS: Discipline[] = ["mechanical", "electrical", "control", "structural", "hse"];
@@ -145,8 +146,43 @@ export default function FacilityModal({ kind, onClose }: { kind: Facility | null
     ), 560);
   }
 
+  // 風場拓展（#34）
+  if (kind === "farms") {
+    return shell(`🌊 ${t({ zh: "風場拓展", en: "Expand Farms" })}`, onClose, (
+      <div>
+        <div style={{ fontSize: 13, color: C.mist, lineHeight: 1.6, marginBottom: 12 }}>
+          {t({ zh: "同時營運多座風場可提升每日總發電量（KPI）。達資金與資歷（天數）門檻即可拓展下一座。", en: "Operating more farms raises total daily generation (KPI). Unlock the next when budget & seniority (days) allow." })}
+        </div>
+        {FARMS.map((f, i) => {
+          const owned = i < data.farmsOwned;
+          const isNext = i === data.farmsOwned;
+          const okDay = data.day >= f.unlockDay;
+          const okBudget = data.budget >= f.unlockCost;
+          const can = isNext && okDay && okBudget;
+          return (
+            <div key={f.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 12px", borderRadius: 6, background: "rgba(255,255,255,.04)", marginBottom: 8, border: `1px solid ${owned ? "rgba(127,206,142,.4)" : "rgba(214,167,84,.18)"}` }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ color: C.cream, fontSize: 14, fontWeight: 700 }}>{t(f.name)} {owned && <span style={{ color: C.green, fontSize: 12 }}>· {t({ zh: "營運中", en: "Active" })}</span>}</div>
+                <div style={{ color: C.mist, fontSize: 12 }}>{t({ zh: "每日基準發電", en: "Base gen/day" })} {f.genPerDay} MWh{!owned && f.unlockCost > 0 && ` · ${t({ zh: "需第", en: "from day" })} ${f.unlockDay} ${t({ zh: "天", en: "" })}`}</div>
+              </div>
+              {owned ? (
+                <span style={{ color: C.green, fontSize: 18 }}>✔</span>
+              ) : isNext ? (
+                <button disabled={!can} onClick={() => { Sfx.cash(); dispatch({ type: "UNLOCK_FARM", cost: f.unlockCost }); }} style={{ padding: "8px 16px", borderRadius: 5, border: "1px solid rgba(255,236,196,.6)", background: can ? primaryBg() : "rgba(255,255,255,.08)", color: can ? C.ink : C.mist, fontFamily: FONT_SERIF, fontWeight: 900, fontSize: 13, cursor: can ? "pointer" : "not-allowed", whiteSpace: "nowrap" }}>
+                  {okDay ? `${t({ zh: "拓展", en: "Unlock" })} ◎ ${toWan(f.unlockCost)} ${t({ zh: "萬", en: "M" })}` : `🔒 ${t({ zh: "需第", en: "Day" })} ${f.unlockDay} ${t({ zh: "天", en: "" })}`}
+                </button>
+              ) : (
+                <span style={{ color: C.mist2, fontSize: 12, whiteSpace: "nowrap" }}>🔒 {t({ zh: "需先拓展前一座", en: "Unlock previous first" })}</span>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    ));
+  }
+
   // ranking
-  const score = data.generationMWh + data.availability * 5 + data.missionsDone * 30;
+  const score = computeScore(data);
   const rows: [I18n, string][] = [
     [{ zh: "綜合績效分", en: "Score" }, String(score)],
     [{ zh: "機組可用率", en: "Availability" }, `${data.availability}%`],

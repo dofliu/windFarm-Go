@@ -1,4 +1,4 @@
-import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { C, FONT_SERIF, primaryBg, panel, panelHeader, panelTitle } from "../tokens";
 import { t } from "../../game/systems/i18n";
 import { useLang } from "../useLang";
@@ -13,7 +13,8 @@ import { CAMPAIGN, missionAt } from "../campaign";
 import { FAULTS } from "../faults";
 import { PARTS } from "../data";
 import { DISC } from "../disc";
-import { toWan, type QuestStage } from "../../state/game";
+import { toWan, computeScore, type QuestStage } from "../../state/game";
+import { FARMS } from "../../state/farms";
 import { fetchLeaderboard, type Row } from "../../cloud/sheet";
 import { getProfile } from "../../state/profile";
 import { sceneById } from "../scenes";
@@ -54,7 +55,7 @@ function OpsBlock({ title, children }: { title: I18n; children: ReactNode }) {
 
 const kvRow: CSSProperties = { display: "flex", justifyContent: "space-between", fontSize: 13, color: C.cream, padding: "3px 0" };
 
-export default function HubScreen({ setScreen, accent, onDispatch, onFacility, sceneId, onCycleScene }: { setScreen: (s: Screen) => void; accent: string; onDispatch?: () => void; onFacility?: (k: "vessel" | "tech" | "tool" | "codex" | "ranking") => void; sceneId?: string; onCycleScene?: () => void }) {
+export default function HubScreen({ setScreen, accent, onDispatch, onFacility, sceneId, onCycleScene }: { setScreen: (s: Screen) => void; accent: string; onDispatch?: () => void; onFacility?: (k: "vessel" | "tech" | "tool" | "codex" | "ranking" | "farms") => void; sceneId?: string; onCycleScene?: () => void }) {
   useLang();
   const { data, dispatch } = useGame();
   const { say } = useDialogue();
@@ -79,6 +80,17 @@ export default function HubScreen({ setScreen, accent, onDispatch, onFacility, s
     return () => window.clearInterval(id);
   }, [feed.length]);
 
+  // #34 突發事件：lastEvent 變動時跳通知
+  const lastEvtDay = useRef(-1);
+  useEffect(() => {
+    const e = data.lastEvent;
+    if (e && e.day !== lastEvtDay.current) {
+      lastEvtDay.current = e.day;
+      (e.good ? Sfx.success : Sfx.error)();
+      toast({ zh: `📣 ${e.name.zh}：${e.desc.zh}`, en: `📣 ${e.name.en}: ${e.desc.en}` });
+    }
+  }, [data.lastEvent]);
+
   const me = getProfile();
   const invItems = Object.entries(data.inventory).filter(([, n]) => (n ?? 0) > 0);
   const seaLabel = data.seaState === "workable" ? { zh: "可作業", en: "Workable" } : data.seaState === "caution" ? { zh: "警戒", en: "Caution" } : { zh: "停航", en: "Closed" };
@@ -97,6 +109,7 @@ export default function HubScreen({ setScreen, accent, onDispatch, onFacility, s
           <FacRow char="工" label={{ zh: "機具工坊", en: "Workshop" }} stat={{ zh: `工具 Lv.${data.toolLevel}`, en: `Tools Lv.${data.toolLevel}` }} onClick={() => { Sfx.click(); onFacility?.("tool"); }} />
           <FacRow char="備" label={{ zh: "備品交易所", en: "Parts Market" }} stat={{ zh: `庫存 ${invItems.length} 類`, en: `${invItems.length} part types in stock` }} onClick={() => { Sfx.click(); setScreen("market"); }} />
           <FacRow char="船" label={{ zh: "CTV 整備廠", en: "CTV Yard" }} stat={{ zh: `${data.ownsSOV ? "SOV" : "CTV"} · Lv.${data.vesselLevel}`, en: `${data.ownsSOV ? "SOV" : "CTV"} · Lv.${data.vesselLevel}` }} onClick={() => { Sfx.click(); onFacility?.("vessel"); }} />
+          <FacRow char="場" label={{ zh: "風場拓展", en: "Expand Farms" }} stat={{ zh: `營運 ${data.farmsOwned}/${FARMS.length} 座風場`, en: `${data.farmsOwned}/${FARMS.length} farms operating` }} onClick={() => { Sfx.click(); onFacility?.("farms"); }} />
           <div style={{ display: "flex", gap: 6 }}>
             <FacRowMini char="鑑" label={{ zh: "圖鑑", en: "Codex" }} onClick={() => { Sfx.click(); onFacility?.("codex"); }} />
             <FacRowMini char="榜" label={{ zh: "排行", en: "Ranking" }} onClick={() => { Sfx.click(); onFacility?.("ranking"); }} />
@@ -109,8 +122,16 @@ export default function HubScreen({ setScreen, accent, onDispatch, onFacility, s
         <div style={panelHeader}><span style={panelTitle}>{t({ zh: "風場動態", en: "Farm Status" })}</span></div>
         <div style={{ padding: "10px 12px" }}>
           <div style={kvRow}><span style={{ color: C.mist }}>{t({ zh: "海象", en: "Sea" })}</span><span style={{ color: seaColor, fontWeight: 700 }}>{t(seaLabel)}</span></div>
+          <div style={kvRow}><span style={{ color: C.mist }}>{t({ zh: "營運風場", en: "Farms" })}</span><span style={{ fontWeight: 700 }}>{data.farmsOwned} / {FARMS.length}</span></div>
           <div style={kvRow}><span style={{ color: C.mist }}>{t({ zh: "可用率", en: "Availability" })}</span><span style={{ fontWeight: 700 }}>{data.availability}%</span></div>
           <div style={kvRow}><span style={{ color: C.mist }}>{t({ zh: "發電量", en: "Generation" })}</span><span style={{ fontWeight: 700 }}>{data.generationMWh} MWh</span></div>
+          <div style={kvRow}><span style={{ color: C.mist }}>{t({ zh: "安全事件", en: "Safety incidents" })}</span><span style={{ fontWeight: 700, color: data.safetyIncidents > 0 ? C.red : C.green }}>{data.safetyIncidents}</span></div>
+          {data.lastEvent && (
+            <div style={{ marginTop: 8, padding: "7px 9px", borderRadius: 4, background: data.lastEvent.good ? "rgba(127,206,142,.1)" : "rgba(227,173,66,.12)", border: `1px solid ${data.lastEvent.good ? "rgba(127,206,142,.28)" : "rgba(227,173,66,.32)"}` }}>
+              <div style={{ fontSize: 11.5, fontWeight: 700, color: data.lastEvent.good ? C.green : C.amber2 }}>📣 {t({ zh: "最新事件", en: "Latest event" })} · {t(data.lastEvent.name)}</div>
+              <div style={{ color: "#cfe0e6", fontSize: 11.5, marginTop: 2 }}>{t(data.lastEvent.desc)}</div>
+            </div>
+          )}
           {/* 警報 */}
           {stage === "active" && fault ? (
             <div style={{ marginTop: 8, padding: "7px 9px", borderRadius: 4, background: "rgba(220,100,80,.12)", border: "1px solid rgba(220,100,80,.32)" }}>
@@ -193,7 +214,7 @@ export default function HubScreen({ setScreen, accent, onDispatch, onFacility, s
 
               {/* KPI */}
               <OpsBlock title={{ zh: "績效 KPI", en: "KPI" }}>
-                <div style={kvRow}><span style={{ color: C.mist }}>{t({ zh: "綜合績效分", en: "Score" })}</span><span style={{ color: C.goldText, fontWeight: 900 }}>{data.generationMWh + data.availability * 5 + data.missionsDone * 30}</span></div>
+                <div style={kvRow}><span style={{ color: C.mist }}>{t({ zh: "綜合績效分", en: "Score" })}</span><span style={{ color: C.goldText, fontWeight: 900 }}>{computeScore(data)}</span></div>
                 <div style={kvRow}><span style={{ color: C.mist }}>{t({ zh: "完成任務", en: "Missions" })}</span><span>{data.missionsDone}</span></div>
                 <div style={kvRow}><span style={{ color: C.mist }}>{t({ zh: "預算", en: "Budget" })}</span><span>◎ {toWan(data.budget)} {t({ zh: "萬", en: "M" })}</span></div>
                 <div style={kvRow}><span style={{ color: C.mist }}>{t({ zh: "天數", en: "Day" })}</span><span>{data.day}</span></div>

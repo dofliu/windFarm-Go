@@ -1,4 +1,6 @@
 import type { I18n } from "../game/systems/types";
+import { FARMS } from "./farms";
+import { rollEvent, type EventStamp } from "./events";
 
 // ───────── 全域遊戲狀態模型（A1 工單系統 / A2 採購 / A3 結算 / D1 存檔）─────────
 export type SeaState = "workable" | "caution" | "closed";
@@ -54,9 +56,24 @@ export interface GameData {
   ownsSOV: boolean; // 是否擁有 SOV（#26，可在高海象出航）
   jobPhase: JobPhase; // 出勤階段（#25）：office→enroute→onsite
   generationMWh: number; // 累積發電量（#28 KPI）
+  farmsOwned: number; // 營運中的風場數（#34，預設 1）
+  safetyIncidents: number; // 安全事件次數（#34，扣績效分）
+  lastEvent: EventStamp | null; // 最近一次突發事件（#34）
 }
 
 export const DOWNTIME_PER_DAY = 30_000; // 機組停機每日損失（C）
+
+// 多風場每日基準發電總和（owned 座風場的 genPerDay 加總）
+function ownedFarmGen(farmsOwned: number): number {
+  let g = 0;
+  for (let i = 0; i < Math.min(farmsOwned, FARMS.length); i++) g += FARMS[i].genPerDay;
+  return g;
+}
+
+// 綜合績效分（單一真實來源，#28/#34）：發電量 + 可用率×5 + 完成任務×30 − 安全事件×20 + 風場×10
+export function computeScore(d: GameData): number {
+  return Math.max(0, d.generationMWh + d.availability * 5 + d.missionsDone * 30 - d.safetyIncidents * 20 + d.farmsOwned * 10);
+}
 
 export const INITIAL: GameData = {
   budget: 84_200_000,
@@ -85,9 +102,12 @@ export const INITIAL: GameData = {
   ownsSOV: false,
   jobPhase: "office",
   generationMWh: 0,
+  farmsOwned: 1,
+  safetyIncidents: 0,
+  lastEvent: null,
 };
 
-// 推進 N 天：交付到貨的備品 + 扣除停機成本（C）
+// 推進 N 天：交付到貨備品 + 扣停機成本 + 多風場發電 + 人力回復 + 突發事件（C / #34）
 function advance(s: GameData, days = 1): Partial<GameData> {
   const day = s.day + days;
   let inv = s.inventory;
@@ -100,8 +120,23 @@ function advance(s: GameData, days = 1): Partial<GameData> {
     } else pend.push(o);
   }
   const downtime = s.questStage === "active" && !s.repairDone ? DOWNTIME_PER_DAY * days : 0;
-  const gen = s.generationMWh + Math.round((s.availability / 100) * BASE_GEN_PER_DAY * days); // 發電量隨可用率累積（#28）
-  return { day, pendingOrders: pend, inventory: inv, cargoUsed: cargo, budget: Math.max(0, s.budget - downtime), generationMWh: gen };
+  const gen = s.generationMWh + Math.round((s.availability / 100) * ownedFarmGen(s.farmsOwned) * days); // 多風場發電累積（#28/#34）
+  let patch: Partial<GameData> = {
+    day,
+    pendingOrders: pend,
+    inventory: inv,
+    cargoUsed: cargo,
+    budget: Math.max(0, s.budget - downtime),
+    generationMWh: gen,
+    techAvail: Math.min(s.techTotal, s.techAvail + days), // 人力每日緩慢回復
+  };
+  // 突發隨機事件（#34）
+  const ev = rollEvent();
+  if (ev) {
+    const evPatch = ev.apply({ ...s, ...patch } as GameData);
+    patch = { ...patch, ...evPatch, lastEvent: { id: ev.id, name: ev.name, desc: ev.desc, good: !!ev.good, day } };
+  }
+  return patch;
 }
 
 export type Action =
@@ -113,6 +148,7 @@ export type Action =
   | { type: "UPGRADE"; kind: "vessel" | "tech" | "tool"; cost: number } // 設施升級（A）
   | { type: "HIRE"; engineer: Engineer; cost: number } // 招募技師（#27）
   | { type: "BUY_SOV"; cost: number } // 購置 SOV（#26）
+  | { type: "UNLOCK_FARM"; cost: number } // 拓展新風場（#34）
   | { type: "DEPART" } // 出航 → enroute（#25）
   | { type: "ARRIVE" } // 抵達 → onsite（#25）
   | { type: "FAIL_REPAIR" } // 天氣窗關閉、撤離（#17）
@@ -138,12 +174,16 @@ export function reducer(s: GameData, a: Action): GameData {
     case "BUY_SOV":
       if (a.cost > s.budget || s.ownsSOV) return s;
       return { ...s, budget: s.budget - a.cost, ownsSOV: true };
+    case "UNLOCK_FARM":
+      if (a.cost > s.budget || s.farmsOwned >= FARMS.length) return s;
+      return { ...s, budget: s.budget - a.cost, farmsOwned: s.farmsOwned + 1 };
     case "DEPART":
       return { ...s, jobPhase: "enroute" };
     case "ARRIVE":
       return { ...s, jobPhase: "onsite" };
     case "FAIL_REPAIR":
-      return { ...s, jobPhase: "office", availability: Math.max(0, s.availability - 4) };
+      // 撤離/返航改期 = 安全近失事件（#34），可用率小扣 + 安全計分
+      return { ...s, jobPhase: "office", availability: Math.max(0, s.availability - 4), safetyIncidents: s.safetyIncidents + 1 };
     case "REST":
       return { ...s, ...advance(s, 1), seaState: rollSea(), availability: Math.min(100, s.availability + 1) };
     case "BUY": {

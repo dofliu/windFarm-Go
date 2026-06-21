@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { useGame } from "../state/GameContext";
+import { computeScore } from "../state/game";
 import { getProfile } from "../state/profile";
 import { submitScore } from "../cloud/sheet";
 
@@ -15,7 +16,7 @@ export default function ScoreSync() {
     // 只在「完成任務數」推進時送分，避免洗版
     if (data.missionsDone === lastSent.current) return;
     lastSent.current = data.missionsDone;
-    const score = data.generationMWh + data.availability * 5 + data.missionsDone * 30;
+    const score = computeScore(data);
     submitScore({
       nickname: profile.nickname,
       classCode: profile.classCode,
