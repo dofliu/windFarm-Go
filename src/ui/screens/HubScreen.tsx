@@ -173,6 +173,7 @@ export default function HubScreen({ setScreen, accent, onDispatch, onFacility }:
           {!data.customQuest && <div style={{ fontSize: 11, color: C.goldText, fontFamily: FONT_SERIF, marginBottom: 3 }}>{t(mission.chapter)}</div>}
           <div style={{ color: C.cream, fontSize: 15, fontWeight: 700, marginBottom: 4 }}>{t(quest.title)}</div>
           <div style={{ color: C.mist, fontSize: 12.5, lineHeight: 1.5 }}>{t(quest.brief)}</div>
+          {stage === "active" && <div style={{ fontSize: 11, color: C.amber2, marginTop: 4 }}>{t({ zh: "⚠ 機組停機中：每過一天約損失 3 萬，盡快修復", en: "⚠ Unit down: ~30k lost per day — repair soon" })}</div>}
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 10 }}>
             <div style={{ flex: 1, height: 7, borderRadius: 4, background: "rgba(255,255,255,.1)", overflow: "hidden" }}>
               <div style={{ width: stage === "available" ? "0%" : stage === "done" ? "100%" : data.repairDone ? "100%" : "50%", height: "100%", background: "linear-gradient(90deg,#e8c074,#d9a441)" }} />

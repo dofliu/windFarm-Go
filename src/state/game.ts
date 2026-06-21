@@ -36,7 +36,10 @@ export interface GameData {
   toolLevel: number; // 機具工坊：每級 SOP 步驟 -1 時段（最低 1）
   seenFaults: string[]; // 圖鑑：已修復過的故障
   missionsDone: number; // 排行榜 KPI
+  pendingOrders: { partId: string; arriveDay: number; qty: number }[]; // 備品在途（lead time，C）
 }
+
+export const DOWNTIME_PER_DAY = 30_000; // 機組停機每日損失（C）
 
 export const INITIAL: GameData = {
   budget: 84_200_000,
@@ -60,11 +63,28 @@ export const INITIAL: GameData = {
   toolLevel: 0,
   seenFaults: [],
   missionsDone: 0,
+  pendingOrders: [],
 };
+
+// 推進 N 天：交付到貨的備品 + 扣除停機成本（C）
+function advance(s: GameData, days = 1): Partial<GameData> {
+  const day = s.day + days;
+  let inv = s.inventory;
+  let cargo = s.cargoUsed;
+  const pend: GameData["pendingOrders"] = [];
+  for (const o of s.pendingOrders) {
+    if (o.arriveDay <= day) {
+      inv = { ...inv, [o.partId]: (inv[o.partId] ?? 0) + o.qty };
+      cargo = Math.min(s.cargoCap, cargo + o.qty);
+    } else pend.push(o);
+  }
+  const downtime = s.questStage === "active" && !s.repairDone ? DOWNTIME_PER_DAY * days : 0;
+  return { day, pendingOrders: pend, inventory: inv, cargoUsed: cargo, budget: Math.max(0, s.budget - downtime) };
+}
 
 export type Action =
   | { type: "ACCEPT_QUEST" }
-  | { type: "BUY"; partId: string; qty: number; cost: number }
+  | { type: "BUY"; partId: string; qty: number; cost: number; leadDays: number }
   | { type: "SELL"; partId: string; gain: number } // 賣出 1 件（#18）
   | { type: "FINISH_REPAIR"; quest: Quest; part?: string } // 維修完成 → 結算（A3）+ 消耗備品
   | { type: "DO_ROUTINE"; budget: number; xp: number } // 調度中心例行小任務（#21）
@@ -89,9 +109,13 @@ export function reducer(s: GameData, a: Action): GameData {
     case "FAIL_REPAIR":
       return { ...s, availability: Math.max(0, s.availability - 4) };
     case "REST":
-      return { ...s, day: s.day + 1, seaState: rollSea(), availability: Math.min(100, s.availability + 1) };
+      return { ...s, ...advance(s, 1), seaState: rollSea(), availability: Math.min(100, s.availability + 1) };
     case "BUY": {
       if (a.cost > s.budget) return s;
+      if (a.leadDays > 0) {
+        // 在途訂單：N 天後到貨
+        return { ...s, budget: s.budget - a.cost, pendingOrders: [...s.pendingOrders, { partId: a.partId, arriveDay: s.day + a.leadDays, qty: a.qty }] };
+      }
       const inv = { ...s.inventory, [a.partId]: (s.inventory[a.partId] ?? 0) + a.qty };
       return { ...s, budget: s.budget - a.cost, inventory: inv, cargoUsed: Math.min(s.cargoCap, s.cargoUsed + a.qty) };
     }
@@ -111,8 +135,10 @@ export function reducer(s: GameData, a: Action): GameData {
       const seen = s.seenFaults.includes(a.quest.targetFault) ? s.seenFaults : [...s.seenFaults, a.quest.targetFault];
       return { ...s, repairDone: true, questStage: "done", budget: s.budget + a.quest.rewardBudget, xp: s.xp + a.quest.rewardXp, availability: Math.min(100, s.availability + 8 + s.techLevel * 2), inventory: inv, cargoUsed: cargo, seenFaults: seen, missionsDone: s.missionsDone + 1 };
     }
-    case "DO_ROUTINE":
-      return { ...s, budget: s.budget + a.budget, xp: s.xp + a.xp, day: s.day + 1, availability: Math.min(100, s.availability + 1), missionsDone: s.missionsDone + 1 };
+    case "DO_ROUTINE": {
+      const adv = advance(s, 1);
+      return { ...s, ...adv, budget: (adv.budget ?? s.budget) + a.budget, xp: s.xp + a.xp, availability: Math.min(100, s.availability + 1), missionsDone: s.missionsDone + 1 };
+    }
     case "UPGRADE": {
       if (a.cost > s.budget) return s;
       const patch =
@@ -123,7 +149,7 @@ export function reducer(s: GameData, a: Action): GameData {
       if (s.questStage !== "done") return s;
       const last = a.poolSize - 1;
       if (s.campaignIndex >= last) return { ...s, campaignDone: true, customQuest: null };
-      return { ...s, customQuest: null, campaignIndex: s.campaignIndex + 1, questStage: "available", repairDone: false, day: s.day + 1, seaState: rollSea() };
+      return { ...s, ...advance(s, 1), customQuest: null, campaignIndex: s.campaignIndex + 1, questStage: "available", repairDone: false, seaState: rollSea() };
     }
     case "RESTART_CAMPAIGN":
       return { ...s, campaignIndex: 0, campaignDone: false, customQuest: null, questStage: "available", repairDone: false };

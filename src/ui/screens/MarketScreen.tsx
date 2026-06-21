@@ -8,9 +8,14 @@ import { useGame } from "../../state/GameContext";
 import { useDialogue } from "../../state/DialogueContext";
 import { S } from "../../i18n/strings";
 import { Sfx } from "../../audio/sfx";
+import { toast } from "../toast";
 
 const TAX = 0.12;
 const SELL_RATE = 0.9; // 賣出 9 折回收
+const leadOf = (p: { price: string }) => {
+  const n = Number(p.price.replace(/,/g, ""));
+  return n < 1000 ? 0 : n < 3000 ? 1 : n < 6000 ? 2 : 3; // 越貴前置期越長
+};
 
 export default function MarketScreen({ accent }: { accent: string }) {
   useLang();
@@ -32,12 +37,18 @@ export default function MarketScreen({ accent }: { accent: string }) {
   };
   const confirm = () => {
     Sfx.cash();
+    let maxLead = 0;
     for (const p of PARTS) {
       const qty = cart[p.id] ?? 0;
-      if (qty > 0) dispatch({ type: "BUY", partId: p.id, qty, cost: Math.round(priceNum(p) * qty * (1 + TAX)) });
+      if (qty > 0) {
+        const ld = leadOf(p);
+        maxLead = Math.max(maxLead, ld);
+        dispatch({ type: "BUY", partId: p.id, qty, cost: Math.round(priceNum(p) * qty * (1 + TAX)), leadDays: ld });
+      }
     }
     setCart({});
-    say({ speaker: "owner", expr: "confident", line: { zh: "採購完成，備品已入貨艙。祝你維運順利、準時併網。", en: "Purchase done — parts loaded. May your O&M run smooth and on-grid." } });
+    if (maxLead > 0) toast({ zh: `已下單，最久 ${maxLead} 天後到貨（先做小任務等貨）`, en: `Ordered — arrives in up to ${maxLead} day(s)` });
+    say({ speaker: "owner", expr: "confident", line: { zh: "採購完成。大型備品需要前置期，會分批送達貨艙。", en: "Order placed. Large parts have a lead time and arrive in batches." } });
   };
   const sellOne = (id: string) => {
     Sfx.cash();
@@ -105,6 +116,7 @@ export default function MarketScreen({ accent }: { accent: string }) {
                     <div style={{ display: "flex", alignItems: "center", gap: 5, marginTop: 9, paddingTop: 8, borderTop: "1px solid rgba(255,255,255,.07)" }}>
                       <span style={{ color: accent, fontSize: 14 }}>◎</span>
                       <span style={{ color: C.cream, fontSize: 16, fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>{p.price}</span>
+                      <span style={{ marginLeft: "auto", fontSize: 10, color: leadOf(p) === 0 ? C.green : C.amber2 }}>{leadOf(p) === 0 ? t({ zh: "即到貨", en: "In stock" }) : t({ zh: `${leadOf(p)} 天到貨`, en: `${leadOf(p)}d lead` })}</span>
                     </div>
                   </div>
                 );
@@ -162,6 +174,21 @@ export default function MarketScreen({ accent }: { accent: string }) {
               </>
             ) : (
               <div style={{ fontSize: 13, color: C.mist, lineHeight: 1.6, padding: "4px 0" }}>{t({ zh: "點選左側庫存品即可賣出（每次 1 件，回收行情 9 折）。", en: "Tap an owned part to sell it (one at a time, at 90% of price)." })}</div>
+            )}
+            {data.pendingOrders.length > 0 && (
+              <div style={{ marginTop: 10, paddingTop: 8, borderTop: "1px dashed rgba(255,255,255,.1)" }}>
+                <div style={{ fontSize: 11, color: C.gold, marginBottom: 4 }}>🚚 {t({ zh: "在途備品", en: "In transit" })}</div>
+                {data.pendingOrders.map((o, i) => {
+                  const pp = PARTS.find((x) => x.id === o.partId);
+                  const left = Math.max(0, o.arriveDay - data.day);
+                  return (
+                    <div key={i} style={{ fontSize: 11, color: C.mist, display: "flex", justifyContent: "space-between" }}>
+                      <span>{t(pp?.n ?? { zh: o.partId, en: o.partId })} ×{o.qty}</span>
+                      <span>{t({ zh: `剩 ${left} 天`, en: `${left}d` })}</span>
+                    </div>
+                  );
+                })}
+              </div>
             )}
           </div>
         </div>
