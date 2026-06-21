@@ -13,7 +13,7 @@ import { CAMPAIGN, missionAt } from "../campaign";
 import { FAULTS } from "../faults";
 import { PARTS } from "../data";
 import { DISC } from "../disc";
-import { toWan, computeScore, QUARTER_DAYS, SLA_FLOOR, DEMURRAGE_PER_DAY, type QuestStage } from "../../state/game";
+import { toWan, computeScore, QUARTER_DAYS, SLA_FLOOR, DEMURRAGE_PER_DAY, dailyStorageCost, FATIGUE_LIMIT, fatigueOf, type QuestStage } from "../../state/game";
 import { FARMS } from "../../state/farms";
 import { fetchLeaderboard, type Row } from "../../cloud/sheet";
 import { getProfile } from "../../state/profile";
@@ -107,6 +107,17 @@ export default function HubScreen({ setScreen, accent, onDispatch, onFacility, s
       );
     }
   }, [data.lastSla]);
+
+  // 倉儲折舊（#warehouse）：lastSpoil 變動時跳報廢通知
+  const lastSpoilDay = useRef(-1);
+  useEffect(() => {
+    const sp = data.lastSpoil;
+    if (sp && sp.day !== lastSpoilDay.current) {
+      lastSpoilDay.current = sp.day;
+      const p = PARTS.find((x) => x.id === sp.part);
+      toast({ zh: `📦 備品折舊報廢：${p ? p.n.zh : sp.part} −1（倉儲耗損）`, en: `📦 Part written off: ${p ? p.n.en : sp.part} −1 (storage spoilage)` });
+    }
+  }, [data.lastSpoil]);
 
   // #4 大修完成提示：overhaul 由有轉無且工單結算為 done 時通知
   const prevOverhaul = useRef(false);
@@ -292,24 +303,46 @@ export default function HubScreen({ setScreen, accent, onDispatch, onFacility, s
                 ) : <div style={{ color: C.mist, fontSize: 12 }}>—</div>}
               </OpsBlock>
 
-              {/* 船隊 */}
+              {/* 船隊（含磨耗保養 #7） */}
               <OpsBlock title={{ zh: "船隊", en: "Fleet" }}>
                 <div style={kvRow}><span style={{ color: C.mist }}>{data.ownsSOV ? "SOV" : "CTV"}</span><span>Lv.{data.vesselLevel} · {t({ zh: "耐海象", en: "sea-tol" })} {data.ownsSOV ? 2 : 1}</span></div>
+                {(() => {
+                  const wear = Math.round(data.vesselWear);
+                  const wc = wear >= 85 ? C.red : wear >= 55 ? C.amber : C.green;
+                  return (
+                    <>
+                      <div style={{ ...kvRow, padding: "2px 0" }}><span style={{ color: C.mist }}>{t({ zh: "船舶磨耗", en: "Vessel wear" })}</span><span style={{ fontWeight: 700, color: wc }}>{wear}%</span></div>
+                      <div style={{ height: 5, borderRadius: 3, background: "rgba(255,255,255,.1)", overflow: "hidden", margin: "1px 0 2px" }}><div style={{ width: `${wear}%`, height: "100%", background: wc }} /></div>
+                      {wear >= 55 && <div style={{ fontSize: 10.5, color: wc, marginTop: 1 }}>⚠ {t({ zh: "磨耗偏高：作業窗縮短，去 CTV 整備廠保養", en: "High wear: shorter work window — service at CTV Yard" })}</div>}
+                    </>
+                  );
+                })()}
               </OpsBlock>
 
-              {/* 技師 */}
+              {/* 技師（含疲勞 #7） */}
               <OpsBlock title={{ zh: "技師", en: "Engineers" }}>
-                {data.engineers.length === 0 ? <div style={{ color: C.mist, fontSize: 12 }}>{t({ zh: "尚無技師", en: "None" })}</div> : data.engineers.map((e) => (
-                  <div key={e.id} style={kvRow}><span>{e.name}</span><span style={{ color: C.mist2 }}>{t(DISC[e.discipline])} · Lv.{e.level}</span></div>
-                ))}
+                {data.engineers.length === 0 ? <div style={{ color: C.mist, fontSize: 12 }}>{t({ zh: "尚無技師", en: "None" })}</div> : data.engineers.map((e) => {
+                  const f = Math.round(fatigueOf(e));
+                  const fc = f >= FATIGUE_LIMIT ? C.red : f >= 55 ? C.amber : C.green;
+                  return (
+                    <div key={e.id} style={{ padding: "3px 0" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: C.cream }}>
+                        <span>{e.name} <span style={{ color: C.mist2, fontSize: 11 }}>{t(DISC[e.discipline])}·Lv.{e.level}</span></span>
+                        <span style={{ color: fc, fontWeight: 700, fontSize: 11.5 }}>{f >= FATIGUE_LIMIT ? t({ zh: "過勞", en: "Overtired" }) : `${t({ zh: "疲勞", en: "Fatigue" })} ${f}%`}</span>
+                      </div>
+                      <div style={{ height: 4, borderRadius: 2, background: "rgba(255,255,255,.1)", overflow: "hidden", marginTop: 2 }}><div style={{ width: `${f}%`, height: "100%", background: fc }} /></div>
+                    </div>
+                  );
+                })}
               </OpsBlock>
 
-              {/* 備品庫存 */}
+              {/* 備品庫存（含倉儲維持費 #warehouse） */}
               <OpsBlock title={{ zh: "備品庫存", en: "Parts" }}>
                 {invItems.length === 0 ? <div style={{ color: C.mist, fontSize: 12 }}>{t({ zh: "目前無庫存", en: "Empty" })}</div> : invItems.map(([id, n]) => {
                   const p = PARTS.find((x) => x.id === id);
                   return <div key={id} style={kvRow}><span>{t(p?.n ?? { zh: id, en: id })}</span><span style={{ color: C.goldText, fontWeight: 700 }}>× {n}</span></div>;
                 })}
+                {invItems.length > 0 && <div style={{ ...kvRow, marginTop: 2, borderTop: "1px solid rgba(255,255,255,.08)", paddingTop: 4 }}><span style={{ color: C.amber2, fontSize: 11.5 }}>{t({ zh: "倉儲維持費／日", en: "Storage cost/day" })}</span><span style={{ color: C.amber2, fontWeight: 700, fontSize: 11.5 }}>◎ {toWan(dailyStorageCost(data.inventory))} {t({ zh: "萬", en: "M" })}</span></div>}
               </OpsBlock>
 
               {/* KPI */}

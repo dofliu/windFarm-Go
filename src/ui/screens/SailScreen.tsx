@@ -7,7 +7,7 @@ import { AdvisorPopup } from "../Portrait";
 import { exprUrl } from "../characters";
 import { useGame } from "../../state/GameContext";
 import { Sfx } from "../../audio/sfx";
-import { SEA_INDEX, vesselSeaTol } from "../../state/game";
+import { SEA_INDEX, vesselSeaTol, availableEngineer } from "../../state/game";
 import { FAULTS, isMajorFault } from "../faults";
 import { missionAt } from "../campaign";
 import { DISC, hasEngineer } from "../disc";
@@ -46,8 +46,9 @@ export default function SailScreen({ setScreen, accent, mode = "sim" }: { setScr
   // 重大作業出動安裝船(jack-up)，否則依擁有船型
   const fleetType = fault && isMajorFault(fault.id) ? "jackup" : vesselTypeOf(data.ownsSOV);
 
-  // 出勤就緒檢查（#25）
-  const engOk = fault ? hasEngineer(data.engineers, fault.discipline) : false;
+  // 出勤就緒檢查（#25）；技師需未超過輪班上限（#7 疲勞）
+  const hasAnyEng = fault ? hasEngineer(data.engineers, fault.discipline) : false;
+  const engOk = fault ? availableEngineer(data.engineers, fault.discipline) : false;
   const partOk = fault ? (data.inventory[fault.part] ?? 0) > 0 : false;
   const seaOk = SEA_INDEX[data.seaState] <= vesselSeaTol(data.ownsSOV);
   const ready = active && engOk && partOk && seaOk;
@@ -119,7 +120,7 @@ export default function SailScreen({ setScreen, accent, mode = "sim" }: { setScr
           ) : data.jobPhase === "office" ? (
             <>
               <Check ok={true} label={`${t({ zh: "船舶", en: "Vessel" })}：${data.ownsSOV ? "SOV" : "CTV"}`} />
-              <Check ok={engOk} label={`${t({ zh: "技師", en: "Engineer" })}（${t(fault ? DISC[fault.discipline] : { zh: "", en: "" })}）`} hint={t({ zh: "去技師公會招募", en: "hire at Tech Guild" })} />
+              <Check ok={engOk} label={`${t({ zh: "技師", en: "Engineer" })}（${t(fault ? DISC[fault.discipline] : { zh: "", en: "" })}）`} hint={t(hasAnyEng ? { zh: "技師過勞、需靠港休整", en: "crew fatigued — rest in port" } : { zh: "去技師公會招募", en: "hire at Tech Guild" })} />
               <Check ok={true} label={`${t({ zh: "工具", en: "Tools" })} Lv.${data.toolLevel}`} />
               <Check ok={partOk} label={`${t({ zh: "備品", en: "Part" })}：${t(part?.n ?? { zh: fault?.part ?? "", en: fault?.part ?? "" })}`} hint={t({ zh: "去交易所購買", en: "buy at Market" })} />
               <Check ok={seaOk} label={`${t({ zh: "天氣窗", en: "Weather" })}：${data.seaState === "workable" ? t({ zh: "可作業", en: "OK" }) : data.seaState === "caution" ? t({ zh: "警戒", en: "Caution" }) : t({ zh: "停航", en: "Closed" })}`} hint={t({ zh: "需 SOV 或靠港休整", en: "need SOV or rest" })} />

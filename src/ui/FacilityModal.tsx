@@ -3,7 +3,7 @@ import { C, FONT_SERIF, primaryBg, panel } from "./tokens";
 import { t } from "../game/systems/i18n";
 import { useLang } from "./useLang";
 import { useGame } from "../state/GameContext";
-import { toWan, computeScore, type Discipline, type Engineer } from "../state/game";
+import { toWan, computeScore, VESSEL_SERVICE_COST, fatigueOf, FATIGUE_LIMIT, type Discipline, type Engineer } from "../state/game";
 import { FARMS } from "../state/farms";
 import { Sfx } from "../audio/sfx";
 import { FAULTS } from "./faults";
@@ -22,6 +22,7 @@ function genCandidates(): Engineer[] {
     name: NAMES[Math.floor(Math.random() * NAMES.length)],
     discipline: DISCS[Math.floor(Math.random() * DISCS.length)],
     level: 1 + Math.floor(Math.random() * 2),
+    fatigue: 0,
   }));
 }
 const hireFee = (e: Engineer) => e.level * 3_000_000; // 300萬 * 等級
@@ -78,6 +79,21 @@ export default function FacilityModal({ kind, onClose }: { kind: Facility | null
     return shell(`🚢 ${t({ zh: "CTV 整備廠 · 船隊", en: "CTV Yard · Fleet" })}`, onClose, (
       <>
         <div style={{ fontSize: 13, color: C.mist, marginBottom: 10 }}>{t({ zh: "目前船舶", en: "Fleet" })}：CTV{data.ownsSOV ? " + SOV" : ""}　·　{t({ zh: "整備等級", en: "Level" })} Lv.{data.vesselLevel}</div>
+        {/* 船舶保養（#7）：磨耗歸零，回復作業窗 */}
+        {(() => {
+          const wear = Math.round(data.vesselWear);
+          const wc = wear >= 85 ? C.red : wear >= 55 ? C.amber : C.green;
+          const can = data.budget >= VESSEL_SERVICE_COST && wear > 0;
+          return (
+            <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderTop: "1px solid rgba(255,255,255,.08)" }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ color: C.cream, fontSize: 13, fontWeight: 700 }}>{t({ zh: "進廠保養", en: "Service" })} · <span style={{ color: wc }}>{t({ zh: "磨耗", en: "wear" })} {wear}%</span></div>
+                <div style={{ fontSize: 11, color: C.mist }}>{t({ zh: "磨耗歸零；過高會縮短維修作業窗", en: "Reset wear; high wear shortens the work window" })}</div>
+              </div>
+              <button disabled={!can} onClick={() => { Sfx.cash(); dispatch({ type: "SERVICE_VESSEL", cost: VESSEL_SERVICE_COST }); }} style={{ padding: "7px 16px", borderRadius: 5, border: "1px solid rgba(255,236,196,.6)", background: can ? primaryBg() : "rgba(255,255,255,.08)", color: can ? C.ink : C.mist, fontFamily: FONT_SERIF, fontWeight: 900, fontSize: 13, cursor: can ? "pointer" : "not-allowed" }}>◎ {toWan(VESSEL_SERVICE_COST)}萬</button>
+            </div>
+          );
+        })()}
         <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderTop: "1px solid rgba(255,255,255,.08)" }}>
           <div style={{ flex: 1 }}><div style={{ color: C.cream, fontSize: 13, fontWeight: 700 }}>{t({ zh: "整備升級", en: "Refit" })}</div><div style={{ fontSize: 11, color: C.mist }}>{t({ zh: "每級 +2 作業窗", en: "+2 work-window per level" })}</div></div>
           <button disabled={data.budget < lvCost} onClick={() => { Sfx.cash(); dispatch({ type: "UPGRADE", kind: "vessel", cost: lvCost }); }} style={{ padding: "7px 16px", borderRadius: 5, border: "1px solid rgba(255,236,196,.6)", background: data.budget >= lvCost ? primaryBg() : "rgba(255,255,255,.08)", color: data.budget >= lvCost ? C.ink : C.mist, fontFamily: FONT_SERIF, fontWeight: 900, fontSize: 13, cursor: data.budget >= lvCost ? "pointer" : "not-allowed" }}>◎ {toWan(lvCost)}萬</button>
@@ -100,10 +116,15 @@ export default function FacilityModal({ kind, onClose }: { kind: Facility | null
       <>
         <div style={{ fontSize: 12, color: C.gold, marginBottom: 6 }}>{t({ zh: "現有技師", en: "Crew" })}</div>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 14 }}>
-          {data.engineers.map((e) => (
-            <span key={e.id} style={{ padding: "4px 10px", borderRadius: 4, background: "rgba(127,206,142,.12)", border: "1px solid rgba(127,206,142,.3)", color: C.greenLight, fontSize: 12 }}>{e.name}·{t(DISC[e.discipline])} Lv.{e.level}</span>
-          ))}
+          {data.engineers.map((e) => {
+            const f = Math.round(fatigueOf(e));
+            const tired = f >= FATIGUE_LIMIT;
+            return (
+              <span key={e.id} style={{ padding: "4px 10px", borderRadius: 4, background: tired ? "rgba(220,100,80,.14)" : "rgba(127,206,142,.12)", border: `1px solid ${tired ? "rgba(220,100,80,.4)" : "rgba(127,206,142,.3)"}`, color: tired ? C.redText : C.greenLight, fontSize: 12 }}>{e.name}·{t(DISC[e.discipline])} Lv.{e.level} · {tired ? t({ zh: "過勞", en: "tired" }) : `${f}%`}</span>
+            );
+          })}
         </div>
+        <div style={{ fontSize: 11, color: C.mist, marginBottom: 10 }}>{t({ zh: "技師出勤累積疲勞，達上限不得派工；靠港休整可回復。多招同科別技師以輪班。", en: "Crews accrue fatigue on duty; at the limit they can't deploy. Rest in port to recover. Hire more of a discipline to rotate shifts." })}</div>
         <div style={{ display: "flex", alignItems: "center", marginBottom: 6 }}>
           <span style={{ fontSize: 12, color: C.gold }}>{t({ zh: "可招募", en: "Candidates" })}</span>
           <button onClick={() => { Sfx.click(); setCands(genCandidates()); }} style={{ marginLeft: "auto", fontSize: 11, color: C.mist, background: "none", border: "none", cursor: "pointer" }}>🔄 {t({ zh: "換一批", en: "Refresh" })}</button>
