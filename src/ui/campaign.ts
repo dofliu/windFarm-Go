@@ -80,3 +80,35 @@ export const CAMPAIGN: Mission[] = [
 ];
 
 export const missionAt = (i: number): Mission => CAMPAIGN[Math.min(i, CAMPAIGN.length - 1)];
+
+// ───────── 每帳號機組隨機化（Phase B #3b）─────────
+// 同風場、同週故障種類（保留懸疑主線與計分公平），但「哪一台機組」依帳號決定性隨機，
+// 各學員面對的基主不同、難度相近。以 baseUnit 為 key → m1/m6 對同一台機組的回扣仍一致。
+import { getProfile } from "../state/profile";
+
+function hashStr(str: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return h >>> 0;
+}
+export function accountSeed(): string {
+  const p = getProfile();
+  return p ? `${p.classCode}/${p.nickname}` : "guest";
+}
+// 把基準機組編號（如 CH-12）依帳號映射到 1..50 的決定性新編號
+function mapUnit(baseUnit: string, seed: string): string {
+  const m = baseUnit.match(/^([A-Za-z]+-?)(\d+)$/);
+  const prefix = m ? m[1] : "CH-";
+  const n = 1 + (hashStr(`${seed}:${baseUnit}`) % 50);
+  return prefix + String(n).padStart(2, "0");
+}
+const swapI18n = (s: I18n, from: string, to: string): I18n => ({ zh: s.zh.split(from).join(to), en: s.en.split(from).join(to) });
+const swapDlg = (arr: DlgMsg[], from: string, to: string): DlgMsg[] => arr.map((d) => ({ ...d, line: swapI18n(d.line, from, to) }));
+
+// 取得「本帳號版本」的關卡：機組編號隨帳號替換（含 title/brief/對話），故障與獎勵不變。
+export function missionInstance(i: number, seed = accountSeed()): Mission {
+  const m = missionAt(i);
+  const u = mapUnit(m.unit, seed);
+  if (u === m.unit) return m;
+  return { ...m, unit: u, title: swapI18n(m.title, m.unit, u), brief: swapI18n(m.brief, m.unit, u), intro: swapDlg(m.intro, m.unit, u), outro: swapDlg(m.outro, m.unit, u) };
+}

@@ -63,7 +63,7 @@ export default function FacilityModal({ kind, onClose }: { kind: Facility | null
     return shell(`🛠 ${t({ zh: "機具工坊 · 工具升級", en: "Workshop · Tool Upgrade" })}`, onClose, (
       <>
         <div style={{ fontSize: 14, color: C.cream, marginBottom: 6 }}>{t({ zh: "目前等級", en: "Level" })}：<span style={{ color: C.goldText, fontWeight: 900 }}>Lv.{data.toolLevel}</span></div>
-        <div style={{ fontSize: 13, color: C.mist, marginBottom: 14 }}>{t({ zh: "每級：SOP 每步驟 -1 時段（最低 1）", en: "-1 slot per SOP step per level" })}</div>
+        <div style={{ fontSize: 13, color: C.mist, marginBottom: 14 }}>{t({ zh: "每級：SOP 每步驟 -1 時段（最低 1）· 升級耗時 1 天", en: "-1 slot per SOP step per level · takes 1 day" })}</div>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <span style={{ fontSize: 13, color: C.mist }}>{t({ zh: "費用", en: "Cost" })}：◎ {toWan(cost)} {t({ zh: "萬", en: "M" })}</span>
           <button disabled={!can} onClick={() => { Sfx.cash(); dispatch({ type: "UPGRADE", kind: "tool", cost }); }} style={{ marginLeft: "auto", padding: "9px 22px", borderRadius: 5, border: "1px solid rgba(255,236,196,.6)", background: can ? primaryBg() : "rgba(255,255,255,.08)", color: can ? C.ink : C.mist, fontFamily: FONT_SERIF, fontWeight: 900, fontSize: 14, cursor: can ? "pointer" : "not-allowed" }}>{t({ zh: "升級", en: "Upgrade" })} → Lv.{data.toolLevel + 1}</button>
@@ -88,18 +88,18 @@ export default function FacilityModal({ kind, onClose }: { kind: Facility | null
             <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderTop: "1px solid rgba(255,255,255,.08)" }}>
               <div style={{ flex: 1 }}>
                 <div style={{ color: C.cream, fontSize: 13, fontWeight: 700 }}>{t({ zh: "進廠保養", en: "Service" })} · <span style={{ color: wc }}>{t({ zh: "磨耗", en: "wear" })} {wear}%</span></div>
-                <div style={{ fontSize: 11, color: C.mist }}>{t({ zh: "磨耗歸零；過高會縮短維修作業窗", en: "Reset wear; high wear shortens the work window" })}</div>
+                <div style={{ fontSize: 11, color: C.mist }}>{t({ zh: "磨耗歸零；過高會縮短維修作業窗 · 進廠 1 天", en: "Reset wear; high wear shortens the work window · 1 day" })}</div>
               </div>
               <button disabled={!can} onClick={() => { Sfx.cash(); dispatch({ type: "SERVICE_VESSEL", cost: VESSEL_SERVICE_COST }); }} style={{ padding: "7px 16px", borderRadius: 5, border: "1px solid rgba(255,236,196,.6)", background: can ? primaryBg() : "rgba(255,255,255,.08)", color: can ? C.ink : C.mist, fontFamily: FONT_SERIF, fontWeight: 900, fontSize: 13, cursor: can ? "pointer" : "not-allowed" }}>◎ {toWan(VESSEL_SERVICE_COST)}萬</button>
             </div>
           );
         })()}
         <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderTop: "1px solid rgba(255,255,255,.08)" }}>
-          <div style={{ flex: 1 }}><div style={{ color: C.cream, fontSize: 13, fontWeight: 700 }}>{t({ zh: "整備升級", en: "Refit" })}</div><div style={{ fontSize: 11, color: C.mist }}>{t({ zh: "每級 +2 作業窗", en: "+2 work-window per level" })}</div></div>
+          <div style={{ flex: 1 }}><div style={{ color: C.cream, fontSize: 13, fontWeight: 700 }}>{t({ zh: "整備升級", en: "Refit" })}</div><div style={{ fontSize: 11, color: C.mist }}>{t({ zh: "每級 +2 作業窗 · 耗時 1 天", en: "+2 work-window per level · 1 day" })}</div></div>
           <button disabled={data.budget < lvCost} onClick={() => { Sfx.cash(); dispatch({ type: "UPGRADE", kind: "vessel", cost: lvCost }); }} style={{ padding: "7px 16px", borderRadius: 5, border: "1px solid rgba(255,236,196,.6)", background: data.budget >= lvCost ? primaryBg() : "rgba(255,255,255,.08)", color: data.budget >= lvCost ? C.ink : C.mist, fontFamily: FONT_SERIF, fontWeight: 900, fontSize: 13, cursor: data.budget >= lvCost ? "pointer" : "not-allowed" }}>◎ {toWan(lvCost)}萬</button>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderTop: "1px solid rgba(255,255,255,.08)" }}>
-          <div style={{ flex: 1 }}><div style={{ color: C.cream, fontSize: 13, fontWeight: 700 }}>{t({ zh: "購置 SOV", en: "Buy SOV" })}</div><div style={{ fontSize: 11, color: C.mist }}>{t({ zh: "可在高海象(警戒/停航)出航", en: "Sail in rough/closed seas" })}</div></div>
+          <div style={{ flex: 1 }}><div style={{ color: C.cream, fontSize: 13, fontWeight: 700 }}>{t({ zh: "購置 SOV", en: "Buy SOV" })}</div><div style={{ fontSize: 11, color: C.mist }}>{t({ zh: "可在高海象(警戒/停航)出航 · 動員 2 天", en: "Sail in rough/closed seas · 2 days" })}</div></div>
           {data.ownsSOV ? (
             <span style={{ color: C.green, fontWeight: 700, fontSize: 13 }}>{t({ zh: "已擁有", en: "Owned" })}</span>
           ) : (
@@ -124,7 +124,7 @@ export default function FacilityModal({ kind, onClose }: { kind: Facility | null
             );
           })}
         </div>
-        <div style={{ fontSize: 11, color: C.mist, marginBottom: 10 }}>{t({ zh: "技師出勤累積疲勞，達上限不得派工；靠港休整可回復。多招同科別技師以輪班。", en: "Crews accrue fatigue on duty; at the limit they can't deploy. Rest in port to recover. Hire more of a discipline to rotate shifts." })}</div>
+        <div style={{ fontSize: 11, color: C.mist, marginBottom: 10 }}>{t({ zh: "技師出勤累積疲勞，達上限不得派工；靠港休整可回復。多招同科別技師以輪班。招募含上工訓練，耗時 1 天。", en: "Crews accrue fatigue on duty; at the limit they can't deploy. Rest in port to recover. Hire more of a discipline to rotate shifts. Hiring includes onboarding — takes 1 day." })}</div>
         <div style={{ display: "flex", alignItems: "center", marginBottom: 6 }}>
           <span style={{ fontSize: 12, color: C.gold }}>{t({ zh: "可招募", en: "Candidates" })}</span>
           <button onClick={() => { Sfx.click(); setCands(genCandidates()); }} style={{ marginLeft: "auto", fontSize: 11, color: C.mist, background: "none", border: "none", cursor: "pointer" }}>🔄 {t({ zh: "換一批", en: "Refresh" })}</button>
@@ -172,7 +172,7 @@ export default function FacilityModal({ kind, onClose }: { kind: Facility | null
     return shell(`🌊 ${t({ zh: "風場拓展", en: "Expand Farms" })}`, onClose, (
       <div>
         <div style={{ fontSize: 13, color: C.mist, lineHeight: 1.6, marginBottom: 12 }}>
-          {t({ zh: "同時營運多座風場可提升每日總發電量（KPI）。達資金與資歷（天數）門檻即可拓展下一座。", en: "Operating more farms raises total daily generation (KPI). Unlock the next when budget & seniority (days) allow." })}
+          {t({ zh: "同時營運多座風場可提升每日總發電量（KPI）。達資金與資歷（天數）門檻即可拓展下一座。拓展動員耗時 2 天。", en: "Operating more farms raises total daily generation (KPI). Unlock the next when budget & seniority (days) allow. Expansion mobilises over 2 days." })}
         </div>
         {FARMS.map((f, i) => {
           const owned = i < data.farmsOwned;

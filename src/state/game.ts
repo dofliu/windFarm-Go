@@ -353,29 +353,41 @@ export function reducer(s: GameData, a: Action): GameData {
   switch (a.type) {
     case "ACCEPT_QUEST":
       return { ...s, questStage: "active", repairDone: false, jobPhase: "office" };
-    case "HIRE":
+    case "HIRE": {
       if (a.cost > s.budget) return s;
-      return { ...s, budget: s.budget - a.cost, engineers: [...s.engineers, a.engineer] };
-    case "BUY_SOV":
+      const adv = advance(s, 1); // 招募/上工訓練耗時 1 天（Phase B 統一時間成本）
+      return { ...s, ...adv, budget: Math.max(0, (adv.budget ?? s.budget) - a.cost), engineers: [...(adv.engineers ?? s.engineers), a.engineer] };
+    }
+    case "BUY_SOV": {
       if (a.cost > s.budget || s.ownsSOV) return s;
-      return { ...s, budget: s.budget - a.cost, ownsSOV: true };
-    case "UNLOCK_FARM":
+      const adv = advance(s, 2); // 購置/動員 SOV 耗時 2 天
+      return { ...s, ...adv, budget: Math.max(0, (adv.budget ?? s.budget) - a.cost), ownsSOV: true };
+    }
+    case "UNLOCK_FARM": {
       if (a.cost > s.budget || s.farmsOwned >= FARMS.length) return s;
-      return { ...s, budget: s.budget - a.cost, farmsOwned: s.farmsOwned + 1 };
+      const adv = advance(s, 2); // 拓展/動員新風場耗時 2 天
+      return { ...s, ...adv, budget: Math.max(0, (adv.budget ?? s.budget) - a.cost), farmsOwned: s.farmsOwned + 1 };
+    }
     case "DEPART":
       // 出航累積船舶磨耗（#7）
       return { ...s, jobPhase: "enroute", vesselWear: clampN(s.vesselWear + VESSEL_WEAR_PER_SORTIE, 0, 100) };
-    case "SERVICE_VESSEL":
+    case "SERVICE_VESSEL": {
       if (a.cost > s.budget || s.vesselWear === 0) return s;
-      return { ...s, budget: s.budget - a.cost, vesselWear: 0 };
-    case "BUY_DIAGNOSTICS":
+      const adv = advance(s, 1); // 進廠保養耗時 1 天
+      return { ...s, ...adv, budget: Math.max(0, (adv.budget ?? s.budget) - a.cost), vesselWear: 0 };
+    }
+    case "BUY_DIAGNOSTICS": {
       if (a.cost > s.budget || s.diagLevel > 0) return s;
-      return { ...s, budget: s.budget - a.cost, diagLevel: 1 };
+      const adv = advance(s, 1); // 進階檢測建置耗時 1 天
+      return { ...s, ...adv, budget: Math.max(0, (adv.budget ?? s.budget) - a.cost), diagLevel: 1 };
+    }
     case "ARRIVE":
       return { ...s, jobPhase: "onsite" };
-    case "FAIL_REPAIR":
-      // 撤離/返航改期 = 安全近失事件（#34），可用率小扣 + 安全計分
-      return { ...s, jobPhase: "office", availability: Math.max(0, s.availability - 4), safetyIncidents: s.safetyIncidents + 1 };
+    case "FAIL_REPAIR": {
+      // 撤離/返航改期 = 安全近失事件（#34）+ 空耗 1 天（Phase B）
+      const adv = advance(s, 1);
+      return { ...s, ...adv, jobPhase: "office", availability: Math.max(0, (adv.availability ?? s.availability) - 4), safetyIncidents: s.safetyIncidents + 1 };
+    }
     case "REST": {
       const adv = advance(s, 1);
       return { ...s, ...adv, availability: Math.min(100, s.availability + 1), fleetHealth: clampN((adv.fleetHealth ?? s.fleetHealth) + 1.5, 0, 100) };
@@ -401,15 +413,16 @@ export function reducer(s: GameData, a: Action): GameData {
     }
     case "FINISH_REPAIR": {
       if (s.questStage !== "active") return s;
-      const inv = { ...s.inventory };
-      let cargo = s.cargoUsed;
+      const adv = advance(s, 1); // 一趟出勤維修耗時 1 天（Phase B）
+      const inv = { ...(adv.inventory ?? s.inventory) };
+      let cargo = adv.cargoUsed ?? s.cargoUsed;
       if (a.part && (inv[a.part] ?? 0) > 0) {
         inv[a.part] = (inv[a.part] ?? 0) - 1; // 消耗 1 件必備備品
         cargo = Math.max(0, cargo - 1);
       }
       const seen = s.seenFaults.includes(a.quest.targetFault) ? s.seenFaults : [...s.seenFaults, a.quest.targetFault];
-      const engs = a.discipline ? deployFatigue(s.engineers, a.discipline) : s.engineers; // 出勤技師累積疲勞（#7）
-      return { ...s, repairDone: true, questStage: "done", jobPhase: "office", budget: s.budget + a.quest.rewardBudget, xp: s.xp + a.quest.rewardXp, availability: Math.min(100, s.availability + 8 + s.techLevel * 2), fleetHealth: clampN(s.fleetHealth + 8, 0, 100), inventory: inv, cargoUsed: cargo, seenFaults: seen, missionsDone: s.missionsDone + 1, engineers: engs };
+      const engs = a.discipline ? deployFatigue(adv.engineers ?? s.engineers, a.discipline) : (adv.engineers ?? s.engineers); // 出勤技師累積疲勞（#7）
+      return { ...s, ...adv, repairDone: true, questStage: "done", jobPhase: "office", budget: (adv.budget ?? s.budget) + a.quest.rewardBudget, xp: s.xp + a.quest.rewardXp, availability: Math.min(100, (adv.availability ?? s.availability) + 8 + s.techLevel * 2), fleetHealth: clampN((adv.fleetHealth ?? s.fleetHealth) + 8, 0, 100), inventory: inv, cargoUsed: cargo, seenFaults: seen, missionsDone: s.missionsDone + 1, engineers: engs };
     }
     case "START_OVERHAUL": {
       if (s.questStage !== "active" || s.overhaul) return s;
@@ -464,9 +477,10 @@ export function reducer(s: GameData, a: Action): GameData {
     }
     case "UPGRADE": {
       if (a.cost > s.budget) return s;
+      const adv = advance(s, 1); // 設施升級/訓練耗時 1 天（Phase B）
       const patch =
         a.kind === "vessel" ? { vesselLevel: s.vesselLevel + 1 } : a.kind === "tech" ? { techLevel: s.techLevel + 1, techTotal: s.techTotal + 2 } : { toolLevel: s.toolLevel + 1 };
-      return { ...s, budget: s.budget - a.cost, ...patch };
+      return { ...s, ...adv, budget: Math.max(0, (adv.budget ?? s.budget) - a.cost), ...patch };
     }
     case "NEXT_QUEST": {
       if (s.questStage !== "done") return s;

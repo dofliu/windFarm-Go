@@ -9,7 +9,7 @@ import { useDialogue } from "../../state/DialogueContext";
 import { S } from "../../i18n/strings";
 import { Sfx } from "../../audio/sfx";
 import { toast } from "../toast";
-import { CAMPAIGN, missionAt } from "../campaign";
+import { CAMPAIGN, missionInstance } from "../campaign";
 import { FAULTS } from "../faults";
 import { PARTS } from "../data";
 import { DISC } from "../disc";
@@ -62,7 +62,7 @@ export default function HubScreen({ setScreen, accent, onDispatch, onFacility, s
   const { data, dispatch } = useGame();
   const { say } = useDialogue();
   const stage = data.questStage;
-  const mission = missionAt(data.campaignIndex);
+  const mission = missionInstance(data.campaignIndex);
   const quest = data.customQuest ?? mission;
   const fault = FAULTS[quest.targetFault];
   const goSail = () => setScreen("sail");

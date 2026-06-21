@@ -159,7 +159,7 @@ export default function OpsCenterModal({ open, onClose }: { open: boolean; onClo
         <span style={{ fontSize: 18 }}>🔬</span>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ color: C.cream, fontSize: 13, fontWeight: 700 }}>{t({ zh: "進階檢測", en: "Advanced Diagnostics" })}{data.diagLevel > 0 && <span style={{ color: C.green, fontWeight: 700 }}> · {t({ zh: "已啟用", en: "Active" })}</span>}</div>
-          <div style={{ fontSize: 11, color: C.mist }}>{t({ zh: "SCADA 趨勢圖顯示投影曲線、告警門檻與風險讀數", en: "SCADA charts show projection, alarm threshold & risk readout" })}</div>
+          <div style={{ fontSize: 11, color: C.mist }}>{t({ zh: "SCADA 趨勢圖顯示投影曲線、告警門檻與風險讀數 · 建置耗時 1 天", en: "SCADA charts show projection, alarm threshold & risk readout · 1 day to set up" })}</div>
         </div>
         {data.diagLevel > 0 ? (
           <span style={{ color: C.green, fontSize: 16 }}>✔</span>
