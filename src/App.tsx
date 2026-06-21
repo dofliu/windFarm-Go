@@ -19,6 +19,7 @@ import { GameProvider } from "./state/GameContext";
 import { DialogueProvider } from "./state/DialogueContext";
 import { Bgm } from "./audio/bgm";
 import { getProfile, clearProfile } from "./state/profile";
+import { SCENES, getSceneId, setSceneId as persistSceneId } from "./ui/scenes";
 
 export type Screen = "hub" | "market" | "sail" | "repair";
 
@@ -31,6 +32,15 @@ export default function App() {
   const [showDispatch, setShowDispatch] = useState(false);
   const [facility, setFacility] = useState<Facility | null>(null);
   const [loggedIn, setLoggedIn] = useState(() => getProfile() != null);
+  const [sceneId, setSceneId] = useState(getSceneId);
+
+  // 切換海域背景（#32）：循環到下一個主題並記住選擇
+  const cycleScene = () => {
+    const i = SCENES.findIndex((s) => s.id === sceneId);
+    const next = SCENES[(i + 1) % SCENES.length];
+    setSceneId(next.id);
+    persistSceneId(next.id);
+  };
 
   // 1600×900 舞台等比縮放置中
   useEffect(() => {
@@ -79,9 +89,9 @@ export default function App() {
             overflow: "hidden",
           }}
         >
-          {showSharedBg && <SceneBackground />}
+          {showSharedBg && <SceneBackground sceneId={sceneId} />}
 
-          {screen === "hub" && <HubScreen setScreen={setScreen} accent={accent} onDispatch={() => setShowDispatch(true)} onFacility={(k) => setFacility(k)} />}
+          {screen === "hub" && <HubScreen setScreen={setScreen} accent={accent} onDispatch={() => setShowDispatch(true)} onFacility={(k) => setFacility(k)} sceneId={sceneId} onCycleScene={cycleScene} />}
           {screen === "market" && <MarketScreen accent={accent} />}
           {screen === "sail" && <SailScreen setScreen={setScreen} accent={accent} />}
           {screen === "repair" && <RepairScreen setScreen={setScreen} />}

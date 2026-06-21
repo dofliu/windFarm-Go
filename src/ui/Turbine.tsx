@@ -83,15 +83,16 @@ export default function Turbine(p: TurbineProps) {
   );
 }
 
-// 母港水平線上的 6 座風機
-export function HubTurbines() {
-  const cfg = [
-    { left: "16%", bottom: "45.5%", opacity: 0.32, scale: 0.75, spin: 13, base: 10 },
-    { left: "33%", bottom: "46%", opacity: 0.45, scale: 0.95, spin: 11, base: 40 },
-    { left: "51%", bottom: "45.2%", opacity: 0.5, scale: 1.1, spin: 9, base: 0 },
-    { left: "67%", bottom: "46.3%", opacity: 0.4, scale: 0.85, spin: 12, base: 20 },
-    { left: "80%", bottom: "45.6%", opacity: 0.3, scale: 0.7, spin: 14, base: 60 },
-  ];
+// 母港水平線上的風機（配置可由背景主題覆寫 #32）
+const HUB_DEFAULT = [
+  { left: "16%", bottom: "45.5%", opacity: 0.32, scale: 0.75, spin: 13, base: 10 },
+  { left: "33%", bottom: "46%", opacity: 0.45, scale: 0.95, spin: 11, base: 40 },
+  { left: "51%", bottom: "45.2%", opacity: 0.5, scale: 1.1, spin: 9, base: 0 },
+  { left: "67%", bottom: "46.3%", opacity: 0.4, scale: 0.85, spin: 12, base: 20 },
+  { left: "80%", bottom: "45.6%", opacity: 0.3, scale: 0.7, spin: 14, base: 60 },
+];
+export function HubTurbines({ layout }: { layout?: typeof HUB_DEFAULT } = {}) {
+  const cfg = layout ?? HUB_DEFAULT;
   return (
     <>
       {cfg.map((c, i) => (

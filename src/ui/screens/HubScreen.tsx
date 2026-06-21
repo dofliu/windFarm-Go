@@ -16,6 +16,7 @@ import { DISC } from "../disc";
 import { toWan, type QuestStage } from "../../state/game";
 import { fetchLeaderboard, type Row } from "../../cloud/sheet";
 import { getProfile } from "../../state/profile";
+import { sceneById } from "../scenes";
 import type { I18n } from "../../game/systems/types";
 import type { Screen } from "../../App";
 
@@ -53,7 +54,7 @@ function OpsBlock({ title, children }: { title: I18n; children: ReactNode }) {
 
 const kvRow: CSSProperties = { display: "flex", justifyContent: "space-between", fontSize: 13, color: C.cream, padding: "3px 0" };
 
-export default function HubScreen({ setScreen, accent, onDispatch, onFacility }: { setScreen: (s: Screen) => void; accent: string; onDispatch?: () => void; onFacility?: (k: "vessel" | "tech" | "tool" | "codex" | "ranking") => void }) {
+export default function HubScreen({ setScreen, accent, onDispatch, onFacility, sceneId, onCycleScene }: { setScreen: (s: Screen) => void; accent: string; onDispatch?: () => void; onFacility?: (k: "vessel" | "tech" | "tool" | "codex" | "ranking") => void; sceneId?: string; onCycleScene?: () => void }) {
   useLang();
   const { data, dispatch } = useGame();
   const { say } = useDialogue();
@@ -200,6 +201,13 @@ export default function HubScreen({ setScreen, accent, onDispatch, onFacility }:
             </div>
           )}
         </div>
+      </div>
+
+      {/* 海域背景切換（#32） */}
+      <div onClick={() => { Sfx.click(); onCycleScene?.(); }} style={{ position: "absolute", left: "50%", top: 92, transform: "translateX(-50%)", display: "flex", alignItems: "center", gap: 8, padding: "7px 16px", borderRadius: 20, background: "rgba(10,28,36,.72)", border: "1px solid rgba(214,167,84,.4)", color: C.cream, fontSize: 13, fontWeight: 700, cursor: "pointer", backdropFilter: "blur(3px)", whiteSpace: "nowrap" }}>
+        <span style={{ color: C.gold, fontSize: 15 }}>🎨</span>
+        {t({ zh: "海域", en: "Scene" })}：{t(sceneById(sceneId ?? "").name)}
+        <span style={{ color: C.mist2 }}>↻</span>
       </div>
 
       {/* ───── 中央底部：主要動作 ───── */}
