@@ -38,7 +38,9 @@ npm install
 npm run dev        # http://localhost:5173
 npm run build      # type-check + production build
 npm run typecheck
+npm test           # dependency-free game-logic tests (test/run.mjs)
 ```
+CI (`.github/workflows/ci.yml`) runs `typecheck` + `test` + `build` on every PR to `main`.
 
 ## Project structure
 ```
