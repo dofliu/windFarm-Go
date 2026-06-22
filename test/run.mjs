@@ -329,6 +329,60 @@ test("LOAD_STATE merges with INITIAL (old saves get new fields)", () => {
   eq(typeof s.diagLevel, "number");
 });
 
+// ───────────────────────── Fuzz / 不變量 ─────────────────────────
+const EMPTY_I = { zh: "", en: "" };
+const DISCS = ["mechanical", "electrical", "control", "structural", "hse"];
+function randomAction(s, rnd) {
+  const pick = (arr) => arr[Math.floor(rnd() * arr.length)];
+  const t = pick([
+    "REST", "REST", "REMOTE_CHECK", "OPS_ADVANCE", "OPS_ADVANCE", "ACCEPT_QUEST", "DEPART", "ARRIVE", "BUY", "SELL",
+    "UPGRADE", "HIRE", "BUY_SOV", "UNLOCK_FARM", "SERVICE_VESSEL", "BUY_DIAGNOSTICS", "DO_ROUTINE",
+    "OPS_DISPATCH", "OPS_DISPATCH", "OPS_RESET", "OPS_INSPECT", "FINISH_REPAIR", "FAIL_REPAIR", "NEXT_QUEST", "RESOLVE_TASK", "RESTART_CAMPAIGN",
+  ]);
+  switch (t) {
+    case "BUY": return { type: "BUY", partId: pick(["gearbox_oil", "yaw_motor", "converter"]), qty: 1 + Math.floor(rnd() * 3), cost: Math.floor(rnd() * 200000), leadDays: Math.floor(rnd() * 4) };
+    case "SELL": return { type: "SELL", partId: "gearbox_oil", gain: 1000 };
+    case "UPGRADE": return { type: "UPGRADE", kind: pick(["vessel", "tech", "tool"]), cost: Math.floor(rnd() * 100000) };
+    case "HIRE": return { type: "HIRE", engineer: { id: "f" + Math.floor(rnd() * 1e7), name: "f", discipline: pick(DISCS), level: 1, fatigue: 0 }, cost: Math.floor(rnd() * 100000) };
+    case "BUY_SOV": return { type: "BUY_SOV", cost: Math.floor(rnd() * 1e6) };
+    case "UNLOCK_FARM": return { type: "UNLOCK_FARM", cost: Math.floor(rnd() * 1e6) };
+    case "SERVICE_VESSEL": return { type: "SERVICE_VESSEL", cost: Math.floor(rnd() * 1e6) };
+    case "BUY_DIAGNOSTICS": return { type: "BUY_DIAGNOSTICS", cost: Math.floor(rnd() * 1e6) };
+    case "DO_ROUTINE": return { type: "DO_ROUTINE", budget: Math.floor(rnd() * 50000), xp: 10 };
+    case "RESOLVE_TASK": return { type: "RESOLVE_TASK", dAvail: Math.floor(rnd() * 20 - 10), dBudget: Math.floor(rnd() * 200000 - 100000), dSafety: Math.floor(rnd() * 2), dGen: Math.floor(rnd() * 200 - 100), dHealth: Math.floor(rnd() * 10 - 5), xp: 10 };
+    case "FINISH_REPAIR": return { type: "FINISH_REPAIR", quest: { id: "q", title: EMPTY_I, brief: EMPTY_I, unit: "CH-01", targetFault: "gearbox_overheat", rewardBudget: 100000, rewardXp: 50 }, discipline: pick(DISCS) };
+    case "OPS_DISPATCH": { const f = s.fleet.find((x) => x.status === "fault"); const e = s.engineers[Math.floor(rnd() * s.engineers.length)]; return { type: "OPS_DISPATCH", turbine: f ? f.id : "none", engineerId: e ? e.id : "none" }; }
+    case "OPS_RESET": { const f = s.fleet.find((x) => x.status === "fault"); return { type: "OPS_RESET", turbine: f ? f.id : "none" }; }
+    case "OPS_INSPECT": { const e = s.engineers[Math.floor(rnd() * s.engineers.length)]; return { type: "OPS_INSPECT", engineerId: e ? e.id : "none" }; }
+    case "NEXT_QUEST": return { type: "NEXT_QUEST", poolSize: 7 };
+    default: return { type: t };
+  }
+}
+function checkInvariants(s, ctx) {
+  const nums = ["budget", "xp", "day", "availability", "fleetHealth", "generationMWh", "fleetLostMWh", "fleetResolved", "inspectBuffDays", "quarter", "slaAvailSum", "slaSamples", "vesselWear", "diagLevel", "cargoUsed", "techAvail", "techTotal"];
+  for (const k of nums) { const v = s[k]; if (typeof v !== "number" || !Number.isFinite(v)) throw new Error(`${k} not finite (${v}) after ${ctx}`); }
+  if (s.budget < 0) throw new Error(`budget<0 after ${ctx}`);
+  if (s.availability < 0 || s.availability > 100) throw new Error(`availability ${s.availability} after ${ctx}`);
+  if (s.fleetHealth < 0 || s.fleetHealth > 100) throw new Error(`fleetHealth ${s.fleetHealth} after ${ctx}`);
+  if (s.vesselWear < 0 || s.vesselWear > 100) throw new Error(`vesselWear ${s.vesselWear} after ${ctx}`);
+  if (!Array.isArray(s.fleet)) throw new Error("fleet not array");
+  for (const tt of s.fleet) { if (!["ok", "fault", "repair"].includes(tt.status)) throw new Error(`bad turbine status ${tt.status}`); if (!(tt.gen > 0)) throw new Error("turbine gen<=0"); }
+  if (!Array.isArray(s.forecast) || s.forecast.length !== g.FORECAST_DAYS) throw new Error("forecast length");
+  for (const f of s.forecast) if (!["workable", "caution", "closed"].includes(f)) throw new Error("bad forecast state");
+  for (const e of s.engineers) { const fa = e.fatigue ?? 0; if (fa < 0 || fa > 100) throw new Error(`fatigue ${fa}`); }
+  for (const j of s.opsJobs) { if (typeof j.daysLeft !== "number" || !Number.isFinite(j.daysLeft)) throw new Error("job daysLeft invalid"); }
+}
+test("fuzz: 3000 random actions never produce an invalid state or throw", () => {
+  const rnd = mulberry32(20260622);
+  Math.random = rnd; // reducer 內部隨機與動作生成共用同一可重現序列
+  let s = I;
+  for (let i = 0; i < 3000; i++) {
+    const a = randomAction(s, rnd);
+    try { s = R(s, a); } catch (e) { throw new Error(`reducer threw on ${a.type} #${i}: ${e.message}`); }
+    checkInvariants(s, `${a.type} #${i}`);
+  }
+});
+
 // ── 結果 ──
 console.log(`\n${pass} passed, ${fail} failed (${pass + fail} total)`);
 if (fail) { console.log("\nFailures:"); for (const f of fails) console.log("  ✗ " + f); process.exit(1); }
