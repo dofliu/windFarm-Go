@@ -240,6 +240,11 @@ test("computeScore is non-negative and rewards resolved repairs", () => {
   const more = g.computeScore({ ...I, fleetResolved: (I.fleetResolved ?? 0) + 5 });
   ok(base >= 0); ok(more > base, "resolved repairs add to score");
 });
+test("fleet downtime loss lowers score (managing the fleet ranks higher)", () => {
+  const kept = g.computeScore({ ...I, generationMWh: 5000, fleetLostMWh: 0 });
+  const lost = g.computeScore({ ...I, generationMWh: 5000, fleetLostMWh: 2000 });
+  ok(kept > lost, "fleetLostMWh penalizes score");
+});
 test("guards: can't act beyond budget", () => {
   const broke = { ...I, budget: 0 };
   const s = R(broke, { type: "HIRE", engineer: { id: "z", name: "z", discipline: "hse", level: 1, fatigue: 0 }, cost: 1000000 });

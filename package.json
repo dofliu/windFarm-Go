@@ -30,7 +30,8 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
-    "test": "node test/run.mjs"
+    "test": "node test/run.mjs",
+    "sim": "node test/sim.mjs"
   },
   "dependencies": {
     "react": "^18.3.1",

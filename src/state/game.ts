@@ -209,9 +209,12 @@ function ownedFarmGen(farmsOwned: number): number {
   return g;
 }
 
-// 綜合績效分（單一真實來源，#28/#34/#3/Phase C）：發電量 + 可用率×5 + 完成任務×30 − 安全事件×20 + 風場×10 − SLA違約×25 + 戰情室修復×8
+// 綜合績效分（單一真實來源，#28/#34/#3/Phase C）：
+// 有效發電量(發電量 − 戰情室停機損失) + 可用率×5 + 完成任務×30 − 安全×20 + 風場×10 − SLA違約×25 + 戰情室修復×8
+// 「− 戰情室停機損失」使「忽略機組故障」直接反映在排名（回饋 #4：處置方式 → 發電量/排名）。
 export function computeScore(d: GameData): number {
-  return Math.max(0, d.generationMWh + d.availability * 5 + d.missionsDone * 30 - d.safetyIncidents * 20 + d.farmsOwned * 10 - (d.slaPenalties ?? 0) * 25 + (d.fleetResolved ?? 0) * 8);
+  const effectiveGen = Math.max(0, d.generationMWh - (d.fleetLostMWh ?? 0));
+  return Math.max(0, effectiveGen + d.availability * 5 + d.missionsDone * 30 - d.safetyIncidents * 20 + d.farmsOwned * 10 - (d.slaPenalties ?? 0) * 25 + (d.fleetResolved ?? 0) * 8);
 }
 
 // 預估每日售電收入（◎）：可用率 × owned 風場基準發電 × 單價
