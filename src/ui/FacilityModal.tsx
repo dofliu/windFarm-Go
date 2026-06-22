@@ -3,7 +3,7 @@ import { C, FONT_SERIF, primaryBg, panel } from "./tokens";
 import { t } from "../game/systems/i18n";
 import { useLang } from "./useLang";
 import { useGame } from "../state/GameContext";
-import { toWan, computeScore, VESSEL_SERVICE_COST, fatigueOf, FATIGUE_LIMIT, type Discipline, type Engineer } from "../state/game";
+import { toWan, computeScore, VESSEL_SERVICE_COST, fatigueOf, FATIGUE_LIMIT, engineerBusy, type Discipline, type Engineer } from "../state/game";
 import { FARMS } from "../state/farms";
 import { Sfx } from "../audio/sfx";
 import { FAULTS } from "./faults";
@@ -25,7 +25,7 @@ function genCandidates(): Engineer[] {
     fatigue: 0,
   }));
 }
-const hireFee = (e: Engineer) => e.level * 3_000_000; // 300萬 * 等級
+const hireFee = (e: Engineer) => e.level * 1_200_000; // 120萬 * 等級（招募/上工訓練）
 
 function shell(title: string, onClose: () => void, body: ReactNode, width = 540) {
   return (
@@ -119,8 +119,17 @@ export default function FacilityModal({ kind, onClose }: { kind: Facility | null
           {data.engineers.map((e) => {
             const f = Math.round(fatigueOf(e));
             const tired = f >= FATIGUE_LIMIT;
+            const busy = engineerBusy(data.opsJobs, e.id);
             return (
-              <span key={e.id} style={{ padding: "4px 10px", borderRadius: 4, background: tired ? "rgba(220,100,80,.14)" : "rgba(127,206,142,.12)", border: `1px solid ${tired ? "rgba(220,100,80,.4)" : "rgba(127,206,142,.3)"}`, color: tired ? C.redText : C.greenLight, fontSize: 12 }}>{e.name}·{t(DISC[e.discipline])} Lv.{e.level} · {tired ? t({ zh: "過勞", en: "tired" }) : `${f}%`}</span>
+              <span key={e.id} style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "4px 6px 4px 10px", borderRadius: 4, background: tired ? "rgba(220,100,80,.14)" : "rgba(127,206,142,.12)", border: `1px solid ${tired ? "rgba(220,100,80,.4)" : "rgba(127,206,142,.3)"}`, color: tired ? C.redText : C.greenLight, fontSize: 12 }}>
+                {e.name}·{t(DISC[e.discipline])} Lv.{e.level} · {tired ? t({ zh: "過勞", en: "tired" }) : `${f}%`}
+                <button
+                  title={busy ? t({ zh: "出勤中不可解僱", en: "On a job — can't fire" }) : t({ zh: "解僱", en: "Fire" })}
+                  disabled={busy}
+                  onClick={() => { if (busy) return; Sfx.click(); dispatch({ type: "FIRE", id: e.id }); }}
+                  style={{ width: 16, height: 16, lineHeight: "14px", textAlign: "center", borderRadius: 3, border: "1px solid rgba(220,100,80,.5)", background: busy ? "rgba(255,255,255,.06)" : "rgba(220,100,80,.18)", color: busy ? C.mist : C.redText, fontSize: 11, fontWeight: 900, cursor: busy ? "not-allowed" : "pointer", padding: 0 }}
+                >✕</button>
+              </span>
             );
           })}
         </div>

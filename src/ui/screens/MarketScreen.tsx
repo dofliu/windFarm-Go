@@ -14,7 +14,7 @@ const TAX = 0.12;
 const SELL_RATE = 0.9; // 賣出 9 折回收
 const leadOf = (p: { price: string }) => {
   const n = Number(p.price.replace(/,/g, ""));
-  return n < 1000 ? 0 : n < 3000 ? 1 : n < 6000 ? 2 : 3; // 越貴前置期越長
+  return n < 100_000 ? 0 : n < 1_000_000 ? 1 : n < 3_000_000 ? 2 : 3; // 越貴(大型組件)前置期越長
 };
 
 export default function MarketScreen({ accent }: { accent: string }) {

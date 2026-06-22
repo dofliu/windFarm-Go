@@ -36,6 +36,7 @@ const g = await load("src/state/game.ts");
 const inc = await load("src/state/incidents.ts");
 const camp = await load("src/ui/campaign.ts");
 const course = await load("src/state/course.ts");
+const data = await load("src/ui/data.ts");
 const R = g.reducer, I = g.INITIAL;
 
 // ───────────────────────── INITIAL 不變量 ─────────────────────────
@@ -120,6 +121,27 @@ test("BUY adds inventory; spoilage can reduce it over time", () => {
   eq(s.inventory.gearbox_oil, 5);
   seed(99); for (let i = 0; i < 40; i++) s = R(s, { type: "REST" });
   ok((s.inventory.gearbox_oil ?? 0) <= 5, "inventory non-increasing from spoilage");
+});
+
+// ───────────────────────── 招募 / 解僱 ─────────────────────────
+test("FIRE removes an engineer; blocked while on an ops job", () => {
+  const two = { ...I, engineers: [...I.engineers, { id: "fireMe", name: "x", discipline: "electrical", level: 1, fatigue: 0 }] };
+  const s = R(two, { type: "FIRE", id: "fireMe" });
+  eq(s.engineers.length, two.engineers.length - 1, "engineer removed");
+  ok(!s.engineers.some((e) => e.id === "fireMe"));
+  const onJob = { ...two, opsJobs: [{ id: "j", turbine: "CH-01", engineerId: "fireMe", discipline: "electrical", daysLeft: 2 }] };
+  const blocked = R(onJob, { type: "FIRE", id: "fireMe" });
+  eq(blocked.engineers.length, onJob.engineers.length, "can't fire a deployed engineer");
+});
+
+// ───────────────────────── 經濟：備品價格量級 ─────────────────────────
+test("part prices: realistic scale (major components >> consumables)", () => {
+  const price = (id) => data.priceNum(data.PARTS.find((p) => p.id === id));
+  ok(price("gearbox_oil") < 200_000, "consumable cheap");
+  ok(price("hydraulic_oil") < 200_000, "consumable cheap");
+  ok(price("pitch_bearing") > 500_000, "bearing is a capital item");
+  ok(price("converter") > 1_000_000, "converter is a major component");
+  ok(price("gfrp_blade") > price("pitch_bearing"), "blade is the most expensive");
 });
 
 // ───────────────────────── 設施耗時 ─────────────────────────
