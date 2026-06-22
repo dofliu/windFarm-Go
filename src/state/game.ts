@@ -417,6 +417,7 @@ export type Action =
   | { type: "DO_ROUTINE"; budget: number; xp: number } // 調度中心例行小任務（#21）
   | { type: "UPGRADE"; kind: "vessel" | "tech" | "tool"; cost: number } // 設施升級（A）
   | { type: "HIRE"; engineer: Engineer; cost: number } // 招募技師（#27）
+  | { type: "FIRE"; id: string } // 解僱技師（出勤中不可解僱）
   | { type: "BUY_SOV"; cost: number } // 購置 SOV（#26）
   | { type: "UNLOCK_FARM"; cost: number } // 拓展新風場（#34）
   | { type: "DEPART" } // 出航 → enroute（#25）
@@ -480,6 +481,11 @@ export function reducer(s: GameData, a: Action): GameData {
       if (a.cost > s.budget) return s;
       const adv = advance(s, 1); // 招募/上工訓練耗時 1 天（Phase B 統一時間成本）
       return { ...s, ...adv, budget: Math.max(0, (adv.budget ?? s.budget) - a.cost), engineers: [...(adv.engineers ?? s.engineers), a.engineer] };
+    }
+    case "FIRE": {
+      if (engineerBusy(s.opsJobs, a.id)) return s; // 戰情室出勤中不可解僱
+      if (!s.engineers.some((e) => e.id === a.id)) return s;
+      return { ...s, engineers: s.engineers.filter((e) => e.id !== a.id) };
     }
     case "BUY_SOV": {
       if (a.cost > s.budget || s.ownsSOV) return s;
