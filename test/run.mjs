@@ -329,6 +329,25 @@ test("LOAD_STATE merges with INITIAL (old saves get new fields)", () => {
   eq(typeof s.diagLevel, "number");
 });
 
+// ───────────────────────── 故障平衡：不會全場崩潰 ─────────────────────────
+test("fault spawn scales with operating fraction -> no fast collapse under neglect", () => {
+  // 故障率隨運轉比例縮放 → 純放置 30 天不會瞬間崩盤（修復前會快速雪崩到個位數）
+  for (const sd of [1, 2, 3, 7, 42, 100, 200, 7777]) {
+    seed(sd); let s = I; let minUptime = 100;
+    for (let i = 0; i < 30; i++) { s = R(s, { type: "OPS_ADVANCE" }); minUptime = Math.min(minUptime, g.fleetUptime(s.fleet)); }
+    ok(minUptime >= 40, `seed ${sd}: 30d-neglect uptime should stay >=40% (got ${minUptime}%)`);
+    unseed();
+  }
+});
+test("with low operating fraction, new faults are strongly suppressed", () => {
+  // 22 台故障、2 台運轉 → 接下來多天新故障機率極低（運轉比例縮放）
+  const fleet = I.fleet.map((t, i) => (i < 22 ? { ...t, status: "fault", faultId: "gearbox" } : { ...t, status: "ok", faultId: undefined }));
+  seed(5); let s = { ...I, fleet };
+  let stillOk = 0;
+  for (let i = 0; i < 20; i++) { s = R(s, { type: "OPS_ADVANCE" }); if (s.fleet.filter((t) => t.status === "ok").length >= 1) stillOk++; }
+  ok(stillOk >= 15, `operating turbines should usually persist (was ok on ${stillOk}/20 days)`);
+});
+
 // ───────────────────────── Fuzz / 不變量 ─────────────────────────
 const EMPTY_I = { zh: "", en: "" };
 const DISCS = ["mechanical", "electrical", "control", "structural", "hse"];

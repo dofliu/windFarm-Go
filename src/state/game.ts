@@ -350,15 +350,15 @@ function advance(s: GameData, days = 1): Partial<GameData> {
         if (!j.remote) engs = deployFatigue(engs, j.discipline);
       }
       jobs = jobs.filter((j) => j.daysLeft > 0);
-      // 隨機新增故障（機率隨健康度下降而上升；定檢生效期間降低），鎖定一台正常且未在維修的機組
-      const faultProb = Math.min(0.6, FAULT_RATE_BASE + ((100 - health) / 100) * 0.25) * (buffDays > 0 ? INSPECT_FAULT_MULT : 1);
-      if (Math.random() < faultProb) {
-        const oks = fleet.filter((t) => t.status === "ok");
-        if (oks.length) {
-          const pick = oks[Math.floor(Math.random() * oks.length)];
-          const fi = fleet.findIndex((t) => t.id === pick.id);
-          fleet[fi] = { ...fleet[fi], status: "fault", faultId: randomIncidentId() };
-        }
+      // 隨機新增故障（機率隨健康度下降而上升；定檢生效期間降低），鎖定一台正常且未在維修的機組。
+      // 只有「運轉中」的機組會新故障 → 機率隨運轉比例縮放，形成穩定平衡而非死亡螺旋（不會全場掛掉）。
+      const oks = fleet.filter((t) => t.status === "ok");
+      const okFrac = fleet.length ? oks.length / fleet.length : 1;
+      const faultProb = Math.min(0.6, FAULT_RATE_BASE + ((100 - health) / 100) * 0.25) * (buffDays > 0 ? INSPECT_FAULT_MULT : 1) * okFrac;
+      if (oks.length && Math.random() < faultProb) {
+        const pick = oks[Math.floor(Math.random() * oks.length)];
+        const fi = fleet.findIndex((t) => t.id === pick.id);
+        fleet[fi] = { ...fleet[fi], status: "fault", faultId: randomIncidentId() };
       }
       if (buffDays > 0) buffDays -= 1;
     }
