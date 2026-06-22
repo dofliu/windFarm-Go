@@ -35,6 +35,7 @@ function near(a, b, tol, msg) { if (Math.abs(a - b) > tol) throw new Error(msg |
 const g = await load("src/state/game.ts");
 const inc = await load("src/state/incidents.ts");
 const camp = await load("src/ui/campaign.ts");
+const course = await load("src/state/course.ts");
 const R = g.reducer, I = g.INITIAL;
 
 // ───────────────────────── INITIAL 不變量 ─────────────────────────
@@ -351,6 +352,40 @@ test("with low operating fraction, new faults are strongly suppressed", () => {
   let stillOk = 0;
   for (let i = 0; i < 20; i++) { s = R(s, { type: "OPS_ADVANCE" }); if (s.fleet.filter((t) => t.status === "ok").length >= 1) stillOk++; }
   ok(stillOk >= 15, `operating turbines should usually persist (was ok on ${stillOk}/20 days)`);
+});
+
+// ───────────────────────── 每週開放機制 (course) ─────────────────────────
+test("course gating math", () => {
+  eq(course.MISSIONS_PER_WEEK, 2);
+  eq(course.WEEKS_TOTAL, Math.ceil(camp.CAMPAIGN.length / 2));
+  eq(course.missionWeek(0), 1); eq(course.missionWeek(2), 2); eq(course.missionWeek(6), 4);
+  eq(course.maxMissionForWeek(1), 1); eq(course.maxMissionForWeek(2), 3);
+  eq(course.getWeek(), course.WEEKS_TOTAL, "defaults to all-open when no localStorage");
+});
+
+// ───────────────────────── 天氣模型 (makeForecast) ─────────────────────────
+test("makeForecast deterministic under same seed; respects n and validity", () => {
+  seed(2024); const a = g.makeForecast("workable", 5); unseed();
+  seed(2024); const b = g.makeForecast("workable", 5); unseed();
+  eq(a.length, 5); eq(JSON.stringify(a), JSON.stringify(b), "same seed => same forecast");
+  ok(a.every((x) => ["workable", "caution", "closed"].includes(x)));
+});
+
+// ───────────────────────── 經濟 / 機組建構 數值正確 ─────────────────────────
+test("dailyRevenue exact at INITIAL", () => {
+  // 86% × 120 MWh = 103.2 -> round 103 ; × 3000 = 309000
+  eq(g.dailyRevenue(I), Math.round((86 / 100) * 120) * g.ELECTRICITY_PRICE);
+  eq(g.dailyRevenue(I), 309000);
+});
+test("buildFleet: 24 units, even gen share = 5 MWh", () => {
+  const f = g.buildFleet(1);
+  eq(f.length, 24);
+  ok(f.every((t) => t.gen === 5), "120/24 = 5 MWh per unit");
+  eq(f.filter((t) => t.status === "fault").length, g.FLEET_INIT_FAULTS);
+});
+test("incidents: randomIncidentId valid; incidentAt lookups", () => {
+  seed(1); ok(inc.incidentAt(inc.randomIncidentId()), "random id resolves to an incident"); unseed();
+  ok(!inc.incidentAt("nope"), "unknown id -> undefined");
 });
 
 // ───────────────────────── Fuzz / 不變量 ─────────────────────────
