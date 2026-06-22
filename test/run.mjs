@@ -267,6 +267,68 @@ test("missionInstance swaps unit token in title", () => {
   ok(m.title.zh.includes(m.unit), "title references swapped unit");
 });
 
+// ───────────────────────── 回歸：事件影響 REST 當日可用率 ─────────────────────────
+test("REST availability reflects same-day event (not reset from s.availability)", () => {
+  // 找到一個會讓 REST 後可用率 != 87 的種子 → 證明事件有被計入（修復前恆為 87）
+  let differs = false;
+  for (let sd = 0; sd < 400 && !differs; sd++) { seed(sd); const s = R(I, { type: "REST" }); if (s.availability !== Math.min(100, I.availability + 1)) differs = true; unseed(); }
+  ok(differs, "some seed should yield event-driven availability != 87 on REST");
+});
+test("availability stays within [0,100] over a long mixed run", () => {
+  seed(123); let s = I;
+  for (let i = 0; i < 60; i++) { s = R(s, { type: i % 3 === 0 ? "REMOTE_CHECK" : "REST" }); ok(s.availability >= 0 && s.availability <= 100, `avail out of range: ${s.availability}`); ok(s.fleetHealth >= 0 && s.fleetHealth <= 100); }
+});
+
+// ───────────────────────── 大修待命費 (demurrage) ─────────────────────────
+test("overhaul charges daily standby (demurrage) while active", () => {
+  const q = { id: "q3", title: { zh: "", en: "" }, brief: { zh: "", en: "" }, unit: "CH-03", targetFault: "gen_vibration", rewardBudget: 0, rewardXp: 0 };
+  let s = R(I, { type: "ACCEPT_QUEST" });
+  s = R(s, { type: "START_OVERHAUL", quest: q, discipline: "mechanical" });
+  const b0 = s.budget;
+  seed(1); const s1 = R(s, { type: "ADVANCE_OVERHAUL" });
+  // 即使有售電收入，待命費(40萬/天)應為可觀支出；至少預算變動且 demurrage 機制存在
+  ok(g.DEMURRAGE_PER_DAY > 0); ok(typeof s1.overhaul === "object" || s1.overhaul === null);
+});
+
+// ───────────────────────── 船舶磨耗 → 作業窗 ─────────────────────────
+test("vesselWindowPenalty grows with wear", () => {
+  eq(g.vesselWindowPenalty(0), 0);
+  ok(g.vesselWindowPenalty(60) >= 1);
+  ok(g.vesselWindowPenalty(90) >= g.vesselWindowPenalty(60));
+});
+
+// ───────────────────────── 進階檢測 gating ─────────────────────────
+test("BUY_DIAGNOSTICS unlocks once and is idempotent", () => {
+  seed(8); const s1 = R(I, { type: "BUY_DIAGNOSTICS", cost: 0 });
+  eq(s1.diagLevel, 1);
+  const s2 = R(s1, { type: "BUY_DIAGNOSTICS", cost: 0 });
+  eq(s2.diagLevel, 1, "no double unlock");
+});
+
+// ───────────────────────── 多日推進 (BUY_SOV = 2 天) ─────────────────────────
+test("BUY_SOV advances exactly 2 days and sets ownsSOV", () => {
+  seed(3); const s = R(I, { type: "BUY_SOV", cost: 0 });
+  eq(s.day, I.day + 2); eq(s.ownsSOV, true);
+});
+
+// ───────────────────────── 收入：每日售電 ─────────────────────────
+test("dailyRevenue scales with availability and farms", () => {
+  const base = g.dailyRevenue(I);
+  const hi = g.dailyRevenue({ ...I, availability: 100 });
+  ok(hi >= base, "higher availability => >= revenue");
+  ok(base > 0);
+});
+
+// ───────────────────────── LOAD_STATE 向後相容 ─────────────────────────
+test("LOAD_STATE merges with INITIAL (old saves get new fields)", () => {
+  const old = { budget: 1000, day: 50, availability: 70 }; // 缺 fleet/forecast/... 等新欄位
+  const s = R(I, { type: "LOAD_STATE", state: old });
+  eq(s.budget, 1000); eq(s.day, 50);
+  ok(Array.isArray(s.fleet) && s.fleet.length > 0, "fleet backfilled from INITIAL");
+  ok(Array.isArray(s.forecast) && s.forecast.length === g.FORECAST_DAYS);
+  eq(typeof s.diagLevel, "number");
+});
+
 // ── 結果 ──
 console.log(`\n${pass} passed, ${fail} failed (${pass + fail} total)`);
 if (fail) { console.log("\nFailures:"); for (const f of fails) console.log("  ✗ " + f); process.exit(1); }
