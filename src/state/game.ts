@@ -510,7 +510,8 @@ export function reducer(s: GameData, a: Action): GameData {
     }
     case "REST": {
       const adv = advance(s, 1);
-      return { ...s, ...adv, availability: Math.min(100, s.availability + 1), fleetHealth: clampN((adv.fleetHealth ?? s.fleetHealth) + 1.5, 0, 100) };
+      // 基於 advance 後的值（保留當日事件對可用率/健康度的影響）再加休整回復
+      return { ...s, ...adv, availability: Math.min(100, (adv.availability ?? s.availability) + 1), fleetHealth: clampN((adv.fleetHealth ?? s.fleetHealth) + 1.5, 0, 100) };
     }
     case "REMOTE_CHECK": {
       // 遠端巡檢：不派船、消耗 1 天，早期偵測微幅回復健康度並累積經驗
@@ -614,7 +615,7 @@ export function reducer(s: GameData, a: Action): GameData {
             jobPhase: "office",
             budget: (adv.budget ?? s.budget) + oh.rewardBudget,
             xp: s.xp + oh.rewardXp,
-            availability: Math.min(100, s.availability + 10 + s.techLevel * 2),
+            availability: Math.min(100, (adv.availability ?? s.availability) + 10 + s.techLevel * 2),
             fleetHealth: clampN((adv.fleetHealth ?? s.fleetHealth) + 12, 0, 100),
             seenFaults: seen,
             missionsDone: s.missionsDone + 1,
@@ -628,7 +629,7 @@ export function reducer(s: GameData, a: Action): GameData {
     }
     case "DO_ROUTINE": {
       const adv = advance(s, 1);
-      return { ...s, ...adv, budget: (adv.budget ?? s.budget) + a.budget, xp: s.xp + a.xp, availability: Math.min(100, s.availability + 1), missionsDone: s.missionsDone + 1 };
+      return { ...s, ...adv, budget: (adv.budget ?? s.budget) + a.budget, xp: s.xp + a.xp, availability: Math.min(100, (adv.availability ?? s.availability) + 1), missionsDone: s.missionsDone + 1 };
     }
     case "UPGRADE": {
       if (a.cost > s.budget) return s;
