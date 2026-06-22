@@ -7,7 +7,7 @@ import { Sfx } from "../audio/sfx";
 import { DISC } from "./disc";
 import { FARMS } from "../state/farms";
 import { incidentAt } from "../state/incidents";
-import { fleetUptime, engineerBusy, fatigueOf, FATIGUE_LIMIT } from "../state/game";
+import { fleetUptime, engineerBusy, fatigueOf, FATIGUE_LIMIT, vesselJobCap, onsiteJobCount, INSPECT_DAYS } from "../state/game";
 
 const STATUS_COLOR: Record<string, string> = { ok: "#3f7d52", fault: "#c0463a", repair: "#cf9a35" };
 
@@ -48,6 +48,10 @@ export default function FleetOpsModal({ open, onClose }: { open: boolean; onClos
   const selT = sel ? fleet.find((t) => t.id === sel) : null;
   const inc = selT ? incidentAt(selT.faultId) : undefined;
   const candidates = inc ? data.engineers.filter((e) => e.discipline === inc.discipline && !engineerBusy(data.opsJobs, e.id) && fatigueOf(e) < FATIGUE_LIMIT) : [];
+  const cap = vesselJobCap(data.ownsSOV, data.vesselLevel);
+  const onsite = onsiteJobCount(data.opsJobs);
+  const atCap = onsite >= cap;
+  const idleCrew = data.engineers.filter((e) => !engineerBusy(data.opsJobs, e.id) && fatigueOf(e) < FATIGUE_LIMIT);
 
   const dispatchCrew = (engineerId: string) => {
     if (!selT) return;
@@ -55,6 +59,7 @@ export default function FleetOpsModal({ open, onClose }: { open: boolean; onClos
     dispatch({ type: "OPS_DISPATCH", turbine: selT.id, engineerId });
     setSel(null);
   };
+  const inspect = () => { if (!idleCrew.length || atCap) return; Sfx.success(); dispatch({ type: "OPS_INSPECT", engineerId: idleCrew[0].id }); };
   const nextDay = () => { Sfx.click(); dispatch({ type: "OPS_ADVANCE" }); };
 
   const farmsShown = Math.min(data.farmsOwned, FARMS.length);
@@ -69,10 +74,21 @@ export default function FleetOpsModal({ open, onClose }: { open: boolean; onClos
       <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
         <Stat label={t({ zh: "機組妥善", en: "Uptime" })} value={`${uptime}%`} color={uptime >= 90 ? C.green : uptime >= 75 ? C.amber : C.red} />
         <Stat label={t({ zh: "待修故障", en: "Faults" })} value={String(faults)} color={faults > 0 ? C.red : C.green} />
-        <Stat label={t({ zh: "進行工單", en: "Active jobs" })} value={String(data.opsJobs.length)} color={C.goldText} />
+        <Stat label={t({ zh: "現場工單", en: "On-site jobs" })} value={`${onsite}/${cap}`} color={atCap ? C.amber : C.goldText} />
         <Stat label={t({ zh: "可用技師", en: "Free crew" })} value={`${freeCrew}/${data.engineers.length}`} />
         <Stat label={t({ zh: "停機損失", en: "Lost gen" })} value={`${data.fleetLostMWh} MWh`} color={C.amber2} />
         <Stat label={t({ zh: "已修復", en: "Resolved" })} value={String(data.fleetResolved)} color={C.green} />
+      </div>
+
+      {/* 預防性定檢 + 船舶容量（Phase C2） */}
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12, padding: "8px 12px", borderRadius: 6, background: data.inspectBuffDays > 0 ? "rgba(127,206,142,.1)" : "rgba(95,168,217,.08)", border: `1px solid ${data.inspectBuffDays > 0 ? "rgba(127,206,142,.32)" : "rgba(95,168,217,.28)"}` }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: C.cream }}>🛡 {t({ zh: "預防性定檢", en: "Preventive inspection" })}{data.inspectBuffDays > 0 && <span style={{ color: C.green }}> · {t({ zh: `生效中 ${data.inspectBuffDays} 天`, en: `active ${data.inspectBuffDays}d` })}</span>}</div>
+          <div style={{ fontSize: 11, color: C.mist }}>{t({ zh: `派一組人巡檢（${INSPECT_DAYS} 天）→ 後續故障率下降；占用一個現場工單名額`, en: `Send a crew (${INSPECT_DAYS}d) → lowers fault rate after; uses one on-site slot` })}</div>
+        </div>
+        <button disabled={!idleCrew.length || atCap} onClick={inspect} style={{ padding: "7px 14px", borderRadius: 5, border: "1px solid rgba(255,236,196,.6)", background: idleCrew.length && !atCap ? primaryBg() : "rgba(255,255,255,.08)", color: idleCrew.length && !atCap ? C.ink : C.mist, fontFamily: FONT_SERIF, fontWeight: 900, fontSize: 12.5, cursor: idleCrew.length && !atCap ? "pointer" : "not-allowed", whiteSpace: "nowrap" }}>
+          {atCap ? t({ zh: "現場已滿", en: "At capacity" }) : !idleCrew.length ? t({ zh: "無閒置技師", en: "No idle crew" }) : t({ zh: "派員定檢", en: "Inspect" })}
+        </button>
       </div>
 
       {/* 機組陣列（依風場分區） */}
@@ -120,7 +136,9 @@ export default function FleetOpsModal({ open, onClose }: { open: boolean; onClos
             </button>
           )}
           <div style={{ fontSize: 11, color: C.mist, marginBottom: 4 }}>{inc.resettable ? t({ zh: "或派技師現場處理：", en: "Or dispatch crew on site:" }) : t({ zh: "需派對應科別技師：", en: "Dispatch matching crew:" })}</div>
-          {candidates.length === 0 ? (
+          {atCap ? (
+            <div style={{ fontSize: 12, color: C.amber2 }}>{t({ zh: `船舶現場工單已滿（${onsite}/${cap}）。等工單完成、升級整備或購置 SOV 以提高並行數。`, en: `On-site jobs full (${onsite}/${cap}). Wait, upgrade the vessel or buy an SOV to raise concurrency.` })}</div>
+          ) : candidates.length === 0 ? (
             <div style={{ fontSize: 12, color: C.mist }}>{t({ zh: `無可用的「${DISC[inc.discipline].zh}」技師（過勞或不足）。可靠港休整或到技師公會招募同科別技師。`, en: `No available ${DISC[inc.discipline].en} crew (fatigued or none). Rest in port or hire one at the Tech Guild.` })}</div>
           ) : (
             <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
@@ -141,10 +159,11 @@ export default function FleetOpsModal({ open, onClose }: { open: boolean; onClos
           {data.opsJobs.map((j) => {
             const e = data.engineers.find((x) => x.id === j.engineerId);
             const ic = incidentAt(data.fleet.find((tt) => tt.id === j.turbine)?.faultId);
+            const isInspect = j.kind === "inspect";
             return (
               <div key={j.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "5px 8px", borderRadius: 4, background: "rgba(255,255,255,.04)", marginBottom: 4, fontSize: 12.5 }}>
-                <span style={{ color: C.goldText, fontWeight: 700 }}>{j.turbine}</span>
-                <span style={{ color: C.cream }}>{ic ? t(ic.name) : ""}</span>
+                <span style={{ color: C.goldText, fontWeight: 700 }}>{isInspect ? "🛡" : j.turbine}</span>
+                <span style={{ color: C.cream }}>{isInspect ? t({ zh: "全場預防性定檢", en: "Fleet inspection" }) : ic ? t(ic.name) : ""}</span>
                 <span style={{ color: C.mist }}>· {j.remote ? t({ zh: "遠端重啟", en: "Remote restart" }) : `${e?.name ?? "?"} (${t(DISC[j.discipline])})`}</span>
                 <span style={{ marginLeft: "auto", color: C.amber2 }}>{t({ zh: "剩", en: "" })} {j.daysLeft} {t({ zh: "天", en: "d left" })}</span>
               </div>

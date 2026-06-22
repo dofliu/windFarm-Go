@@ -189,6 +189,51 @@ test("fleet fault rate is bounded/calm over time (managed-ish)", () => {
   ok(faults <= 12, `faults after 10 idle days should be modest, got ${faults}`);
 });
 
+// ───────────────────────── C2：船舶並行上限 ─────────────────────────
+test("vesselJobCap: CTV base 2, SOV 4, +1 per vessel level", () => {
+  eq(g.vesselJobCap(false, 0), 2);
+  eq(g.vesselJobCap(true, 0), 4);
+  eq(g.vesselJobCap(false, 3), 5);
+});
+test("OPS_DISPATCH blocked when on-site jobs hit vessel cap", () => {
+  // CTV lvl0 cap=2; set up 3 faults + 3 mechanics, dispatch should cap at 2
+  const idxs = I.fleet.map((t, i) => (t.status === "ok" ? i : -1)).filter((i) => i >= 0).slice(0, 3);
+  const fleet = I.fleet.map((t, i) => (idxs.includes(i) ? { ...t, status: "fault", faultId: "gearbox" } : t));
+  const engineers = ["a", "b", "c"].map((id) => ({ id, name: id, discipline: "mechanical", level: 1, fatigue: 0 }));
+  let s = { ...I, fleet, engineers, ownsSOV: false, vesselLevel: 0 };
+  s = R(s, { type: "OPS_DISPATCH", turbine: fleet[idxs[0]].id, engineerId: "a" });
+  s = R(s, { type: "OPS_DISPATCH", turbine: fleet[idxs[1]].id, engineerId: "b" });
+  eq(g.onsiteJobCount(s.opsJobs), 2, "two on-site jobs");
+  const before = s.opsJobs.length;
+  s = R(s, { type: "OPS_DISPATCH", turbine: fleet[idxs[2]].id, engineerId: "c" }); // exceeds cap 2
+  eq(s.opsJobs.length, before, "third dispatch blocked by vessel cap");
+});
+test("remote resets do not count toward vessel cap", () => {
+  // fill cap with a remote reset + still allow a crew dispatch up to cap
+  const oks = I.fleet.map((t, i) => (t.status === "ok" ? i : -1)).filter((i) => i >= 0).slice(0, 2);
+  const fleet = I.fleet.map((t, i) => (i === oks[0] ? { ...t, status: "fault", faultId: "converter" } : i === oks[1] ? { ...t, status: "fault", faultId: "gearbox" } : t));
+  let s = { ...I, fleet, engineers: [{ id: "m", name: "m", discipline: "mechanical", level: 1, fatigue: 0 }], ownsSOV: false, vesselLevel: 0 };
+  s = R(s, { type: "OPS_RESET", turbine: fleet[oks[0]].id }); // remote, shouldn't use a slot
+  eq(g.onsiteJobCount(s.opsJobs), 0, "remote reset not on-site");
+  s = R(s, { type: "OPS_DISPATCH", turbine: fleet[oks[1]].id, engineerId: "m" });
+  eq(g.onsiteJobCount(s.opsJobs), 1, "crew dispatch still allowed");
+});
+
+// ───────────────────────── C2：預防性定檢 ─────────────────────────
+test("OPS_INSPECT creates an inspect job; completion sets fault-rate buff", () => {
+  let s = { ...I, engineers: [{ id: "k", name: "k", discipline: "control", level: 1, fatigue: 0 }] };
+  s = R(s, { type: "OPS_INSPECT", engineerId: "k" });
+  eq(s.opsJobs.length, 1); eq(s.opsJobs[0].kind, "inspect");
+  seed(77); let guard = 0;
+  while (s.opsJobs.length && guard++ < 10) s = R(s, { type: "OPS_ADVANCE" });
+  ok(s.inspectBuffDays > 0, "inspection buff active after completion");
+});
+test("OPS_INSPECT blocked when crew busy/fatigued", () => {
+  const tired = { ...I, engineers: [{ id: "k", name: "k", discipline: "control", level: 1, fatigue: g.FATIGUE_LIMIT }] };
+  const s = R(tired, { type: "OPS_INSPECT", engineerId: "k" });
+  eq(s.opsJobs.length, 0, "fatigued crew can't inspect");
+});
+
 // ───────────────────────── 績效分 / 派工守衛 ─────────────────────────
 test("computeScore is non-negative and rewards resolved repairs", () => {
   const base = g.computeScore(I);
