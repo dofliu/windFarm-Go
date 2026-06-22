@@ -240,6 +240,11 @@ test("computeScore is non-negative and rewards resolved repairs", () => {
   const more = g.computeScore({ ...I, fleetResolved: (I.fleetResolved ?? 0) + 5 });
   ok(base >= 0); ok(more > base, "resolved repairs add to score");
 });
+test("fleet downtime loss lowers score (managing the fleet ranks higher)", () => {
+  const kept = g.computeScore({ ...I, generationMWh: 5000, fleetLostMWh: 0 });
+  const lost = g.computeScore({ ...I, generationMWh: 5000, fleetLostMWh: 2000 });
+  ok(kept > lost, "fleetLostMWh penalizes score");
+});
 test("guards: can't act beyond budget", () => {
   const broke = { ...I, budget: 0 };
   const s = R(broke, { type: "HIRE", engineer: { id: "z", name: "z", discipline: "hse", level: 1, fatigue: 0 }, cost: 1000000 });
@@ -327,6 +332,25 @@ test("LOAD_STATE merges with INITIAL (old saves get new fields)", () => {
   ok(Array.isArray(s.fleet) && s.fleet.length > 0, "fleet backfilled from INITIAL");
   ok(Array.isArray(s.forecast) && s.forecast.length === g.FORECAST_DAYS);
   eq(typeof s.diagLevel, "number");
+});
+
+// ───────────────────────── 故障平衡：不會全場崩潰 ─────────────────────────
+test("fault spawn scales with operating fraction -> no fast collapse under neglect", () => {
+  // 故障率隨運轉比例縮放 → 純放置 30 天不會瞬間崩盤（修復前會快速雪崩到個位數）
+  for (const sd of [1, 2, 3, 7, 42, 100, 200, 7777]) {
+    seed(sd); let s = I; let minUptime = 100;
+    for (let i = 0; i < 30; i++) { s = R(s, { type: "OPS_ADVANCE" }); minUptime = Math.min(minUptime, g.fleetUptime(s.fleet)); }
+    ok(minUptime >= 40, `seed ${sd}: 30d-neglect uptime should stay >=40% (got ${minUptime}%)`);
+    unseed();
+  }
+});
+test("with low operating fraction, new faults are strongly suppressed", () => {
+  // 22 台故障、2 台運轉 → 接下來多天新故障機率極低（運轉比例縮放）
+  const fleet = I.fleet.map((t, i) => (i < 22 ? { ...t, status: "fault", faultId: "gearbox" } : { ...t, status: "ok", faultId: undefined }));
+  seed(5); let s = { ...I, fleet };
+  let stillOk = 0;
+  for (let i = 0; i < 20; i++) { s = R(s, { type: "OPS_ADVANCE" }); if (s.fleet.filter((t) => t.status === "ok").length >= 1) stillOk++; }
+  ok(stillOk >= 15, `operating turbines should usually persist (was ok on ${stillOk}/20 days)`);
 });
 
 // ───────────────────────── Fuzz / 不變量 ─────────────────────────
