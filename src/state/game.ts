@@ -43,19 +43,27 @@ export interface Turbine {
   faultId?: string; // 故障型錄 id（incidents.ts）
   gen: number; // 此機組每日發電佔比 (MWh, 100%)
 }
+export type OpsJobKind = "repair" | "inspect"; // 維修工單 / 預防性定檢（Phase C2）
 export interface OpsJob {
   id: string;
-  turbine: string; // 機組 id
+  turbine: string; // 機組 id（定檢為 "__sweep__"）
   engineerId: string; // 派遣的技師（遠端重啟為 "__remote__"）
   discipline: Discipline;
   daysLeft: number; // 剩餘工日
   remote?: boolean; // 遠端重啟工單（免技師、不累積疲勞）
+  kind?: OpsJobKind; // 預設 repair；inspect = 預防性定檢
 }
 export const FAULT_RATE_BASE = 0.16; // 每日新增故障的基礎機率（隨健康度上升）
 export const FLEET_INIT_FAULTS = 3; // 開局即有的故障數（給玩家可立即處理的事件）
 export const REMOTE_RESET_DAYS = 1; // 遠端重啟工期（免技師、較短）
 export const FLEET_FIX_REWARD = 120_000; // 每修復一台機組的維運報酬 ◎（Phase C 經濟）
 export const ELECTRICITY_PRICE = 3_000; // 售電單價 ◎/MWh（每日發電量 → 收入）
+export const INSPECT_DAYS = 2; // 預防性定檢工期（Phase C2）
+export const INSPECT_BUFF_DAYS = 8; // 定檢後降低故障率的持續天數
+export const INSPECT_FAULT_MULT = 0.4; // 定檢生效期間的故障率倍率
+// 船舶可同時支援的現場工單數（Phase C2）：CTV 基礎 2、SOV 4，每整備等級 +1（遠端重啟不占用）
+export const vesselJobCap = (ownsSOV: boolean, vesselLevel: number): number => (ownsSOV ? 4 : 2) + vesselLevel;
+export const onsiteJobCount = (jobs: OpsJob[]): number => jobs.filter((j) => !j.remote).length;
 
 // 依擁有風場建立機組陣列（每座 farm.units 台，發電佔比 = genPerDay/units）
 export function buildFleetForFarm(f: number): Turbine[] {
@@ -146,6 +154,7 @@ export interface GameData {
   opsJobs: OpsJob[]; // 進行中的並行維修工單（Phase C）
   fleetLostMWh: number; // 累積因停機損失的發電量（教學：差異化停機損失，回饋 #4）
   fleetResolved: number; // 累積在戰情室修復的機組數（績效加分）
+  inspectBuffDays: number; // 預防性定檢生效剩餘天數（Phase C2，降低故障率）
 }
 
 // 多回合大修（#4）：重大組件更換需多個「可作業天氣窗」工日才完成。
@@ -256,6 +265,7 @@ export const INITIAL: GameData = {
   opsJobs: [],
   fleetLostMWh: 0,
   fleetResolved: 0,
+  inspectBuffDays: 0,
 };
 
 const clampN = (n: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, n));
@@ -322,19 +332,26 @@ function advance(s: GameData, days = 1): Partial<GameData> {
     let resolved = s.fleetResolved;
     let engs = patch.engineers ?? s.engineers;
     let fixPay = 0;
+    let buffDays = s.inspectBuffDays; // 預防性定檢生效天數（Phase C2）
+    let healthBoost = 0;
     for (let dd = 0; dd < days; dd++) {
-      // 並行工單推進；完工 → 機組復歸 + 維運報酬；派工(非遠端)累積疲勞
+      // 並行工單推進；完工 → 維修(機組復歸+報酬) 或 定檢(啟動降故障 buff)；派工(非遠端)累積疲勞
       jobs = jobs.map((j) => ({ ...j, daysLeft: j.daysLeft - 1 }));
       for (const j of jobs.filter((j) => j.daysLeft <= 0)) {
-        const ti = fleet.findIndex((t) => t.id === j.turbine);
-        if (ti >= 0) fleet[ti] = { ...fleet[ti], status: "ok", faultId: undefined };
-        resolved += 1;
-        fixPay += FLEET_FIX_REWARD;
+        if (j.kind === "inspect") {
+          buffDays = INSPECT_BUFF_DAYS; // 定檢完成 → 降低未來故障率
+          healthBoost += 3;
+        } else {
+          const ti = fleet.findIndex((t) => t.id === j.turbine);
+          if (ti >= 0) fleet[ti] = { ...fleet[ti], status: "ok", faultId: undefined };
+          resolved += 1;
+          fixPay += FLEET_FIX_REWARD;
+        }
         if (!j.remote) engs = deployFatigue(engs, j.discipline);
       }
       jobs = jobs.filter((j) => j.daysLeft > 0);
-      // 隨機新增故障（機率隨健康度下降而上升），鎖定一台正常且未在維修的機組
-      const faultProb = Math.min(0.6, FAULT_RATE_BASE + ((100 - health) / 100) * 0.25);
+      // 隨機新增故障（機率隨健康度下降而上升；定檢生效期間降低），鎖定一台正常且未在維修的機組
+      const faultProb = Math.min(0.6, FAULT_RATE_BASE + ((100 - health) / 100) * 0.25) * (buffDays > 0 ? INSPECT_FAULT_MULT : 1);
       if (Math.random() < faultProb) {
         const oks = fleet.filter((t) => t.status === "ok");
         if (oks.length) {
@@ -343,7 +360,10 @@ function advance(s: GameData, days = 1): Partial<GameData> {
           fleet[fi] = { ...fleet[fi], status: "fault", faultId: randomIncidentId() };
         }
       }
+      if (buffDays > 0) buffDays -= 1;
     }
+    patch.inspectBuffDays = buffDays;
+    if (healthBoost) patch.fleetHealth = clampN((patch.fleetHealth ?? s.fleetHealth) + healthBoost, 0, 100);
     // 停機（故障/維修中）機組損失發電
     const lost = Math.round(fleet.filter((t) => t.status !== "ok").reduce((a, t) => a + t.gen, 0) * days);
     patch.fleet = fleet;
@@ -403,6 +423,7 @@ export type Action =
   | { type: "REMOTE_CHECK" } // 每日遠端 SCADA 巡檢（Phase A #2）：消耗 1 天、累積 XP、早期偵測微幅回復健康度
   | { type: "OPS_DISPATCH"; turbine: string; engineerId: string } // 戰情室派工：指派技師維修某故障機組（Phase C）
   | { type: "OPS_RESET"; turbine: string } // 戰情室遠端重啟：清除可重啟的軟性故障（免技師、較快）
+  | { type: "OPS_INSPECT"; engineerId: string } // 戰情室預防性定檢（Phase C2）：派一組人巡檢，降低未來故障率
   | { type: "OPS_ADVANCE" } // 戰情室推進一天（Phase C）：並行工單前進、隨機新增故障
   | { type: "NEXT_QUEST"; poolSize: number } // 下一關（#20 主線推進）
   | { type: "RESTART_CAMPAIGN" } // 重玩戰役（#20）
@@ -508,6 +529,7 @@ export function reducer(s: GameData, a: Action): GameData {
       if (!inc || eng.discipline !== inc.discipline) return s; // 需對應科別技師
       if (fatigueOf(eng) >= FATIGUE_LIMIT) return s; // 過勞不可派
       if (engineerBusy(s.opsJobs, eng.id)) return s; // 該技師已在執行工單
+      if (onsiteJobCount(s.opsJobs) >= vesselJobCap(s.ownsSOV, s.vesselLevel)) return s; // 船舶現場工單已達上限（#7/C2）
       const fleet = s.fleet.map((x) => (x.id === tb.id ? { ...x, status: "repair" as TurbineStatus } : x));
       const job: OpsJob = { id: "job_" + Math.random().toString(36).slice(2, 9), turbine: tb.id, engineerId: eng.id, discipline: eng.discipline, daysLeft: inc.repairDays };
       return { ...s, fleet, opsJobs: [...s.opsJobs, job] };
@@ -520,6 +542,15 @@ export function reducer(s: GameData, a: Action): GameData {
       const fleet = s.fleet.map((x) => (x.id === tb.id ? { ...x, status: "repair" as TurbineStatus } : x));
       const job: OpsJob = { id: "rst_" + Math.random().toString(36).slice(2, 9), turbine: tb.id, engineerId: "__remote__", discipline: inc.discipline, daysLeft: REMOTE_RESET_DAYS, remote: true };
       return { ...s, fleet, opsJobs: [...s.opsJobs, job] };
+    }
+    case "OPS_INSPECT": {
+      const eng = s.engineers.find((e) => e.id === a.engineerId);
+      if (!eng) return s;
+      if (fatigueOf(eng) >= FATIGUE_LIMIT) return s; // 過勞不可派
+      if (engineerBusy(s.opsJobs, eng.id)) return s; // 已在執行工單
+      if (onsiteJobCount(s.opsJobs) >= vesselJobCap(s.ownsSOV, s.vesselLevel)) return s; // 船舶現場工單上限
+      const job: OpsJob = { id: "ins_" + Math.random().toString(36).slice(2, 9), turbine: "__sweep__", engineerId: eng.id, discipline: eng.discipline, daysLeft: INSPECT_DAYS, kind: "inspect" };
+      return { ...s, opsJobs: [...s.opsJobs, job] };
     }
     case "BUY": {
       if (a.cost > s.budget) return s;
