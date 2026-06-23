@@ -13,7 +13,7 @@ import { CAMPAIGN, missionInstance } from "../campaign";
 import { FAULTS } from "../faults";
 import { PARTS } from "../data";
 import { DISC } from "../disc";
-import { toWan, computeScore, QUARTER_DAYS, SLA_FLOOR, DEMURRAGE_PER_DAY, dailyStorageCost, FATIGUE_LIMIT, fatigueOf, fleetUptime, dailyRevenue, type QuestStage } from "../../state/game";
+import { toWan, computeScore, QUARTER_DAYS, SLA_FLOOR, DEMURRAGE_PER_DAY, dailyStorageCost, FATIGUE_LIMIT, fatigueOf, fleetUptime, dailyRevenue, dailyPayroll, type QuestStage } from "../../state/game";
 import { FARMS } from "../../state/farms";
 import { fetchLeaderboard, type Row } from "../../cloud/sheet";
 import { getProfile } from "../../state/profile";
@@ -352,6 +352,7 @@ export default function HubScreen({ setScreen, accent, onDispatch, onFacility, s
                 <div style={kvRow}><span style={{ color: C.mist }}>{t({ zh: "完成任務", en: "Missions" })}</span><span>{data.missionsDone}</span></div>
                 <div style={kvRow}><span style={{ color: C.mist }}>{t({ zh: "預算", en: "Budget" })}</span><span>◎ {toWan(data.budget)} {t({ zh: "萬", en: "M" })}</span></div>
                 <div style={kvRow}><span style={{ color: C.mist }}>{t({ zh: "售電收入/日", en: "Revenue/day" })}</span><span style={{ color: C.green, fontWeight: 700 }}>◎ {toWan(dailyRevenue(data))} {t({ zh: "萬", en: "M" })}</span></div>
+                <div style={kvRow}><span style={{ color: C.mist }}>{t({ zh: "技師薪資/日", en: "Payroll/day" })}</span><span style={{ color: C.amber2, fontWeight: 700 }}>◎ {toWan(dailyPayroll(data.engineers))} {t({ zh: "萬", en: "M" })}</span></div>
                 <div style={kvRow}><span style={{ color: C.mist }}>{t({ zh: "天數", en: "Day" })}</span><span>{data.day}</span></div>
               </OpsBlock>
             </div>

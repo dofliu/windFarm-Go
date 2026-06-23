@@ -7,7 +7,7 @@ import { Sfx } from "../audio/sfx";
 import { DISC } from "./disc";
 import { FARMS } from "../state/farms";
 import { incidentAt } from "../state/incidents";
-import { fleetUptime, engineerBusy, fatigueOf, FATIGUE_LIMIT, vesselJobCap, onsiteJobCount, INSPECT_DAYS } from "../state/game";
+import { fleetUptime, engineerBusy, fatigueOf, FATIGUE_LIMIT, vesselJobCap, onsiteJobCount, INSPECT_DAYS, SEA_INDEX, vesselSeaTol, SEA_LABEL, dailyPayroll, toWan } from "../state/game";
 
 const STATUS_COLOR: Record<string, string> = { ok: "#3f7d52", fault: "#c0463a", repair: "#cf9a35" };
 
@@ -51,6 +51,8 @@ export default function FleetOpsModal({ open, onClose }: { open: boolean; onClos
   const cap = vesselJobCap(data.ownsSOV, data.vesselLevel);
   const onsite = onsiteJobCount(data.opsJobs);
   const atCap = onsite >= cap;
+  const seaOk = SEA_INDEX[data.seaState] <= vesselSeaTol(data.ownsSOV); // 海象是否允許派船
+  const canDeploy = !atCap && seaOk;
   const idleCrew = data.engineers.filter((e) => !engineerBusy(data.opsJobs, e.id) && fatigueOf(e) < FATIGUE_LIMIT);
 
   const dispatchCrew = (engineerId: string) => {
@@ -59,7 +61,7 @@ export default function FleetOpsModal({ open, onClose }: { open: boolean; onClos
     dispatch({ type: "OPS_DISPATCH", turbine: selT.id, engineerId });
     setSel(null);
   };
-  const inspect = () => { if (!idleCrew.length || atCap) return; Sfx.success(); dispatch({ type: "OPS_INSPECT", engineerId: idleCrew[0].id }); };
+  const inspect = () => { if (!idleCrew.length || !canDeploy) return; Sfx.success(); dispatch({ type: "OPS_INSPECT", engineerId: idleCrew[0].id }); };
   const nextDay = () => { Sfx.click(); dispatch({ type: "OPS_ADVANCE" }); };
 
   const farmsShown = Math.min(data.farmsOwned, FARMS.length);
@@ -78,7 +80,15 @@ export default function FleetOpsModal({ open, onClose }: { open: boolean; onClos
         <Stat label={t({ zh: "可用技師", en: "Free crew" })} value={`${freeCrew}/${data.engineers.length}`} />
         <Stat label={t({ zh: "停機損失", en: "Lost gen" })} value={`${data.fleetLostMWh} MWh`} color={C.amber2} />
         <Stat label={t({ zh: "已修復", en: "Resolved" })} value={String(data.fleetResolved)} color={C.green} />
+        <Stat label={t({ zh: "薪資/日", en: "Payroll/d" })} value={`◎${toWan(dailyPayroll(data.engineers))}萬`} color={C.mist2} />
       </div>
+
+      {/* 海象限制派船（接上天氣預報） */}
+      {!seaOk && (
+        <div style={{ marginBottom: 12, padding: "7px 10px", borderRadius: 5, background: "rgba(220,100,80,.12)", border: "1px solid rgba(220,100,80,.32)", fontSize: 12, color: C.amber2 }}>
+          🌊 {t({ zh: `海象「${SEA_LABEL[data.seaState].zh}」超出船舶耐受 → 無法派船。可改用遠端重啟，或等可作業天氣窗（看三日預報）。`, en: `Seas "${SEA_LABEL[data.seaState].en}" exceed vessel limit → can't deploy crews. Use remote restart or wait for a workable window (see the 3-day forecast).` })}
+        </div>
+      )}
 
       {/* 預防性定檢 + 船舶容量（Phase C2） */}
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12, padding: "8px 12px", borderRadius: 6, background: data.inspectBuffDays > 0 ? "rgba(127,206,142,.1)" : "rgba(95,168,217,.08)", border: `1px solid ${data.inspectBuffDays > 0 ? "rgba(127,206,142,.32)" : "rgba(95,168,217,.28)"}` }}>
@@ -86,8 +96,8 @@ export default function FleetOpsModal({ open, onClose }: { open: boolean; onClos
           <div style={{ fontSize: 13, fontWeight: 700, color: C.cream }}>🛡 {t({ zh: "預防性定檢", en: "Preventive inspection" })}{data.inspectBuffDays > 0 && <span style={{ color: C.green }}> · {t({ zh: `生效中 ${data.inspectBuffDays} 天`, en: `active ${data.inspectBuffDays}d` })}</span>}</div>
           <div style={{ fontSize: 11, color: C.mist }}>{t({ zh: `派一組人巡檢（${INSPECT_DAYS} 天）→ 後續故障率下降；占用一個現場工單名額`, en: `Send a crew (${INSPECT_DAYS}d) → lowers fault rate after; uses one on-site slot` })}</div>
         </div>
-        <button disabled={!idleCrew.length || atCap} onClick={inspect} style={{ padding: "7px 14px", borderRadius: 5, border: "1px solid rgba(255,236,196,.6)", background: idleCrew.length && !atCap ? primaryBg() : "rgba(255,255,255,.08)", color: idleCrew.length && !atCap ? C.ink : C.mist, fontFamily: FONT_SERIF, fontWeight: 900, fontSize: 12.5, cursor: idleCrew.length && !atCap ? "pointer" : "not-allowed", whiteSpace: "nowrap" }}>
-          {atCap ? t({ zh: "現場已滿", en: "At capacity" }) : !idleCrew.length ? t({ zh: "無閒置技師", en: "No idle crew" }) : t({ zh: "派員定檢", en: "Inspect" })}
+        <button disabled={!idleCrew.length || !canDeploy} onClick={inspect} style={{ padding: "7px 14px", borderRadius: 5, border: "1px solid rgba(255,236,196,.6)", background: idleCrew.length && canDeploy ? primaryBg() : "rgba(255,255,255,.08)", color: idleCrew.length && canDeploy ? C.ink : C.mist, fontFamily: FONT_SERIF, fontWeight: 900, fontSize: 12.5, cursor: idleCrew.length && canDeploy ? "pointer" : "not-allowed", whiteSpace: "nowrap" }}>
+          {!seaOk ? t({ zh: "海象停航", en: "Seas closed" }) : atCap ? t({ zh: "現場已滿", en: "At capacity" }) : !idleCrew.length ? t({ zh: "無閒置技師", en: "No idle crew" }) : t({ zh: "派員定檢", en: "Inspect" })}
         </button>
       </div>
 
@@ -136,7 +146,9 @@ export default function FleetOpsModal({ open, onClose }: { open: boolean; onClos
             </button>
           )}
           <div style={{ fontSize: 11, color: C.mist, marginBottom: 4 }}>{inc.resettable ? t({ zh: "或派技師現場處理：", en: "Or dispatch crew on site:" }) : t({ zh: "需派對應科別技師：", en: "Dispatch matching crew:" })}</div>
-          {atCap ? (
+          {!seaOk ? (
+            <div style={{ fontSize: 12, color: C.amber2 }}>{t({ zh: `海象「${SEA_LABEL[data.seaState].zh}」無法派船——等可作業天氣窗，或升級/購置 SOV（可在更高海象出航）。`, en: `Seas "${SEA_LABEL[data.seaState].en}" — can't deploy. Wait for a workable window or get an SOV.` })}</div>
+          ) : atCap ? (
             <div style={{ fontSize: 12, color: C.amber2 }}>{t({ zh: `船舶現場工單已滿（${onsite}/${cap}）。等工單完成、升級整備或購置 SOV 以提高並行數。`, en: `On-site jobs full (${onsite}/${cap}). Wait, upgrade the vessel or buy an SOV to raise concurrency.` })}</div>
           ) : candidates.length === 0 ? (
             <div style={{ fontSize: 12, color: C.mist }}>{t({ zh: `無可用的「${DISC[inc.discipline].zh}」技師（過勞或不足）。可靠港休整或到技師公會招募同科別技師。`, en: `No available ${DISC[inc.discipline].en} crew (fatigued or none). Rest in port or hire one at the Tech Guild.` })}</div>
