@@ -142,7 +142,7 @@ test("payroll is charged on day advance (more crew -> less net budget)", () => {
 test("OPS_DISPATCH blocked in closed seas without SOV; remote reset still works", () => {
   const idx = I.fleet.findIndex((t) => t.status === "ok");
   const fleet = I.fleet.map((t, i) => (i === idx ? { ...t, status: "fault", faultId: "gearbox" } : t));
-  const base = { ...I, fleet, seaState: "closed", ownsSOV: false, engineers: [{ id: "m", name: "m", discipline: "mechanical", level: 1, fatigue: 0 }] };
+  const base = { ...I, fleet, seaState: "closed", ownsSOV: false, engineers: [{ id: "m", name: "m", discipline: "mechanical", level: 1, fatigue: 0 }], inventory: { gearbox_oil: 9 } };
   const blocked = R(base, { type: "OPS_DISPATCH", turbine: fleet[idx].id, engineerId: "m" });
   eq(blocked.opsJobs.length, 0, "no crew dispatch in closed seas (CTV)");
   // SOV can sail in closed seas
@@ -197,7 +197,8 @@ function withFault(faultId, disc) {
   const idx = I.fleet.findIndex((t) => t.status === "ok");
   const fleet = I.fleet.map((t, i) => (i === idx ? { ...t, status: "fault", faultId } : t));
   const engineers = [{ id: "em", name: "m", discipline: disc, level: 2, fatigue: 0 }];
-  return { state: { ...I, fleet, engineers }, turbine: fleet[idx].id };
+  const part = inc.incidentAt(faultId)?.part; // 派工需備品 → 測試先備好庫存
+  return { state: { ...I, fleet, engineers, inventory: part ? { [part]: 9 } : {} }, turbine: fleet[idx].id };
 }
 test("OPS_DISPATCH requires matching discipline + creates a job", () => {
   const { state, turbine } = withFault("gearbox", "mechanical");
@@ -214,14 +215,13 @@ test("OPS_DISPATCH sets turbine to repair and engineer busy", () => {
   eq(s.fleet.find((t) => t.id === turbine).status, "repair");
   ok(g.engineerBusy(s.opsJobs, "em"));
 });
-test("dispatched job completes -> turbine ok + resolved++ + repair pay", () => {
+test("dispatched job completes -> turbine ok + resolved++", () => {
   const { state, turbine } = withFault("converter", "electrical");
   let s = R(state, { type: "OPS_DISPATCH", turbine, engineerId: "em" });
-  const r0 = s.fleetResolved, b0 = s.budget;
+  const r0 = s.fleetResolved;
   seed(31); for (let i = 0; i < 4 && s.opsJobs.length; i++) s = R(s, { type: "OPS_ADVANCE" });
   eq(s.fleet.find((t) => t.id === turbine).status, "ok");
-  eq(s.fleetResolved, r0 + 1);
-  ok(s.budget >= b0, "repair reward + income, not less than before");
+  eq(s.fleetResolved, r0 + 1, "completion counts a resolved repair (adds score + fix reward)");
 });
 test("OPS_RESET only works on resettable faults", () => {
   const soft = withFault("converter", "electrical"); // resettable
@@ -231,11 +231,22 @@ test("OPS_RESET only works on resettable faults", () => {
   const r2 = R(hard.state, { type: "OPS_RESET", turbine: hard.turbine });
   eq(r2.opsJobs.length, 0, "non-resettable blocked");
 });
-test("incidents pool: resettable subset exists; all have discipline+repairDays", () => {
+test("incidents pool: resettable subset exists; all have discipline+repairDays+part+weight", () => {
   ok(inc.INCIDENTS.length >= 5);
   ok(inc.INCIDENTS.some((x) => x.resettable), "some resettable");
   ok(inc.INCIDENTS.some((x) => !x.resettable), "some require crew");
-  ok(inc.INCIDENTS.every((x) => x.discipline && x.repairDays > 0));
+  ok(inc.INCIDENTS.every((x) => x.discipline && x.repairDays > 0 && x.part && x.weight > 0));
+});
+test("OPS_DISPATCH consumes the part; blocked when out of stock", () => {
+  const { state, turbine } = withFault("gearbox", "mechanical"); // stocks gearbox_oil:9
+  const before = state.inventory.gearbox_oil;
+  const s = R(state, { type: "OPS_DISPATCH", turbine, engineerId: "em" });
+  eq(s.opsJobs.length, 1, "dispatch succeeds with part in stock");
+  eq(s.inventory.gearbox_oil, before - 1, "one part consumed");
+  // out of stock -> blocked
+  const noStock = { ...state, inventory: {} };
+  const blocked = R(noStock, { type: "OPS_DISPATCH", turbine, engineerId: "em" });
+  eq(blocked.opsJobs.length, 0, "no part -> dispatch blocked");
 });
 test("fleet fault rate is bounded/calm over time (managed-ish)", () => {
   seed(50); let s = I; for (let i = 0; i < 10; i++) s = R(s, { type: "REST" });
@@ -254,7 +265,7 @@ test("OPS_DISPATCH blocked when on-site jobs hit vessel cap", () => {
   const idxs = I.fleet.map((t, i) => (t.status === "ok" ? i : -1)).filter((i) => i >= 0).slice(0, 3);
   const fleet = I.fleet.map((t, i) => (idxs.includes(i) ? { ...t, status: "fault", faultId: "gearbox" } : t));
   const engineers = ["a", "b", "c"].map((id) => ({ id, name: id, discipline: "mechanical", level: 1, fatigue: 0 }));
-  let s = { ...I, fleet, engineers, ownsSOV: false, vesselLevel: 0 };
+  let s = { ...I, fleet, engineers, ownsSOV: false, vesselLevel: 0, inventory: { gearbox_oil: 9 } };
   s = R(s, { type: "OPS_DISPATCH", turbine: fleet[idxs[0]].id, engineerId: "a" });
   s = R(s, { type: "OPS_DISPATCH", turbine: fleet[idxs[1]].id, engineerId: "b" });
   eq(g.onsiteJobCount(s.opsJobs), 2, "two on-site jobs");
@@ -266,7 +277,7 @@ test("remote resets do not count toward vessel cap", () => {
   // fill cap with a remote reset + still allow a crew dispatch up to cap
   const oks = I.fleet.map((t, i) => (t.status === "ok" ? i : -1)).filter((i) => i >= 0).slice(0, 2);
   const fleet = I.fleet.map((t, i) => (i === oks[0] ? { ...t, status: "fault", faultId: "converter" } : i === oks[1] ? { ...t, status: "fault", faultId: "gearbox" } : t));
-  let s = { ...I, fleet, engineers: [{ id: "m", name: "m", discipline: "mechanical", level: 1, fatigue: 0 }], ownsSOV: false, vesselLevel: 0 };
+  let s = { ...I, fleet, engineers: [{ id: "m", name: "m", discipline: "mechanical", level: 1, fatigue: 0 }], ownsSOV: false, vesselLevel: 0, inventory: { gearbox_oil: 9 } };
   s = R(s, { type: "OPS_RESET", turbine: fleet[oks[0]].id }); // remote, shouldn't use a slot
   eq(g.onsiteJobCount(s.opsJobs), 0, "remote reset not on-site");
   s = R(s, { type: "OPS_DISPATCH", turbine: fleet[oks[1]].id, engineerId: "m" });

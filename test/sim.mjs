@@ -10,6 +10,7 @@ const load = async (e) => import("data:text/javascript," + encodeURIComponent((a
 
 const g = await load("src/state/game.ts");
 const inc = await load("src/state/incidents.ts");
+const data = await load("src/ui/data.ts");
 const R = g.reducer;
 const wan = (n) => Math.round(n / 10000);
 
@@ -24,7 +25,14 @@ function manage(s) {
       const ic = inc.incidentAt(f.faultId);
       if (ic?.resettable) { const b = s.opsJobs.length; s = R(s, { type: "OPS_RESET", turbine: f.id }); if (s.opsJobs.length > b) { changed = true; continue; } }
       const e = s.engineers.find((e) => e.discipline === ic?.discipline && !g.engineerBusy(s.opsJobs, e.id) && g.fatigueOf(e) < g.FATIGUE_LIMIT);
-      if (e) { const b = s.opsJobs.length; s = R(s, { type: "OPS_DISPATCH", turbine: f.id, engineerId: e.id }); if (s.opsJobs.length > b) changed = true; }
+      if (e) {
+        // 派工需備品 → 缺料就先即買（cheap 才買，避免無止境砸大型組件；大型組件留給「值不值得修」決策）
+        if ((s.inventory[ic.part] ?? 0) < 1) {
+          const p = data.PARTS.find((pp) => pp.id === ic.part);
+          if (p && data.priceNum(p) <= 1_000_000) s = R(s, { type: "BUY", partId: ic.part, qty: 1, cost: data.priceNum(p), leadDays: 0 });
+        }
+        if ((s.inventory[ic.part] ?? 0) >= 1) { const b = s.opsJobs.length; s = R(s, { type: "OPS_DISPATCH", turbine: f.id, engineerId: e.id }); if (s.opsJobs.length > b) changed = true; }
+      }
     }
   }
   return s;
