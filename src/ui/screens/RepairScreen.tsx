@@ -257,20 +257,18 @@ export default function RepairScreen({ setScreen, mode = "sim" }: { setScreen: (
           <div style={{ padding: "13px 14px" }}>
             <div style={{ color: C.cream, fontSize: 14, fontWeight: 700, lineHeight: 1.5, marginBottom: 11 }}>{t(q.question)}</div>
             {q.options.map((opt, i) => {
+              // 只有「答對」才揭曉正解（綠）；答錯只標示你選的（紅），其餘維持可再作答。
               let bd = "rgba(214,167,84,.3)", bg = "rgba(255,255,255,.04)", col = "#e4eef0";
-              if (pick !== null) {
-                if (i === q.correct) { bd = C.green; bg = "rgba(127,206,142,.16)"; col = "#cdeccf"; }
-                else if (i === pick) { bd = C.red; bg = "rgba(220,100,80,.16)"; col = C.redText; }
-                else { col = "#7f97a0"; }
-              }
-              const s: CSSProperties = { display: "block", width: "100%", textAlign: "left", padding: "10px 12px", marginBottom: 8, borderRadius: 4, border: `1px solid ${bd}`, background: bg, color: col, fontSize: 13.5, fontWeight: 500, cursor: "pointer" };
+              if (quizCorrect && i === q.correct) { bd = C.green; bg = "rgba(127,206,142,.16)"; col = "#cdeccf"; }
+              else if (!quizCorrect && i === pick) { bd = C.red; bg = "rgba(220,100,80,.16)"; col = C.redText; }
+              const s: CSSProperties = { display: "block", width: "100%", textAlign: "left", padding: "10px 12px", marginBottom: 8, borderRadius: 4, border: `1px solid ${bd}`, background: bg, color: col, fontSize: 13.5, fontWeight: 500, cursor: quizCorrect ? "default" : "pointer" };
               return (
                 <div
                   key={i}
                   onClick={() => {
-                    if (pick !== null || failed) return;
+                    if (failed || quizCorrect || i === pick) return; // 已答對/已撤離不可再動；點同一選項不重複扣窗
                     (i === q.correct ? Sfx.success : Sfx.error)();
-                    spend(i === q.correct ? 1 : 3); // 答錯多耗作業窗
+                    spend(i === q.correct ? 1 : 3); // 答錯多耗作業窗（可重新作答，但每次扣時段）
                     setPick(i);
                   }}
                   style={s}
@@ -280,7 +278,7 @@ export default function RepairScreen({ setScreen, mode = "sim" }: { setScreen: (
               );
             })}
             <div style={{ minHeight: 18, marginTop: 4, fontSize: 12.5, lineHeight: 1.5, color: pick === null ? C.mist : quizCorrect ? C.green : C.amber2 }}>
-              {pick === null ? "" : t(quizCorrect ? q.ok : q.no)}
+              {pick === null ? "" : quizCorrect ? t(q.ok) : `${t(q.no)} ${t({ zh: "— 可重新作答（每次多耗時段）", en: "— try again (each attempt costs slots)" })}`}
             </div>
           </div>
         </div>
