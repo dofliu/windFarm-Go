@@ -408,11 +408,14 @@ test("BUY_SOV advances exactly 2 days and sets ownsSOV", () => {
 });
 
 // ───────────────────────── 收入：每日售電 ─────────────────────────
-test("dailyRevenue scales with availability and farms", () => {
-  const base = g.dailyRevenue(I);
-  const hi = g.dailyRevenue({ ...I, availability: 100 });
-  ok(hi >= base, "higher availability => >= revenue");
-  ok(base > 0);
+test("dailyRevenue scales with running turbines; no-fleet fallback uses availability", () => {
+  // 機組越多運轉 → 收入越高
+  const few = { ...I, fleet: I.fleet.map((t, i) => (i < 20 ? { ...t, status: "fault", faultId: "gearbox" } : t)) };
+  ok(g.dailyRevenue(I) > g.dailyRevenue(few), "more running turbines => more revenue");
+  // 無機組模型時退回可用率估算（且隨可用率上升）
+  const noFleet = { ...I, fleet: [] };
+  ok(g.dailyRevenue({ ...noFleet, availability: 100 }) > g.dailyRevenue({ ...noFleet, availability: 50 }), "fallback scales with availability");
+  ok(g.dailyRevenue(I) > 0);
 });
 
 // ───────────────────────── LOAD_STATE 向後相容 ─────────────────────────
@@ -462,14 +465,18 @@ test("makeForecast deterministic under same seed; respects n and validity", () =
 });
 
 // ───────────────────────── 經濟 / 機組建構 數值正確 ─────────────────────────
-test("dailyRevenue = (gross ceiling − fleet downtime) × price", () => {
-  // 86% × 120 = round 103 (合約上限)；扣掉開局 3 台故障×5 = 15 → 88 × 4500 = 396000
-  const gross = Math.round((86 / 100) * 120);
-  const lost = I.fleet.filter((t) => t.status !== "ok").reduce((a, t) => a + t.gen, 0);
-  eq(g.dailyRevenue(I), (gross - lost) * g.ELECTRICITY_PRICE);
-  eq(g.dailyRevenue(I), 88 * 4500);
-  // 全機正常時 = 上限
-  eq(g.dailyRevenue({ ...I, fleet: I.fleet.map((t) => ({ ...t, status: "ok", faultId: undefined })) }), gross * g.ELECTRICITY_PRICE);
+test("dailyRevenue = running turbines × price (no double-count)", () => {
+  // 開局 24 台中 3 台故障 → 21 台運轉 × 5 MWh = 105 → × 4500
+  const running = I.fleet.filter((t) => t.status === "ok").reduce((a, t) => a + t.gen, 0);
+  eq(g.dailyProduction(I), running);
+  eq(running, 105); // 21 台運轉 × 5 MWh
+  eq(g.dailyRevenue(I), 105 * g.ELECTRICITY_PRICE);
+  // 全機正常 = 滿載發電
+  const allOk = { ...I, fleet: I.fleet.map((t) => ({ ...t, status: "ok", faultId: undefined })) };
+  eq(g.dailyProduction(allOk), 120);
+  eq(g.dailyRevenue(allOk), 120 * g.ELECTRICITY_PRICE);
+  // 低 headline 可用率但機組仍運轉 → 仍有收入（不再被可用率重複砍到 0，修正回歸）
+  ok(g.dailyRevenue({ ...allOk, availability: 50 }) > 0, "running fleet earns even at low headline availability");
 });
 test("GRANT_FUNDS adds budget (test top-up)", () => {
   const after = g.reducer(I, { type: "GRANT_FUNDS", amount: g.TEST_GRANT });
