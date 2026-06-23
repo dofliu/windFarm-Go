@@ -408,6 +408,19 @@ test("BUY_SOV advances exactly 2 days and sets ownsSOV", () => {
 });
 
 // ───────────────────────── 收入：每日售電 ─────────────────────────
+test("advance records daily ledger (Lili's books)", () => {
+  seed(1);
+  const after = R(I, { type: "REST" });
+  const l = after.lastLedger;
+  ok(l, "ledger present after advancing");
+  eq(l.day, after.day);
+  ok(l.revenue > 0, "power sales recorded as inflow");
+  ok(l.payroll < 0, "payroll recorded as outflow");
+  // 明細加總 = 淨額；淨額 = 推進後預算 − 推進前預算（REST 不另改預算）
+  const sum = l.revenue + l.fixPay + l.payroll + l.storage + l.downtime + l.demurrage + l.slaPenalty + l.event;
+  eq(l.net, sum);
+  eq(l.net, after.budget - I.budget);
+});
 test("dailyRevenue scales with running turbines; no-fleet fallback uses availability", () => {
   // 機組越多運轉 → 收入越高
   const few = { ...I, fleet: I.fleet.map((t, i) => (i < 20 ? { ...t, status: "fault", faultId: "gearbox" } : t)) };

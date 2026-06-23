@@ -14,6 +14,7 @@ import OpsCenterModal from "./ui/OpsCenterModal";
 import FleetOpsModal from "./ui/FleetOpsModal";
 import FacilityModal, { type Facility } from "./ui/FacilityModal";
 import Toaster from "./ui/Toaster";
+import { LedgerToaster } from "./ui/Ledger";
 import LoginScreen from "./ui/LoginScreen";
 import ScoreSync from "./ui/ScoreSync";
 import WelcomeOnLogin from "./ui/WelcomeOnLogin";
@@ -130,6 +131,7 @@ export default function App() {
           <FacilityModal kind={facility} onClose={() => setFacility(null)} />
           <ScoreSync />
           <WelcomeOnLogin />
+          <LedgerToaster />
           <Toaster />
         </div>
       </div>

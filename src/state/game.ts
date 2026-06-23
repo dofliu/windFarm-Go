@@ -160,6 +160,7 @@ export interface GameData {
   fleetLostMWh: number; // 累積因停機損失的發電量（教學：差異化停機損失，回饋 #4）
   fleetResolved: number; // 累積在戰情室修復的機組數（績效加分）
   inspectBuffDays: number; // 預防性定檢生效剩餘天數（Phase C2，降低故障率）
+  lastLedger: Ledger | null; // 最近一次推進的每日收支明細（莉莉財報）
 }
 
 // 多回合大修（#4）：重大組件更換需多個「可作業天氣窗」工日才完成。
@@ -183,6 +184,21 @@ export interface SlaResult {
   breached: boolean; // 是否違約
   penalty: number; // 違約金 ◎
   day: number;
+}
+
+// 每日收支明細（莉莉財報）：推進一天後彙整當日各項現金流，幫玩家看懂錢的去向（收入/支出/淨額）。
+export interface Ledger {
+  day: number; // 推進後的絕對天數
+  days: number; // 本次推進的天數
+  revenue: number; // 售電收入（+）
+  fixPay: number; // 戰情室修復報酬（+）
+  payroll: number; // 技師薪資（−）
+  storage: number; // 倉儲維持費（−）
+  downtime: number; // 任務停機損失（−）
+  demurrage: number; // 大修船舶待命費（−）
+  slaPenalty: number; // 季度 SLA 違約金（−）
+  event: number; // 突發事件現金影響（±）
+  net: number; // 當日淨變動（= 推進後預算 − 推進前預算）
 }
 
 export const OVERHAUL_NEED = 3; // 大修所需的可作業工日（#4）
@@ -280,6 +296,7 @@ export const INITIAL: GameData = {
   fleetLostMWh: 0,
   fleetResolved: 0,
   inspectBuffDays: 0,
+  lastLedger: null,
 };
 
 const clampN = (n: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, n));
@@ -310,6 +327,8 @@ function advance(s: GameData, days = 1): Partial<GameData> {
   const downtime = s.questStage === "active" && !s.repairDone ? DOWNTIME_PER_DAY * days : 0;
   const storage = dailyStorageCost(inv) * days; // 倉儲維持費（#warehouse）
   const payroll = dailyPayroll(s.engineers) * days; // 技師薪資（O&M 經濟閉環）
+  // 莉莉財報：彙整當日各項現金流（先記固定支出，售電/修復/事件/SLA 於下方各步驟補上）
+  const ledger: Ledger = { day, days, revenue: 0, fixPay: 0, payroll: -payroll, storage: -storage, downtime: -downtime, demurrage: 0, slaPenalty: 0, event: 0, net: 0 };
   // 售電收入改由「實際運轉的機組」計算（見下方機隊推進後加計），此處先扣固定支出。
   let patch: Partial<GameData> = {
     day,
@@ -330,13 +349,15 @@ function advance(s: GameData, days = 1): Partial<GameData> {
   patch.seaState = w.seaState;
   patch.forecast = w.forecast;
   // 大修進行中：安裝船每日待命費（demurrage，#4）。惡劣海象拉長工期 → 待命天數變多 → 總成本上升。
-  if (s.overhaul) patch.budget = Math.max(0, (patch.budget ?? s.budget) - DEMURRAGE_PER_DAY * days);
+  if (s.overhaul) { const dem = DEMURRAGE_PER_DAY * days; patch.budget = Math.max(0, (patch.budget ?? s.budget) - dem); ledger.demurrage = -dem; }
   // 健康度越低 → 突發事件機率越高、且偏向壞事件（連鎖故障）
   const riskBoost = ((100 - health) / 100) * 0.4;
   const ev = rollEvent(riskBoost, health);
   if (ev) {
+    const beforeEv = patch.budget ?? s.budget;
     const evPatch = ev.apply({ ...s, ...patch } as GameData);
     patch = { ...patch, ...evPatch, lastEvent: { id: ev.id, name: ev.name, desc: ev.desc, good: !!ev.good, day } };
+    ledger.event = (patch.budget ?? s.budget) - beforeEv; // 事件對現金的影響（±）
   }
   // 活體戰情層（Phase C）：每日推進並行工單、隨機新增故障、累計停機發電損失
   if (s.fleet.length) {
@@ -385,16 +406,20 @@ function advance(s: GameData, days = 1): Partial<GameData> {
     patch.fleetResolved = resolved;
     patch.fleetLostMWh = s.fleetLostMWh + lost;
     patch.engineers = engs;
-    if (fixPay > 0) patch.budget = Math.max(0, (patch.budget ?? s.budget) + fixPay);
+    if (fixPay > 0) { patch.budget = Math.max(0, (patch.budget ?? s.budget) + fixPay); ledger.fixPay = fixPay; }
     // 售電收入 = 實際運轉發電 × 單價（只計運轉中的機組，不再用「可用率上限再扣停機」的減法 → 不會重複計到歸零）。
-    patch.budget = Math.max(0, (patch.budget ?? s.budget) + produced * ELECTRICITY_PRICE);
+    const revenue = produced * ELECTRICITY_PRICE;
+    patch.budget = Math.max(0, (patch.budget ?? s.budget) + revenue);
     patch.generationMWh = (patch.generationMWh ?? s.generationMWh) + produced;
+    ledger.revenue = revenue;
   } else {
     // 無機組模型（理論上不會發生）：退回以可用率估算發電與售電
     const avail = patch.availability ?? s.availability;
     const produced = Math.round((avail / 100) * ownedFarmGen(s.farmsOwned) * days);
-    patch.budget = Math.max(0, (patch.budget ?? s.budget) + produced * ELECTRICITY_PRICE);
+    const revenue = produced * ELECTRICITY_PRICE;
+    patch.budget = Math.max(0, (patch.budget ?? s.budget) + revenue);
     patch.generationMWh = (patch.generationMWh ?? s.generationMWh) + produced;
+    ledger.revenue = revenue;
   }
   // 合約 SLA（#3）：每日累計可用率，跨季結算；平均低於底線 → 扣違約金
   const avail = patch.availability ?? s.availability;
@@ -409,6 +434,7 @@ function advance(s: GameData, days = 1): Partial<GameData> {
     const breached = avg < SLA_FLOOR;
     const penalty = breached ? SLA_PENALTY : 0;
     patch.budget = Math.max(0, (patch.budget ?? s.budget) - penalty);
+    ledger.slaPenalty = -penalty;
     lastSla = { quarter, avg: Math.round(avg * 10) / 10, floor: SLA_FLOOR, breached, penalty, day };
     if (breached) penalties += 1;
     quarter += 1;
@@ -422,6 +448,8 @@ function advance(s: GameData, days = 1): Partial<GameData> {
   patch.slaSamples = samples;
   patch.slaPenalties = penalties;
   patch.lastSla = lastSla;
+  ledger.net = (patch.budget ?? s.budget) - s.budget; // 當日淨變動（已含 0 底線夾值的實際結果）
+  patch.lastLedger = ledger;
   return patch;
 }
 
