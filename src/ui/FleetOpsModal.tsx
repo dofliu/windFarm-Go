@@ -9,6 +9,7 @@ import { FARMS } from "../state/farms";
 import { incidentAt } from "../state/incidents";
 import { PARTS } from "./data";
 import { fleetUptime, engineerBusy, fatigueOf, FATIGUE_LIMIT, vesselJobCap, onsiteJobCount, INSPECT_DAYS, SEA_INDEX, vesselSeaTol, SEA_LABEL, dailyPayroll, toWan, SORTIE_COST } from "../state/game";
+import { LedgerView } from "./Ledger";
 
 const STATUS_COLOR: Record<string, string> = { ok: "#3f7d52", fault: "#c0463a", repair: "#cf9a35" };
 
@@ -205,6 +206,12 @@ export default function FleetOpsModal({ open, onClose }: { open: boolean; onClos
         {t({ zh: "推進一天 →", en: "Advance one day →" })}　<span style={{ fontWeight: 400, fontSize: 12 }}>Day {data.day}</span>
       </button>
       <div style={{ fontSize: 11, color: C.mist, marginTop: 8, textAlign: "center" }}>{t({ zh: "技師有限 → 多起故障需排優先序；停機損失計入學習指標，修復數計入績效分。", en: "Limited crew → prioritise among faults; lost generation is a learning metric, repairs add to your score." })}</div>
+
+      {/* 今日收支（莉莉財報）：推進後看當日各項現金流 */}
+      <div style={{ marginTop: 12, padding: "9px 11px", borderRadius: 6, background: "rgba(255,255,255,.04)", border: "1px solid rgba(214,167,84,.18)" }}>
+        <div style={{ fontSize: 11.5, color: C.gold, fontWeight: 700, marginBottom: 5 }}>{t({ zh: "今日收支 · 莉莉財報", en: "Daily Ledger · Lili" })}</div>
+        <LedgerView ledger={data.lastLedger} />
+      </div>
     </div>
   ));
 }

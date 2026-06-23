@@ -19,6 +19,7 @@ import { fetchLeaderboard, type Row } from "../../cloud/sheet";
 import { getProfile } from "../../state/profile";
 import { MODE_LABEL, MODE_ICON, type SceneMode } from "../scenes";
 import { ForecastStrip, StormWarning } from "../Forecast";
+import { LedgerView } from "../Ledger";
 import { missionWeek } from "../../state/course";
 import type { I18n } from "../../game/systems/types";
 import type { Screen } from "../../App";
@@ -355,6 +356,11 @@ export default function HubScreen({ setScreen, accent, onDispatch, onFacility, s
                 <div style={kvRow}><span style={{ color: C.mist }}>{t({ zh: "售電收入/日", en: "Revenue/day" })}</span><span style={{ color: C.green, fontWeight: 700 }}>◎ {toWan(dailyRevenue(data))} {t({ zh: "萬", en: "M" })}</span></div>
                 <div style={kvRow}><span style={{ color: C.mist }}>{t({ zh: "技師薪資/月", en: "Payroll/mo" })}</span><span style={{ color: C.amber2, fontWeight: 700 }}>◎ {toWan(dailyPayroll(data.engineers) * 30)} {t({ zh: "萬", en: "M" })}</span></div>
                 <div style={kvRow}><span style={{ color: C.mist }}>{t({ zh: "天數", en: "Day" })}</span><span>{data.day}</span></div>
+              </OpsBlock>
+
+              {/* 今日收支（莉莉財報）：推進一天後彙整當日各項現金流，幫忙看懂錢的去向 */}
+              <OpsBlock title={{ zh: "今日收支 · 莉莉財報", en: "Daily Ledger · Lili" }}>
+                <LedgerView ledger={data.lastLedger} />
               </OpsBlock>
             </div>
           )}
