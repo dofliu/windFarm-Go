@@ -463,13 +463,21 @@ test("makeForecast deterministic under same seed; respects n and validity", () =
 
 // ───────────────────────── 經濟 / 機組建構 數值正確 ─────────────────────────
 test("dailyRevenue = (gross ceiling − fleet downtime) × price", () => {
-  // 86% × 120 = round 103 (合約上限)；扣掉開局 3 台故障×5 = 15 → 88 × 3000 = 264000
+  // 86% × 120 = round 103 (合約上限)；扣掉開局 3 台故障×5 = 15 → 88 × 4500 = 396000
   const gross = Math.round((86 / 100) * 120);
   const lost = I.fleet.filter((t) => t.status !== "ok").reduce((a, t) => a + t.gen, 0);
   eq(g.dailyRevenue(I), (gross - lost) * g.ELECTRICITY_PRICE);
-  eq(g.dailyRevenue(I), 264000);
+  eq(g.dailyRevenue(I), 88 * 4500);
   // 全機正常時 = 上限
   eq(g.dailyRevenue({ ...I, fleet: I.fleet.map((t) => ({ ...t, status: "ok", faultId: undefined })) }), gross * g.ELECTRICITY_PRICE);
+});
+test("GRANT_FUNDS adds budget (test top-up)", () => {
+  const after = g.reducer(I, { type: "GRANT_FUNDS", amount: g.TEST_GRANT });
+  eq(after.budget, I.budget + g.TEST_GRANT);
+  // 不影響其他狀態（不推進天數）
+  eq(after.day, I.day);
+  // 負數加值視為 0（防呆）
+  eq(g.reducer(I, { type: "GRANT_FUNDS", amount: -5 }).budget, I.budget);
 });
 test("buildFleet: 24 units, even gen share = 5 MWh", () => {
   const f = g.buildFleet(1);

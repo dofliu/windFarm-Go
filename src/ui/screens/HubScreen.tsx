@@ -13,7 +13,7 @@ import { CAMPAIGN, missionInstance } from "../campaign";
 import { FAULTS } from "../faults";
 import { PARTS } from "../data";
 import { DISC } from "../disc";
-import { toWan, computeScore, QUARTER_DAYS, SLA_FLOOR, DEMURRAGE_PER_DAY, dailyStorageCost, FATIGUE_LIMIT, fatigueOf, fleetUptime, dailyRevenue, dailyPayroll, type QuestStage } from "../../state/game";
+import { toWan, computeScore, QUARTER_DAYS, SLA_FLOOR, DEMURRAGE_PER_DAY, dailyStorageCost, FATIGUE_LIMIT, fatigueOf, fleetUptime, dailyRevenue, dailyPayroll, TEST_GRANT, type QuestStage } from "../../state/game";
 import { FARMS } from "../../state/farms";
 import { fetchLeaderboard, type Row } from "../../cloud/sheet";
 import { getProfile } from "../../state/profile";
@@ -351,6 +351,7 @@ export default function HubScreen({ setScreen, accent, onDispatch, onFacility, s
                 <div style={kvRow}><span style={{ color: C.mist }}>{t({ zh: "綜合績效分", en: "Score" })}</span><span style={{ color: C.goldText, fontWeight: 900 }}>{computeScore(data)}</span></div>
                 <div style={kvRow}><span style={{ color: C.mist }}>{t({ zh: "完成任務", en: "Missions" })}</span><span>{data.missionsDone}</span></div>
                 <div style={kvRow}><span style={{ color: C.mist }}>{t({ zh: "預算", en: "Budget" })}</span><span>◎ {toWan(data.budget)} {t({ zh: "萬", en: "M" })}</span></div>
+                <button onClick={() => { Sfx.success(); dispatch({ type: "GRANT_FUNDS", amount: TEST_GRANT }); toast({ zh: `💰 測試加值 +◎${toWan(TEST_GRANT)} 萬`, en: `💰 Test top-up +◎${toWan(TEST_GRANT)}M` }); }} style={{ width: "100%", margin: "4px 0 2px", padding: "5px 0", borderRadius: 4, border: "1px dashed rgba(214,167,84,.5)", background: "rgba(214,167,84,.1)", color: C.goldText, fontSize: 11.5, fontWeight: 700, cursor: "pointer" }}>💰 {t({ zh: `測試加值 +◎${toWan(TEST_GRANT)} 萬`, en: `Test top-up +◎${toWan(TEST_GRANT)}M` })}</button>
                 <div style={kvRow}><span style={{ color: C.mist }}>{t({ zh: "售電收入/日", en: "Revenue/day" })}</span><span style={{ color: C.green, fontWeight: 700 }}>◎ {toWan(dailyRevenue(data))} {t({ zh: "萬", en: "M" })}</span></div>
                 <div style={kvRow}><span style={{ color: C.mist }}>{t({ zh: "技師薪資/月", en: "Payroll/mo" })}</span><span style={{ color: C.amber2, fontWeight: 700 }}>◎ {toWan(dailyPayroll(data.engineers) * 30)} {t({ zh: "萬", en: "M" })}</span></div>
                 <div style={kvRow}><span style={{ color: C.mist }}>{t({ zh: "天數", en: "Day" })}</span><span>{data.day}</span></div>
