@@ -216,16 +216,16 @@ function ownedFarmGen(farmsOwned: number): number {
 }
 
 // 綜合績效分（單一真實來源，#28/#34/#3/Phase C）：
-// 有效發電量(發電量 − 戰情室停機損失) + 可用率×5 + 完成任務×30 − 安全×20 + 風場×10 − SLA違約×25 + 戰情室修復×8
-// 「− 戰情室停機損失」使「忽略機組故障」直接反映在排名（回饋 #4：處置方式 → 發電量/排名）。
+// 綜合績效分：發電量(已為淨值，停機損失已於 advance 折抵) + 可用率×5 + 完成任務×30 − 安全×20 + 風場×10 − SLA違約×25 + 戰情室修復×8
 export function computeScore(d: GameData): number {
-  const effectiveGen = Math.max(0, d.generationMWh - (d.fleetLostMWh ?? 0));
-  return Math.max(0, effectiveGen + d.availability * 5 + d.missionsDone * 30 - d.safetyIncidents * 20 + d.farmsOwned * 10 - (d.slaPenalties ?? 0) * 25 + (d.fleetResolved ?? 0) * 8);
+  return Math.max(0, d.generationMWh + d.availability * 5 + d.missionsDone * 30 - d.safetyIncidents * 20 + d.farmsOwned * 10 - (d.slaPenalties ?? 0) * 25 + (d.fleetResolved ?? 0) * 8);
 }
 
-// 預估每日售電收入（◎）：可用率 × owned 風場基準發電 × 單價
+// 預估每日售電收入（◎）：合約上限(可用率 × owned 風場基準發電) 扣掉戰情室停機損失（回饋 #4：停機 → 少賺）
 export function dailyRevenue(d: GameData): number {
-  return Math.round((d.availability / 100) * ownedFarmGen(d.farmsOwned)) * ELECTRICITY_PRICE;
+  const gross = Math.round((d.availability / 100) * ownedFarmGen(d.farmsOwned));
+  const lost = Math.round((d.fleet ?? []).reduce((a, t) => a + (t.status !== "ok" ? t.gen : 0), 0));
+  return Math.max(0, gross - lost) * ELECTRICITY_PRICE;
 }
 
 export const INITIAL: GameData = {
@@ -382,6 +382,12 @@ function advance(s: GameData, days = 1): Partial<GameData> {
     patch.fleetLostMWh = s.fleetLostMWh + lost;
     patch.engineers = engs;
     if (fixPay > 0) patch.budget = Math.max(0, (patch.budget ?? s.budget) + fixPay);
+    // 停機損失直接折抵「淨發電」→ 同時反映在售電現金與發電 KPI（管理機組才有收入；放任即虧）。
+    // 不重複計：headline 可用率為合約上限，戰情室停機把實際產出壓到上限之下。
+    if (lost > 0) {
+      patch.budget = Math.max(0, (patch.budget ?? s.budget) - lost * ELECTRICITY_PRICE);
+      patch.generationMWh = Math.max(s.generationMWh, (patch.generationMWh ?? s.generationMWh) - lost);
+    }
   }
   // 合約 SLA（#3）：每日累計可用率，跨季結算；平均低於底線 → 扣違約金
   const avail = patch.availability ?? s.availability;

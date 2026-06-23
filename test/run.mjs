@@ -325,10 +325,16 @@ test("computeScore is non-negative and rewards resolved repairs", () => {
   const more = g.computeScore({ ...I, fleetResolved: (I.fleetResolved ?? 0) + 5 });
   ok(base >= 0); ok(more > base, "resolved repairs add to score");
 });
-test("fleet downtime loss lowers score (managing the fleet ranks higher)", () => {
-  const kept = g.computeScore({ ...I, generationMWh: 5000, fleetLostMWh: 0 });
-  const lost = g.computeScore({ ...I, generationMWh: 5000, fleetLostMWh: 2000 });
-  ok(kept > lost, "fleetLostMWh penalizes score");
+test("fleet downtime reduces cash income AND net generation (not just score)", () => {
+  // 同種子下，故障多的機隊推進一天 → 預算與發電 KPI 都比健康機隊低
+  const faulted = { ...I, fleet: I.fleet.map((t, i) => (i < 10 ? { ...t, status: "fault", faultId: "gearbox" } : { ...t, status: "ok", faultId: undefined })) };
+  const healthy = { ...I, fleet: I.fleet.map((t) => ({ ...t, status: "ok", faultId: undefined })) };
+  seed(3); const f = R(faulted, { type: "REST" });
+  seed(3); const h = R(healthy, { type: "REST" });
+  ok(f.budget < h.budget, "downtime loses cash income");
+  ok(f.generationMWh < h.generationMWh, "downtime reduces net generation KPI");
+  // dailyRevenue 也反映停機
+  ok(g.dailyRevenue(faulted) < g.dailyRevenue(healthy), "displayed revenue/day drops with faults");
 });
 test("guards: can't act beyond budget", () => {
   const broke = { ...I, budget: 0 };
@@ -456,10 +462,14 @@ test("makeForecast deterministic under same seed; respects n and validity", () =
 });
 
 // ───────────────────────── 經濟 / 機組建構 數值正確 ─────────────────────────
-test("dailyRevenue exact at INITIAL", () => {
-  // 86% × 120 MWh = 103.2 -> round 103 ; × 3000 = 309000
-  eq(g.dailyRevenue(I), Math.round((86 / 100) * 120) * g.ELECTRICITY_PRICE);
-  eq(g.dailyRevenue(I), 309000);
+test("dailyRevenue = (gross ceiling − fleet downtime) × price", () => {
+  // 86% × 120 = round 103 (合約上限)；扣掉開局 3 台故障×5 = 15 → 88 × 3000 = 264000
+  const gross = Math.round((86 / 100) * 120);
+  const lost = I.fleet.filter((t) => t.status !== "ok").reduce((a, t) => a + t.gen, 0);
+  eq(g.dailyRevenue(I), (gross - lost) * g.ELECTRICITY_PRICE);
+  eq(g.dailyRevenue(I), 264000);
+  // 全機正常時 = 上限
+  eq(g.dailyRevenue({ ...I, fleet: I.fleet.map((t) => ({ ...t, status: "ok", faultId: undefined })) }), gross * g.ELECTRICITY_PRICE);
 });
 test("buildFleet: 24 units, even gen share = 5 MWh", () => {
   const f = g.buildFleet(1);
