@@ -8,7 +8,7 @@ import { DISC } from "./disc";
 import { FARMS } from "../state/farms";
 import { incidentAt } from "../state/incidents";
 import { PARTS } from "./data";
-import { fleetUptime, engineerBusy, fatigueOf, FATIGUE_LIMIT, vesselJobCap, onsiteJobCount, INSPECT_DAYS, SEA_INDEX, vesselSeaTol, SEA_LABEL, dailyPayroll, toWan } from "../state/game";
+import { fleetUptime, engineerBusy, fatigueOf, FATIGUE_LIMIT, vesselJobCap, onsiteJobCount, INSPECT_DAYS, SEA_INDEX, vesselSeaTol, SEA_LABEL, dailyPayroll, toWan, SORTIE_COST } from "../state/game";
 
 const STATUS_COLOR: Record<string, string> = { ok: "#3f7d52", fault: "#c0463a", repair: "#cf9a35" };
 
@@ -135,6 +135,15 @@ export default function FleetOpsModal({ open, onClose }: { open: boolean; onClos
         <span><span style={{ display: "inline-block", width: 10, height: 10, background: STATUS_COLOR.fault, borderRadius: 2, marginRight: 4 }} />{t({ zh: "故障(可點擊派工)", en: "Fault (click to dispatch)" })}</span>
         <span><span style={{ display: "inline-block", width: 10, height: 10, background: STATUS_COLOR.repair, borderRadius: 2, marginRight: 4 }} />{t({ zh: "維修中", en: "In repair" })}</span>
       </div>
+
+      {/* 出海航次提示（鼓勵批次維修） */}
+      {faults > 0 && (
+        <div style={{ fontSize: 11.5, color: onsite > 0 ? C.green : C.mist, marginBottom: 10 }}>
+          🚢 {onsite > 0
+            ? t({ zh: `船隊已在海上：本航次再派工免動員費（同趟批次維修分攤 ◎${toWan(SORTIE_COST)}萬 出海成本）`, en: `Vessel already at sea: additional dispatches this trip are free of the ◎${toWan(SORTIE_COST)}M mobilization` })
+            : t({ zh: `下次派工將開新航次（動員費 ◎${toWan(SORTIE_COST)}萬）——一趟同時修多台最划算，別一部一部修`, en: `Next dispatch starts a new sortie (◎${toWan(SORTIE_COST)}M mobilization) — batch repairs in one trip rather than one-by-one` })}
+        </div>
+      )}
 
       {/* 派工面板 */}
       {selT && inc && (
