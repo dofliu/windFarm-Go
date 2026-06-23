@@ -327,16 +327,17 @@ function advance(s: GameData, days = 1): Partial<GameData> {
   const downtime = s.questStage === "active" && !s.repairDone ? DOWNTIME_PER_DAY * days : 0;
   const storage = dailyStorageCost(inv) * days; // 倉儲維持費（#warehouse）
   const payroll = dailyPayroll(s.engineers) * days; // 技師薪資（O&M 經濟閉環）
-  // 莉莉財報：彙整當日各項現金流（先記固定支出，售電/修復/事件/SLA 於下方各步驟補上）
+  // 莉莉財報：彙整當日各項現金流。所有進出帳先累計為「單一帶號淨額」，最後一次性夾到 ≥0，
+  // 避免逐步 Math.max(0,…) 造成「破產時支出被赦免、收入又補回」的假象（也讓明細加總 == 淨額）。
   const ledger: Ledger = { day, days, revenue: 0, fixPay: 0, payroll: -payroll, storage: -storage, downtime: -downtime, demurrage: 0, slaPenalty: 0, event: 0, net: 0 };
-  // 售電收入改由「實際運轉的機組」計算（見下方機隊推進後加計），此處先扣固定支出。
+  let cash = -downtime - storage - payroll; // 當日現金流累計（帶號）
+  // 售電收入改由「實際運轉的機組」計算（見下方機隊推進後加計）。預算於本函式末一次性結算。
   let patch: Partial<GameData> = {
     day,
     pendingOrders: pend,
     inventory: inv,
     cargoUsed: cargo,
     lastSpoil,
-    budget: Math.max(0, s.budget - downtime - storage - payroll),
     techAvail: Math.min(s.techTotal, s.techAvail + days), // 人力每日緩慢回復
     engineers: s.engineers.map((e) => ({ ...e, fatigue: clampN(fatigueOf(e) - FATIGUE_RECOVERY * days, 0, 100) })), // 技師休整回復疲勞（#7）
   };
@@ -349,15 +350,15 @@ function advance(s: GameData, days = 1): Partial<GameData> {
   patch.seaState = w.seaState;
   patch.forecast = w.forecast;
   // 大修進行中：安裝船每日待命費（demurrage，#4）。惡劣海象拉長工期 → 待命天數變多 → 總成本上升。
-  if (s.overhaul) { const dem = DEMURRAGE_PER_DAY * days; patch.budget = Math.max(0, (patch.budget ?? s.budget) - dem); ledger.demurrage = -dem; }
+  if (s.overhaul) { const dem = DEMURRAGE_PER_DAY * days; cash -= dem; ledger.demurrage = -dem; }
   // 健康度越低 → 突發事件機率越高、且偏向壞事件（連鎖故障）
   const riskBoost = ((100 - health) / 100) * 0.4;
   const ev = rollEvent(riskBoost, health);
   if (ev) {
-    const beforeEv = patch.budget ?? s.budget;
-    const evPatch = ev.apply({ ...s, ...patch } as GameData);
+    // 事件以「起始預算」為基準算出現金影響（±），其餘欄位照常合併；預算本身於末段一次性結算。
+    const evPatch = ev.apply({ ...s, ...patch, budget: s.budget } as GameData);
+    if (evPatch.budget !== undefined) { ledger.event = evPatch.budget - s.budget; cash += ledger.event; delete evPatch.budget; }
     patch = { ...patch, ...evPatch, lastEvent: { id: ev.id, name: ev.name, desc: ev.desc, good: !!ev.good, day } };
-    ledger.event = (patch.budget ?? s.budget) - beforeEv; // 事件對現金的影響（±）
   }
   // 活體戰情層（Phase C）：每日推進並行工單、隨機新增故障、累計停機發電損失
   if (s.fleet.length) {
@@ -406,10 +407,10 @@ function advance(s: GameData, days = 1): Partial<GameData> {
     patch.fleetResolved = resolved;
     patch.fleetLostMWh = s.fleetLostMWh + lost;
     patch.engineers = engs;
-    if (fixPay > 0) { patch.budget = Math.max(0, (patch.budget ?? s.budget) + fixPay); ledger.fixPay = fixPay; }
+    if (fixPay > 0) { cash += fixPay; ledger.fixPay = fixPay; }
     // 售電收入 = 實際運轉發電 × 單價（只計運轉中的機組，不再用「可用率上限再扣停機」的減法 → 不會重複計到歸零）。
     const revenue = produced * ELECTRICITY_PRICE;
-    patch.budget = Math.max(0, (patch.budget ?? s.budget) + revenue);
+    cash += revenue;
     patch.generationMWh = (patch.generationMWh ?? s.generationMWh) + produced;
     ledger.revenue = revenue;
   } else {
@@ -417,12 +418,14 @@ function advance(s: GameData, days = 1): Partial<GameData> {
     const avail = patch.availability ?? s.availability;
     const produced = Math.round((avail / 100) * ownedFarmGen(s.farmsOwned) * days);
     const revenue = produced * ELECTRICITY_PRICE;
-    patch.budget = Math.max(0, (patch.budget ?? s.budget) + revenue);
+    cash += revenue;
     patch.generationMWh = (patch.generationMWh ?? s.generationMWh) + produced;
     ledger.revenue = revenue;
   }
-  // 合約 SLA（#3）：每日累計可用率，跨季結算；平均低於底線 → 扣違約金
-  const avail = patch.availability ?? s.availability;
+  // 合約 SLA（#3）：每日累計「實際可用率」，跨季結算；平均低於底線 → 扣違約金。
+  // 實際可用率以戰情室機隊運轉比例為準（與售電收入同一真實來源）；無機組模型時退回 availability 純量。
+  const finalFleet = patch.fleet ?? s.fleet;
+  const avail = finalFleet.length ? fleetUptime(finalFleet) : (patch.availability ?? s.availability);
   let qStart = s.quarterStartDay;
   let quarter = s.quarter;
   let sum = s.slaAvailSum + avail * days;
@@ -433,7 +436,7 @@ function advance(s: GameData, days = 1): Partial<GameData> {
     const avg = samples > 0 ? sum / samples : avail;
     const breached = avg < SLA_FLOOR;
     const penalty = breached ? SLA_PENALTY : 0;
-    patch.budget = Math.max(0, (patch.budget ?? s.budget) - penalty);
+    cash -= penalty;
     ledger.slaPenalty = -penalty;
     lastSla = { quarter, avg: Math.round(avg * 10) / 10, floor: SLA_FLOOR, breached, penalty, day };
     if (breached) penalties += 1;
@@ -448,7 +451,9 @@ function advance(s: GameData, days = 1): Partial<GameData> {
   patch.slaSamples = samples;
   patch.slaPenalties = penalties;
   patch.lastSla = lastSla;
-  ledger.net = (patch.budget ?? s.budget) - s.budget; // 當日淨變動（已含 0 底線夾值的實際結果）
+  // 一次性結算預算（夾到 ≥0）：破產時支出不再被逐步赦免，明細加總在未觸底時即等於淨額。
+  patch.budget = Math.max(0, s.budget + cash);
+  ledger.net = patch.budget - s.budget;
   patch.lastLedger = ledger;
   return patch;
 }
