@@ -11,7 +11,6 @@ import { exprUrl } from "../characters";
 import { FAULTS, LOCATION_LABEL, locationOf, isMajorFault } from "../faults";
 import RepairScene from "../RepairScene";
 import { vesselWindowPenalty } from "../../state/game";
-import Vessel, { vesselTypeOf } from "../Vessel";
 import { PARTS } from "../data";
 import { missionInstance } from "../campaign";
 import type { Screen } from "../../App";
@@ -33,7 +32,6 @@ export default function RepairScreen({ setScreen, mode = "sim" }: { setScreen: (
 
   // #33 登船事件 + 作業地點
   const location = locationOf(fault.id);
-  const fleetType = isMajorFault(fault.id) ? "jackup" : vesselTypeOf(data.ownsSOV);
   const roughBoarding = data.seaState !== "workable"; // 浪高 → 登船延誤
   const [boarded, setBoarded] = useState(false);
 
@@ -124,15 +122,18 @@ export default function RepairScreen({ setScreen, mode = "sim" }: { setScreen: (
   if (!boarded) {
     return (
       <div style={{ position: "absolute", inset: 0, zIndex: 2 }}>
-        <div style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg,#3a4a63 0%, #587089 40%, #2a6173 70%, #143f4c 100%)" }} />
-        <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: "46%", background: "repeating-linear-gradient(178deg, rgba(255,255,255,.05) 0 2px, rgba(255,255,255,0) 2px 26px)" }} />
-        {/* 風機基礎（登船平台） */}
-        <div style={{ position: "absolute", left: "50%", bottom: "30%", transform: "translateX(-50%)", width: 40, height: 260, background: "linear-gradient(90deg,#c9a23a,#e8c45a 50%,#a8801f)", borderRadius: 3, opacity: 0.92 }} />
-        <div style={{ position: "absolute", left: "calc(50% - 70px)", bottom: "31%", width: 140, height: 16, background: "#caa83e", borderRadius: 2 }} />
-        {/* 登靠船隻（依船型）隨浪起伏 */}
-        <div style={{ position: "absolute", left: "calc(50% - 150px)", bottom: "24%", transform: "scale(1.3)", animation: roughBoarding ? "bob 1.1s ease-in-out infinite" : "bob 3.2s ease-in-out infinite" }}>
-          <Vessel type={fleetType} />
-        </div>
+        {/* 登塔情境影片背景（取代原 CSS 平台/船隻） */}
+        <video
+          key="boarding-video"
+          src={`${import.meta.env.BASE_URL}assets/scenes/boarding.mp4`}
+          poster={`${import.meta.env.BASE_URL}assets/scenes/real_boarding.jpg`}
+          autoPlay
+          loop
+          muted
+          playsInline
+          style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
+        />
+        <div style={{ position: "absolute", inset: 0, background: "linear-gradient(90deg, rgba(6,18,24,.15) 0%, rgba(6,18,24,.05) 45%, rgba(6,18,24,.5) 100%)", pointerEvents: "none" }} />
 
         <div style={{ position: "absolute", right: 26, top: 92, width: 360 }}>
           <div style={{ ...panel }}>
