@@ -123,6 +123,37 @@ test("BUY adds inventory; spoilage can reduce it over time", () => {
   ok((s.inventory.gearbox_oil ?? 0) <= 5, "inventory non-increasing from spoilage");
 });
 
+// ───────────────────────── 技師薪資 ─────────────────────────
+test("dailyPayroll sums level x rate; firing reduces it", () => {
+  const engs = [{ id: "a", name: "a", discipline: "mechanical", level: 1, fatigue: 0 }, { id: "b", name: "b", discipline: "electrical", level: 2, fatigue: 0 }];
+  eq(g.dailyPayroll(engs), 3 * g.SALARY_PER_DAY_PER_LEVEL);
+  eq(g.dailyPayroll([engs[0]]), 1 * g.SALARY_PER_DAY_PER_LEVEL);
+  eq(g.dailyPayroll([]), 0);
+});
+test("payroll is charged on day advance (more crew -> less net budget)", () => {
+  const lean = { ...I, engineers: [I.engineers[0]] };
+  const heavy = { ...I, engineers: [I.engineers[0], { id: "x", name: "x", discipline: "electrical", level: 3, fatigue: 0 }] };
+  seed(5); const a = R(lean, { type: "REST" });
+  seed(5); const b = R(heavy, { type: "REST" });
+  ok(b.budget < a.budget, "bigger payroll lowers net budget on the same day/seed");
+});
+
+// ───────────────────────── 海象限制派船 ─────────────────────────
+test("OPS_DISPATCH blocked in closed seas without SOV; remote reset still works", () => {
+  const idx = I.fleet.findIndex((t) => t.status === "ok");
+  const fleet = I.fleet.map((t, i) => (i === idx ? { ...t, status: "fault", faultId: "gearbox" } : t));
+  const base = { ...I, fleet, seaState: "closed", ownsSOV: false, engineers: [{ id: "m", name: "m", discipline: "mechanical", level: 1, fatigue: 0 }] };
+  const blocked = R(base, { type: "OPS_DISPATCH", turbine: fleet[idx].id, engineerId: "m" });
+  eq(blocked.opsJobs.length, 0, "no crew dispatch in closed seas (CTV)");
+  // SOV can sail in closed seas
+  const withSov = R({ ...base, ownsSOV: true }, { type: "OPS_DISPATCH", turbine: fleet[idx].id, engineerId: "m" });
+  eq(withSov.opsJobs.length, 1, "SOV can deploy in closed seas");
+  // resettable fault: remote reset works regardless of weather
+  const soft = { ...I, fleet: I.fleet.map((t, i) => (i === idx ? { ...t, status: "fault", faultId: "converter" } : t)), seaState: "closed", ownsSOV: false };
+  const reset = R(soft, { type: "OPS_RESET", turbine: I.fleet[idx].id });
+  eq(reset.opsJobs.length, 1, "remote reset ignores weather");
+});
+
 // ───────────────────────── 招募 / 解僱 ─────────────────────────
 test("FIRE removes an engineer; blocked while on an ops job", () => {
   const two = { ...I, engineers: [...I.engineers, { id: "fireMe", name: "x", discipline: "electrical", level: 1, fatigue: 0 }] };

@@ -22,6 +22,8 @@ export const FATIGUE_LIMIT = 80; // 輪班上限：達此值不得再派工
 export const FATIGUE_PER_JOB = 34; // 完成一趟維修/大修工日累積的疲勞
 export const FATIGUE_RECOVERY = 12; // 每日休整回復的疲勞
 export const fatigueOf = (e: Engineer) => e.fatigue ?? 0;
+export const SALARY_PER_DAY_PER_LEVEL = 6_000; // 技師每日薪資（× 等級）：招募↔解僱成為真實取捨
+export const dailyPayroll = (engs: Engineer[]) => engs.reduce((a, e) => a + e.level, 0) * SALARY_PER_DAY_PER_LEVEL;
 // 可派工：對應科別、等級足夠、且未超過輪班上限
 export const availableEngineer = (engs: Engineer[], d: Discipline, lvl = 1) =>
   engs.some((e) => e.discipline === d && e.level >= lvl && fatigueOf(e) < FATIGUE_LIMIT);
@@ -298,6 +300,7 @@ function advance(s: GameData, days = 1): Partial<GameData> {
   }
   const downtime = s.questStage === "active" && !s.repairDone ? DOWNTIME_PER_DAY * days : 0;
   const storage = dailyStorageCost(inv) * days; // 倉儲維持費（#warehouse）
+  const payroll = dailyPayroll(s.engineers) * days; // 技師薪資（O&M 經濟閉環）
   const genDelta = Math.round((s.availability / 100) * ownedFarmGen(s.farmsOwned) * days); // 本次發電量（#28/#34）
   const revenue = genDelta * ELECTRICITY_PRICE; // 售電收入（Phase C 經濟：每日發電量 → 現金流）
   let patch: Partial<GameData> = {
@@ -306,7 +309,7 @@ function advance(s: GameData, days = 1): Partial<GameData> {
     inventory: inv,
     cargoUsed: cargo,
     lastSpoil,
-    budget: Math.max(0, s.budget - downtime - storage + revenue),
+    budget: Math.max(0, s.budget - downtime - storage - payroll + revenue),
     generationMWh: s.generationMWh + genDelta,
     techAvail: Math.min(s.techTotal, s.techAvail + days), // 人力每日緩慢回復
     engineers: s.engineers.map((e) => ({ ...e, fatigue: clampN(fatigueOf(e) - FATIGUE_RECOVERY * days, 0, 100) })), // 技師休整回復疲勞（#7）
@@ -540,6 +543,7 @@ export function reducer(s: GameData, a: Action): GameData {
       if (fatigueOf(eng) >= FATIGUE_LIMIT) return s; // 過勞不可派
       if (engineerBusy(s.opsJobs, eng.id)) return s; // 該技師已在執行工單
       if (onsiteJobCount(s.opsJobs) >= vesselJobCap(s.ownsSOV, s.vesselLevel)) return s; // 船舶現場工單已達上限（#7/C2）
+      if (SEA_INDEX[s.seaState] > vesselSeaTol(s.ownsSOV)) return s; // 海象過劣，無法派船（可改遠端重啟或等天氣窗）
       const fleet = s.fleet.map((x) => (x.id === tb.id ? { ...x, status: "repair" as TurbineStatus } : x));
       const job: OpsJob = { id: "job_" + Math.random().toString(36).slice(2, 9), turbine: tb.id, engineerId: eng.id, discipline: eng.discipline, daysLeft: inc.repairDays };
       return { ...s, fleet, opsJobs: [...s.opsJobs, job] };
@@ -559,6 +563,7 @@ export function reducer(s: GameData, a: Action): GameData {
       if (fatigueOf(eng) >= FATIGUE_LIMIT) return s; // 過勞不可派
       if (engineerBusy(s.opsJobs, eng.id)) return s; // 已在執行工單
       if (onsiteJobCount(s.opsJobs) >= vesselJobCap(s.ownsSOV, s.vesselLevel)) return s; // 船舶現場工單上限
+      if (SEA_INDEX[s.seaState] > vesselSeaTol(s.ownsSOV)) return s; // 海象過劣無法派船
       const job: OpsJob = { id: "ins_" + Math.random().toString(36).slice(2, 9), turbine: "__sweep__", engineerId: eng.id, discipline: eng.discipline, daysLeft: INSPECT_DAYS, kind: "inspect" };
       return { ...s, opsJobs: [...s.opsJobs, job] };
     }
