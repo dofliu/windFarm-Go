@@ -258,6 +258,22 @@ test("fleet fault rate is bounded/calm over time (managed-ish)", () => {
   ok(faults <= 12, `faults after 10 idle days should be modest, got ${faults}`);
 });
 
+// ───────────────────────── 出海航次成本（批次維修） ─────────────────────────
+test("first dispatch pays sortie mobilization; batched dispatches in the same trip don't", () => {
+  const oks = I.fleet.map((t, i) => (t.status === "ok" ? i : -1)).filter((i) => i >= 0).slice(0, 2);
+  const fleet = I.fleet.map((t, i) => (oks.includes(i) ? { ...t, status: "fault", faultId: "gearbox" } : t));
+  const engineers = ["a", "b"].map((id) => ({ id, name: id, discipline: "mechanical", level: 1, fatigue: 0 }));
+  let s = { ...I, fleet, engineers, inventory: { gearbox_oil: 9 }, vesselWear: 0 };
+  const b0 = s.budget, w0 = s.vesselWear;
+  s = R(s, { type: "OPS_DISPATCH", turbine: fleet[oks[0]].id, engineerId: "a" }); // new sortie
+  eq(s.budget, b0 - g.SORTIE_COST, "first dispatch charges mobilization");
+  ok(s.vesselWear > w0, "sortie wears the vessel");
+  const b1 = s.budget, w1 = s.vesselWear;
+  s = R(s, { type: "OPS_DISPATCH", turbine: fleet[oks[1]].id, engineerId: "b" }); // same trip (a still out)
+  eq(s.budget, b1, "batched dispatch this trip pays no extra mobilization");
+  eq(s.vesselWear, w1, "no extra wear when batching onto the current sortie");
+});
+
 // ───────────────────────── C2：船舶並行上限 ─────────────────────────
 test("vesselJobCap: CTV base 2, SOV 4, +1 per vessel level", () => {
   eq(g.vesselJobCap(false, 0), 2);

@@ -58,7 +58,7 @@ export interface OpsJob {
   remote?: boolean; // 遠端重啟工單（免技師、不累積疲勞）
   kind?: OpsJobKind; // 預設 repair；inspect = 預防性定檢
 }
-export const FAULT_RATE_BASE = 0.16; // 每日新增故障的基礎機率（隨健康度上升）
+export const FAULT_RATE_BASE = 0.09; // 每日新增故障的基礎機率（隨健康度上升、隨運轉比例縮放）
 export const FLEET_INIT_FAULTS = 3; // 開局即有的故障數（給玩家可立即處理的事件）
 export const REMOTE_RESET_DAYS = 1; // 遠端重啟工期（免技師、較短）
 export const FLEET_FIX_REWARD = 120_000; // 每修復一台機組的維運報酬 ◎（Phase C 經濟）
@@ -204,6 +204,7 @@ export const DIAG_COST = 8_000_000; // 解鎖進階檢測一次性費用 ◎
 
 // 船舶保養（#7）
 export const VESSEL_WEAR_PER_SORTIE = 16; // 每趟出航累積磨耗
+export const SORTIE_COST = 250_000; // 每趟出海動員/油耗固定成本（鼓勵一趟修多台、勿一部一部修）
 export const VESSEL_SERVICE_COST = 2_000_000; // 進廠保養費用 ◎
 export const vesselWindowPenalty = (wear: number) => (wear >= 85 ? 2 : wear >= 55 ? 1 : 0); // 磨耗縮短作業窗時段
 
@@ -363,7 +364,7 @@ function advance(s: GameData, days = 1): Partial<GameData> {
       // 只有「運轉中」的機組會新故障 → 機率隨運轉比例縮放，形成穩定平衡而非死亡螺旋（不會全場掛掉）。
       const oks = fleet.filter((t) => t.status === "ok");
       const okFrac = fleet.length ? oks.length / fleet.length : 1;
-      const faultProb = Math.min(0.6, FAULT_RATE_BASE + ((100 - health) / 100) * 0.25) * (buffDays > 0 ? INSPECT_FAULT_MULT : 1) * okFrac;
+      const faultProb = Math.min(0.4, FAULT_RATE_BASE + ((100 - health) / 100) * 0.15) * (buffDays > 0 ? INSPECT_FAULT_MULT : 1) * okFrac;
       if (oks.length && Math.random() < faultProb) {
         const pick = oks[Math.floor(Math.random() * oks.length)];
         const fi = fleet.findIndex((t) => t.id === pick.id);
@@ -551,7 +552,9 @@ export function reducer(s: GameData, a: Action): GameData {
       const inv = { ...s.inventory, [inc.part]: (s.inventory[inc.part] ?? 0) - 1 };
       const fleet = s.fleet.map((x) => (x.id === tb.id ? { ...x, status: "repair" as TurbineStatus } : x));
       const job: OpsJob = { id: "job_" + Math.random().toString(36).slice(2, 9), turbine: tb.id, engineerId: eng.id, discipline: eng.discipline, daysLeft: inc.repairDays };
-      return { ...s, fleet, opsJobs: [...s.opsJobs, job], inventory: inv, cargoUsed: Math.max(0, s.cargoUsed - 1) };
+      // 出海動員費：僅當「目前沒有船在海上」時收（同一趟出海可同時派多台維修 → 分攤成本，鼓勵批次）
+      const newSortie = onsiteJobCount(s.opsJobs) === 0;
+      return { ...s, fleet, opsJobs: [...s.opsJobs, job], inventory: inv, cargoUsed: Math.max(0, s.cargoUsed - 1), budget: newSortie ? Math.max(0, s.budget - SORTIE_COST) : s.budget, vesselWear: newSortie ? clampN(s.vesselWear + VESSEL_WEAR_PER_SORTIE, 0, 100) : s.vesselWear };
     }
     case "OPS_RESET": {
       const tb = s.fleet.find((x) => x.id === a.turbine);
@@ -570,7 +573,8 @@ export function reducer(s: GameData, a: Action): GameData {
       if (onsiteJobCount(s.opsJobs) >= vesselJobCap(s.ownsSOV, s.vesselLevel)) return s; // 船舶現場工單上限
       if (SEA_INDEX[s.seaState] > vesselSeaTol(s.ownsSOV)) return s; // 海象過劣無法派船
       const job: OpsJob = { id: "ins_" + Math.random().toString(36).slice(2, 9), turbine: "__sweep__", engineerId: eng.id, discipline: eng.discipline, daysLeft: INSPECT_DAYS, kind: "inspect" };
-      return { ...s, opsJobs: [...s.opsJobs, job] };
+      const newSortie = onsiteJobCount(s.opsJobs) === 0; // 定檢也算一趟出海
+      return { ...s, opsJobs: [...s.opsJobs, job], budget: newSortie ? Math.max(0, s.budget - SORTIE_COST) : s.budget, vesselWear: newSortie ? clampN(s.vesselWear + VESSEL_WEAR_PER_SORTIE, 0, 100) : s.vesselWear };
     }
     case "BUY": {
       if (a.cost > s.budget) return s;
