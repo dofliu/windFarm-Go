@@ -124,11 +124,15 @@ test("BUY adds inventory; spoilage can reduce it over time", () => {
 });
 
 // ───────────────────────── 技師薪資 ─────────────────────────
-test("dailyPayroll sums level x rate; firing reduces it", () => {
-  const engs = [{ id: "a", name: "a", discipline: "mechanical", level: 1, fatigue: 0 }, { id: "b", name: "b", discipline: "electrical", level: 2, fatigue: 0 }];
-  eq(g.dailyPayroll(engs), 3 * g.SALARY_PER_DAY_PER_LEVEL);
-  eq(g.dailyPayroll([engs[0]]), 1 * g.SALARY_PER_DAY_PER_LEVEL);
+test("dailyPayroll sums per-engineer salary; higher level costs more; empty = 0", () => {
+  const e1 = { id: "a", name: "a", discipline: "mechanical", level: 1, fatigue: 0 };
+  const e2 = { id: "b", name: "b", discipline: "electrical", level: 2, fatigue: 0 };
   eq(g.dailyPayroll([]), 0);
+  eq(g.dailyPayroll([e1, e2]), g.salaryOf(e1) + g.salaryOf(e2));
+  ok(g.salaryOf(e2) > g.salaryOf(e1), "higher level paid more");
+  ok(g.dailyPayroll([e1, e2]) > g.dailyPayroll([e1]), "more crew costs more");
+  // 月薪落在 7~13 萬量級
+  ok(g.salaryOf(e1) * 30 >= 70_000 && g.salaryOf(e1) * 30 <= 130_000, `Lv1 monthly ${g.salaryOf(e1) * 30}`);
 });
 test("payroll is charged on day advance (more crew -> less net budget)", () => {
   const lean = { ...I, engineers: [I.engineers[0]] };

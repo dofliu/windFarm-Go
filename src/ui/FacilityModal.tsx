@@ -25,7 +25,7 @@ function genCandidates(): Engineer[] {
     fatigue: 0,
   }));
 }
-const hireFee = (e: Engineer) => e.level * 1_200_000; // 120萬 * 等級（招募/上工訓練）
+const hireFee = (e: Engineer) => 200_000 + e.level * 200_000; // 一次性招募/GWO訓練費（薪資另計，按日分攤）
 
 function shell(title: string, onClose: () => void, body: ReactNode, width = 540) {
   return (

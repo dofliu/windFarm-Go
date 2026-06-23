@@ -22,8 +22,11 @@ export const FATIGUE_LIMIT = 80; // 輪班上限：達此值不得再派工
 export const FATIGUE_PER_JOB = 34; // 完成一趟維修/大修工日累積的疲勞
 export const FATIGUE_RECOVERY = 12; // 每日休整回復的疲勞
 export const fatigueOf = (e: Engineer) => e.fatigue ?? 0;
-export const SALARY_PER_DAY_PER_LEVEL = 6_000; // 技師每日薪資（× 等級）：招募↔解僱成為真實取捨
-export const dailyPayroll = (engs: Engineer[]) => engs.reduce((a, e) => a + e.level, 0) * SALARY_PER_DAY_PER_LEVEL;
+// 技師薪資（O&M 經濟閉環）：每日計薪（自動按在職天數分攤；解僱即停），月薪約 9~13 萬。
+export const SALARY_BASE_PER_DAY = 2_200; // 每日基本薪
+export const SALARY_PER_LEVEL_PER_DAY = 700; // 每等級加給/日
+export const salaryOf = (e: Engineer) => SALARY_BASE_PER_DAY + e.level * SALARY_PER_LEVEL_PER_DAY;
+export const dailyPayroll = (engs: Engineer[]) => engs.reduce((a, e) => a + salaryOf(e), 0);
 // 可派工：對應科別、等級足夠、且未超過輪班上限
 export const availableEngineer = (engs: Engineer[], d: Discipline, lvl = 1) =>
   engs.some((e) => e.discipline === d && e.level >= lvl && fatigueOf(e) < FATIGUE_LIMIT);

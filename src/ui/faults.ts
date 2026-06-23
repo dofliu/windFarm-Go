@@ -199,31 +199,31 @@ export const QUEST_POOL: Quest[] = [
     id: "q_ch12",
     title: { zh: "齒輪箱搶修 · CH-12 號機組", en: "Gearbox repair · CH-12" },
     brief: { zh: "前往「彰化外海・CH-12」，於浪高 1.5m 內排除齒輪箱過熱告警並回報 SCADA。", en: "Sail to Changhua CH-12; clear the gearbox overheat alarm within 1.5m wave height." },
-    unit: "CH-12", targetFault: "gearbox_overheat", rewardBudget: 250_000, rewardXp: 120,
+    unit: "CH-12", targetFault: "gearbox_overheat", rewardBudget: 180_000, rewardXp: 120,
   },
   {
     id: "q_ch07",
     title: { zh: "偏航校正 · CH-07 號機組", en: "Yaw service · CH-07" },
     brief: { zh: "CH-07 偏航失準、無法迎風，登塔排除並複歸定位。", en: "CH-07 yaw misaligned; restore homing and report." },
-    unit: "CH-07", targetFault: "yaw_misalign", rewardBudget: 900_000, rewardXp: 110,
+    unit: "CH-07", targetFault: "yaw_misalign", rewardBudget: 800_000, rewardXp: 110,
   },
   {
     id: "q_ch21",
     title: { zh: "發電機診斷 · CH-21 號機組", en: "Generator check · CH-21" },
     brief: { zh: "CH-21 發電機振動超標，採頻譜定位並更換軸承。", en: "CH-21 generator vibration high; locate via spectrum and replace bearing." },
-    unit: "CH-21", targetFault: "gen_vibration", rewardBudget: 2_800_000, rewardXp: 140,
+    unit: "CH-21", targetFault: "gen_vibration", rewardBudget: 1_900_000, rewardXp: 140,
   },
   {
     id: "q_ch03",
     title: { zh: "變槳檢修 · CH-03 號機組", en: "Pitch service · CH-03" },
     brief: { zh: "CH-03 強風下無法順槳，檢查後備電源並排除。", en: "CH-03 can't feather in high wind; check backup power." },
-    unit: "CH-03", targetFault: "pitch_fault", rewardBudget: 240_000, rewardXp: 130,
+    unit: "CH-03", targetFault: "pitch_fault", rewardBudget: 160_000, rewardXp: 130,
   },
   {
     id: "q_ch18",
     title: { zh: "變流器搶修 · CH-18 號機組", en: "Converter repair · CH-18" },
     brief: { zh: "CH-18 變流器反覆過溫跳脫，檢查冷卻系統。", en: "CH-18 converter trips on overtemp; inspect cooling." },
-    unit: "CH-18", targetFault: "converter_fault", rewardBudget: 3_200_000, rewardXp: 125,
+    unit: "CH-18", targetFault: "converter_fault", rewardBudget: 2_700_000, rewardXp: 125,
   },
 ];
 

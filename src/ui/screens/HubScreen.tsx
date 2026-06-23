@@ -352,7 +352,7 @@ export default function HubScreen({ setScreen, accent, onDispatch, onFacility, s
                 <div style={kvRow}><span style={{ color: C.mist }}>{t({ zh: "完成任務", en: "Missions" })}</span><span>{data.missionsDone}</span></div>
                 <div style={kvRow}><span style={{ color: C.mist }}>{t({ zh: "預算", en: "Budget" })}</span><span>◎ {toWan(data.budget)} {t({ zh: "萬", en: "M" })}</span></div>
                 <div style={kvRow}><span style={{ color: C.mist }}>{t({ zh: "售電收入/日", en: "Revenue/day" })}</span><span style={{ color: C.green, fontWeight: 700 }}>◎ {toWan(dailyRevenue(data))} {t({ zh: "萬", en: "M" })}</span></div>
-                <div style={kvRow}><span style={{ color: C.mist }}>{t({ zh: "技師薪資/日", en: "Payroll/day" })}</span><span style={{ color: C.amber2, fontWeight: 700 }}>◎ {toWan(dailyPayroll(data.engineers))} {t({ zh: "萬", en: "M" })}</span></div>
+                <div style={kvRow}><span style={{ color: C.mist }}>{t({ zh: "技師薪資/月", en: "Payroll/mo" })}</span><span style={{ color: C.amber2, fontWeight: 700 }}>◎ {toWan(dailyPayroll(data.engineers) * 30)} {t({ zh: "萬", en: "M" })}</span></div>
                 <div style={kvRow}><span style={{ color: C.mist }}>{t({ zh: "天數", en: "Day" })}</span><span>{data.day}</span></div>
               </OpsBlock>
             </div>
