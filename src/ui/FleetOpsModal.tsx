@@ -7,6 +7,7 @@ import { Sfx } from "../audio/sfx";
 import { DISC } from "./disc";
 import { FARMS } from "../state/farms";
 import { incidentAt } from "../state/incidents";
+import { PARTS } from "./data";
 import { fleetUptime, engineerBusy, fatigueOf, FATIGUE_LIMIT, vesselJobCap, onsiteJobCount, INSPECT_DAYS, SEA_INDEX, vesselSeaTol, SEA_LABEL, dailyPayroll, toWan } from "../state/game";
 
 const STATUS_COLOR: Record<string, string> = { ok: "#3f7d52", fault: "#c0463a", repair: "#cf9a35" };
@@ -139,7 +140,12 @@ export default function FleetOpsModal({ open, onClose }: { open: boolean; onClos
       {selT && inc && (
         <div style={{ marginBottom: 12, padding: "10px 12px", borderRadius: 6, background: "rgba(192,70,58,.1)", border: "1px solid rgba(192,70,58,.35)" }}>
           <div style={{ fontSize: 13.5, fontWeight: 700, color: C.cream }}>{selT.id} · {t(inc.name)} <span style={{ color: C.mist, fontWeight: 400, fontSize: 12 }}>（{t(DISC[inc.discipline])} · {t({ zh: "工期", en: "duration" })} {inc.repairDays} {t({ zh: "天", en: "d" })}）</span></div>
-          <div style={{ fontSize: 11.5, color: C.amber2, margin: "4px 0 8px" }}>{t({ zh: "停機中每日損失約", en: "Losing ~" })} {selT.gen} MWh/{t({ zh: "天", en: "day" })}</div>
+          <div style={{ fontSize: 11.5, color: C.amber2, margin: "4px 0 6px" }}>{t({ zh: "停機中每日損失約", en: "Losing ~" })} {selT.gen} MWh/{t({ zh: "天", en: "day" })}</div>
+          {(() => {
+            const p = PARTS.find((x) => x.id === inc.part);
+            const stock = data.inventory[inc.part] ?? 0;
+            return <div style={{ fontSize: 11.5, color: stock > 0 ? C.mist : C.red, marginBottom: 8 }}>{t({ zh: "派工需備品", en: "Crew repair needs" })}：{t(p?.n ?? { zh: inc.part, en: inc.part })}（{t({ zh: "庫存", en: "stock" })} {stock}）{stock <= 0 && <span style={{ color: C.red }}> · {t({ zh: "缺料，去交易所採購", en: "out of stock — buy at Market" })}</span>}</div>;
+          })()}
           {inc.resettable && (
             <button onClick={() => { Sfx.success(); dispatch({ type: "OPS_RESET", turbine: selT.id }); setSel(null); }} style={{ width: "100%", marginBottom: 8, padding: "8px 0", borderRadius: 5, border: "1px solid rgba(95,168,217,.6)", background: "rgba(95,168,217,.18)", color: C.cream, fontFamily: FONT_SERIF, fontWeight: 900, fontSize: 13, cursor: "pointer" }}>
               ⟳ {t({ zh: "遠端重啟（1 天・免技師）", en: "Remote restart (1 day, no crew)" })}
@@ -150,6 +156,8 @@ export default function FleetOpsModal({ open, onClose }: { open: boolean; onClos
             <div style={{ fontSize: 12, color: C.amber2 }}>{t({ zh: `海象「${SEA_LABEL[data.seaState].zh}」無法派船——等可作業天氣窗，或升級/購置 SOV（可在更高海象出航）。`, en: `Seas "${SEA_LABEL[data.seaState].en}" — can't deploy. Wait for a workable window or get an SOV.` })}</div>
           ) : atCap ? (
             <div style={{ fontSize: 12, color: C.amber2 }}>{t({ zh: `船舶現場工單已滿（${onsite}/${cap}）。等工單完成、升級整備或購置 SOV 以提高並行數。`, en: `On-site jobs full (${onsite}/${cap}). Wait, upgrade the vessel or buy an SOV to raise concurrency.` })}</div>
+          ) : (data.inventory[inc.part] ?? 0) <= 0 ? (
+            <div style={{ fontSize: 12, color: C.amber2 }}>{t({ zh: "缺必備備品，無法現場維修——先去備品交易所採購（或先遠端重啟可重啟的故障）。", en: "Missing the required part — buy it at the Parts Market first (or remote-restart resettable faults)." })}</div>
           ) : candidates.length === 0 ? (
             <div style={{ fontSize: 12, color: C.mist }}>{t({ zh: `無可用的「${DISC[inc.discipline].zh}」技師（過勞或不足）。可靠港休整或到技師公會招募同科別技師。`, en: `No available ${DISC[inc.discipline].en} crew (fatigued or none). Rest in port or hire one at the Tech Guild.` })}</div>
           ) : (

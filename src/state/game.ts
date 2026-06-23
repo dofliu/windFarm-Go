@@ -544,9 +544,11 @@ export function reducer(s: GameData, a: Action): GameData {
       if (engineerBusy(s.opsJobs, eng.id)) return s; // 該技師已在執行工單
       if (onsiteJobCount(s.opsJobs) >= vesselJobCap(s.ownsSOV, s.vesselLevel)) return s; // 船舶現場工單已達上限（#7/C2）
       if (SEA_INDEX[s.seaState] > vesselSeaTol(s.ownsSOV)) return s; // 海象過劣，無法派船（可改遠端重啟或等天氣窗）
+      if ((s.inventory[inc.part] ?? 0) <= 0) return s; // 缺必備備品，無法現場維修（接上真實備品價格）
+      const inv = { ...s.inventory, [inc.part]: (s.inventory[inc.part] ?? 0) - 1 };
       const fleet = s.fleet.map((x) => (x.id === tb.id ? { ...x, status: "repair" as TurbineStatus } : x));
       const job: OpsJob = { id: "job_" + Math.random().toString(36).slice(2, 9), turbine: tb.id, engineerId: eng.id, discipline: eng.discipline, daysLeft: inc.repairDays };
-      return { ...s, fleet, opsJobs: [...s.opsJobs, job] };
+      return { ...s, fleet, opsJobs: [...s.opsJobs, job], inventory: inv, cargoUsed: Math.max(0, s.cargoUsed - 1) };
     }
     case "OPS_RESET": {
       const tb = s.fleet.find((x) => x.id === a.turbine);
