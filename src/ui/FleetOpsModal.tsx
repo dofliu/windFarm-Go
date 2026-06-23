@@ -81,7 +81,7 @@ export default function FleetOpsModal({ open, onClose }: { open: boolean; onClos
         <Stat label={t({ zh: "可用技師", en: "Free crew" })} value={`${freeCrew}/${data.engineers.length}`} />
         <Stat label={t({ zh: "停機損失", en: "Lost gen" })} value={`${data.fleetLostMWh} MWh`} color={C.amber2} />
         <Stat label={t({ zh: "已修復", en: "Resolved" })} value={String(data.fleetResolved)} color={C.green} />
-        <Stat label={t({ zh: "薪資/日", en: "Payroll/d" })} value={`◎${toWan(dailyPayroll(data.engineers))}萬`} color={C.mist2} />
+        <Stat label={t({ zh: "薪資/月", en: "Payroll/mo" })} value={`◎${toWan(dailyPayroll(data.engineers) * 30)}萬`} color={C.mist2} />
       </div>
 
       {/* 海象限制派船（接上天氣預報） */}
