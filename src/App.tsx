@@ -23,7 +23,7 @@ import { GameProvider } from "./state/GameContext";
 import { DialogueProvider } from "./state/DialogueContext";
 import { TutorialProvider } from "./state/TutorialContext";
 import { Bgm } from "./audio/bgm";
-import { getProfile, clearProfile } from "./state/profile";
+import { getProfile, clearProfile, isAuthed } from "./state/profile";
 import { SCENES, getSceneId, setSceneId as persistSceneId, getMode, setMode as persistMode, getImgIdx, setImgIdx as persistImgIdx, imagesFor, type SceneMode } from "./ui/scenes";
 import { getWeek, setWeek as persistWeek } from "./state/course";
 
@@ -40,7 +40,7 @@ export default function App() {
   const [showFleet, setShowFleet] = useState(false);
   const [showBuild, setShowBuild] = useState(false);
   const [facility, setFacility] = useState<Facility | null>(null);
-  const [loggedIn, setLoggedIn] = useState(() => getProfile() != null);
+  const [loggedIn, setLoggedIn] = useState(() => isAuthed(getProfile()));
   const [sceneId, setSceneId] = useState(getSceneId);
   const [aerial, setAerial] = useState(false); // 俯瞰風場全景模式（#32）
   const [mode, setMode] = useState<SceneMode>(getMode); // 模擬/實境/漫畫（#32）
