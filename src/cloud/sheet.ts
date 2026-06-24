@@ -9,9 +9,9 @@ export const SHEET_CONFIG = {
 
 // 雲端為主帳號/存檔（v2 後端）。⚠️ 需先把 docs/leaderboard-appsscript/Code.gs(v2) 重新部署，
 // 再把這裡改成 true，否則舊後端不認得 register/login 端點。設定見 docs/CLOUD_SETUP.md。
-export const CLOUD_FIRST = false;
+export const CLOUD_FIRST = true;
 // 教師檢視用的教師碼，需與 Code.gs 的 TEACHER_CODE 相同。
-export const TEACHER_CODE = "CHANGE-ME-教師碼";
+export const TEACHER_CODE = "dof950667";
 
 // 與後端共用的弱簽章密鑰（純前端無法真正保密，僅提高偽造門檻；搭配後端合理性驗證 #35）
 const SIGN_SECRET = "wfg-2026-oandm";
