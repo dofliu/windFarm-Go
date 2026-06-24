@@ -325,6 +325,18 @@ test("computeScore is non-negative and rewards resolved repairs", () => {
   const more = g.computeScore({ ...I, fleetResolved: (I.fleetResolved ?? 0) + 5 });
   ok(base >= 0); ok(more > base, "resolved repairs add to score");
 });
+test("downtime (fleetLostMWh) penalises performance score (#2)", () => {
+  const base = g.computeScore(I);
+  const withLoss = g.computeScore({ ...I, fleetLostMWh: (I.fleetLostMWh ?? 0) + 1000 });
+  ok(withLoss < base, "accumulated downtime loss lowers score");
+  eq(base - withLoss, Math.round(1000 * g.DOWNTIME_SCORE_PENALTY), "penalty matches coefficient");
+});
+test("higher fleet uptime → higher score, downtime → lower (single-source #3/#2)", () => {
+  // 同樣推進天數,妥善率高的機隊績效應高於放著不修的機隊（可用率×5 與停機罰金雙重反映）。
+  const allOk = { ...I, fleet: I.fleet.map((t) => ({ ...t, status: "ok", faultId: undefined })), availability: 100, fleetLostMWh: 0 };
+  const neglected = { ...I, fleet: I.fleet.map((t, i) => (i < 12 ? { ...t, status: "fault", faultId: "gearbox" } : t)), availability: 50, fleetLostMWh: 2000 };
+  ok(g.computeScore(allOk) > g.computeScore(neglected), "healthy fleet scores higher than neglected");
+});
 test("fleet downtime reduces cash income AND net generation (not just score)", () => {
   // 同種子下，故障多的機隊推進一天 → 預算與發電 KPI 都比健康機隊低
   const faulted = { ...I, fleet: I.fleet.map((t, i) => (i < 10 ? { ...t, status: "fault", faultId: "gearbox" } : { ...t, status: "ok", faultId: undefined })) };
@@ -363,12 +375,35 @@ test("missionInstance swaps unit token in title", () => {
   ok(m.title.zh.includes(m.unit), "title references swapped unit");
 });
 
-// ───────────────────────── 回歸：事件影響 REST 當日可用率 ─────────────────────────
-test("REST availability reflects same-day event (not reset from s.availability)", () => {
-  // 找到一個會讓 REST 後可用率 != 87 的種子 → 證明事件有被計入（修復前恆為 87）
-  let differs = false;
-  for (let sd = 0; sd < 400 && !differs; sd++) { seed(sd); const s = R(I, { type: "REST" }); if (s.availability !== Math.min(100, I.availability + 1)) differs = true; unseed(); }
-  ok(differs, "some seed should yield event-driven availability != 87 on REST");
+// ───────────────────────── #3 可用率單一真實來源（= 機隊運轉比例）─────────────────────────
+test("availability is single-sourced from fleet uptime after advance (#3)", () => {
+  // 半數機組故障 → 任一推進後 availability 應 == fleetUptime(fleet)，而非舊的純量加減。
+  const half = { ...I, fleet: I.fleet.map((t, i) => (i % 2 === 0 ? { ...t, status: "fault", faultId: "gearbox" } : { ...t, status: "ok", faultId: undefined })) };
+  for (const sd of [1, 7, 42, 99]) {
+    seed(sd); const s = R(half, { type: "REST" });
+    eq(s.availability, g.fleetUptime(s.fleet), `availability mirrors fleet uptime (seed ${sd})`);
+  }
+  // 開局 INITIAL 即自洽（不再是寫死的純量）
+  eq(I.availability, g.fleetUptime(I.fleet), "INITIAL availability == fleet uptime");
+});
+test("fleet helpers fault/restore real units; applyAvailDelta scales by % points (#3)", () => {
+  const allOk = I.fleet.map((t) => ({ ...t, status: "ok", faultId: undefined }));
+  seed(1); const f = g.faultTurbines(allOk, 3);
+  eq(f.filter((t) => t.status === "fault").length, 3, "faults exactly 3 running units");
+  seed(1); const r = g.restoreTurbines(f, 2);
+  eq(r.filter((t) => t.status === "fault").length, 1, "restores 2 of the 3 faulted");
+  seed(1); const down = g.applyAvailDelta(allOk, -50);
+  ok(g.fleetUptime(down) < 60, `−50pt delta drops uptime well below half, got ${g.fleetUptime(down)}`);
+  eq(g.fleetUptime(g.applyAvailDelta(down, 100)), 100, "+100pt restores whole fleet");
+});
+test("availability stays single-sourced after RESOLVE_TASK dAvail (#3)", () => {
+  // 沙盒任務的可用率效果改以真實機組故障/修復實作 → availability 仍 == fleetUptime。
+  for (const sd of [3, 5, 17]) {
+    seed(sd);
+    const s = R(I, { type: "RESOLVE_TASK", dAvail: -20, dBudget: 0, dGen: 0, dSafety: 0, dHealth: 0, xp: 0 });
+    eq(s.availability, g.fleetUptime(s.fleet), `availability mirrors fleet after task (seed ${sd})`);
+    ok(s.availability >= 0 && s.availability <= 100, "availability in range");
+  }
 });
 test("availability stays within [0,100] over a long mixed run", () => {
   seed(123); let s = I;
@@ -444,6 +479,19 @@ test("SLA settlement uses actual fleet uptime, not the legacy availability scala
   ok(b.lastSla && b.lastSla.day === b.day, "quarter settled this step");
   ok(b.lastSla.breached, "low fleet uptime breaches SLA despite availability 95");
   ok(u.lastSla && !u.lastSla.breached, "full fleet uptime meets SLA");
+});
+test("repair progress persists in state, resets on quest lifecycle (#33)", () => {
+  const r = { key: "0:m1", boarded: true, pick: 0, steps: [true, true, true, false, false], win: 5 };
+  const s1 = R(I, { type: "SET_REPAIR", repair: r });
+  eq(s1.repair.win, 5);
+  ok(s1.repair.boarded, "boarded persisted");
+  eq(s1.repair.pick, 0);
+  // 接新單 → 清空（避免把上一單進度帶到新單）
+  eq(R(s1, { type: "ACCEPT_QUEST" }).repair, null);
+  // 撤離（FAIL_REPAIR）→ 清空；作業窗不可被切畫面免費重置
+  seed(1); eq(R(s1, { type: "FAIL_REPAIR" }).repair, null);
+  // 明確清空
+  eq(R(s1, { type: "SET_REPAIR", repair: null }).repair, null);
 });
 test("dailyRevenue scales with running turbines; no-fleet fallback uses availability", () => {
   // 機組越多運轉 → 收入越高

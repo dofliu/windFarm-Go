@@ -10,6 +10,10 @@ export interface GameEvent {
   good?: boolean; // 正面事件（UI 用綠色）
   weight: number; // 相對權重
   apply: (s: GameData) => Partial<GameData>;
+  // 機隊效果（#3 單一真實來源）：以「使機組故障/修復」實作可用率變化,而非調整獨立純量。
+  // 由 advance() 在機隊推進前套用,故會真實反映在當日發電、SLA 與績效。
+  fault?: number; // 使 n 台運轉中機組故障
+  restore?: number; // 修復 n 台故障機組
 }
 
 const clamp = (n: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, n));
@@ -34,16 +38,16 @@ export const EVENTS: GameEvent[] = [
     apply: (s) => ({ pendingOrders: s.pendingOrders.map((o) => ({ ...o, arriveDay: o.arriveDay + 2 })) }),
   },
   {
-    id: "overhaul", weight: 2,
+    id: "overhaul", weight: 2, fault: 1,
     name: { zh: "定期大修", en: "Scheduled overhaul" },
-    desc: { zh: "排程大修暫時拉低可用率並產生成本。", en: "A planned overhaul temporarily lowers availability and costs budget." },
-    apply: (s) => ({ availability: clamp(s.availability - 5, 0, 100), budget: Math.max(0, s.budget - 2_000_000) }),
+    desc: { zh: "排程大修使一台機組停機檢修並產生成本。", en: "A planned overhaul takes a unit offline and costs budget." },
+    apply: (s) => ({ budget: Math.max(0, s.budget - 2_000_000) }),
   },
   {
-    id: "sudden_fault", weight: 3,
+    id: "sudden_fault", weight: 3, fault: 1,
     name: { zh: "突發設備故障", en: "Sudden equipment fault" },
-    desc: { zh: "其他機組突發故障，全場可用率下降。", en: "Another unit faults unexpectedly — fleet availability drops." },
-    apply: (s) => ({ availability: clamp(s.availability - 6, 0, 100) }),
+    desc: { zh: "另一台機組突發故障停機，全場可用率下降。", en: "Another unit faults unexpectedly — fleet availability drops." },
+    apply: () => ({}),
   },
   {
     id: "rival_win", weight: 2,
@@ -52,16 +56,16 @@ export const EVENTS: GameEvent[] = [
     apply: (s) => ({ budget: Math.max(0, s.budget - 1_000_000) }),
   },
   {
-    id: "firmware_push", weight: 2, good: true,
+    id: "firmware_push", weight: 2, good: true, restore: 1,
     name: { zh: "原廠韌體更新", en: "OEM firmware update" },
-    desc: { zh: "原廠推送修補，全場稼動提升。", en: "OEM pushes a patch — fleet performance improves." },
-    apply: (s) => ({ availability: clamp(s.availability + 3, 0, 100) }),
+    desc: { zh: "原廠推送修補，一台軟性故障機組自動復歸。", en: "OEM pushes a patch — a soft-faulted unit recovers." },
+    apply: () => ({}),
   },
   {
-    id: "calm_spell", weight: 3, good: true,
+    id: "calm_spell", weight: 3, good: true, restore: 1,
     name: { zh: "風平浪靜", en: "Calm spell" },
-    desc: { zh: "天候穩定，運維順利、稼動小幅提升。", en: "Steady weather — smooth ops, slight availability gain." },
-    apply: (s) => ({ availability: clamp(s.availability + 2, 0, 100) }),
+    desc: { zh: "天候穩定，運維順利，一台機組提前修復併網。", en: "Steady weather — smooth ops bring a unit back online." },
+    apply: () => ({}),
   },
 ];
 
