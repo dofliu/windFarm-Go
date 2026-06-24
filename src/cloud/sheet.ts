@@ -7,6 +7,12 @@ export const SHEET_CONFIG = {
   webAppUrl: "https://script.google.com/macros/s/AKfycbxgy2ugDT1IRSE1vrYSpG-MH8uYm1ZMJbOm5_DSMSf6fcGDYO3nQ2qS-32IPvCwU-wexw/exec",
 };
 
+// 雲端為主帳號/存檔（v2 後端）。⚠️ 需先把 docs/leaderboard-appsscript/Code.gs(v2) 重新部署，
+// 再把這裡改成 true，否則舊後端不認得 register/login 端點。設定見 docs/CLOUD_SETUP.md。
+export const CLOUD_FIRST = false;
+// 教師檢視用的教師碼，需與 Code.gs 的 TEACHER_CODE 相同。
+export const TEACHER_CODE = "CHANGE-ME-教師碼";
+
 // 與後端共用的弱簽章密鑰（純前端無法真正保密，僅提高偽造門檻；搭配後端合理性驗證 #35）
 const SIGN_SECRET = "wfg-2026-oandm";
 // djb2 字串雜湊（前後端需一致）
@@ -26,6 +32,7 @@ export interface ScorePayload {
   availability: number;
   generation: number;
   day: number;
+  studentId?: string; // 學號（額外中繼資料，不入簽章）
 }
 
 const clampInt = (n: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, Math.round(Number(n) || 0)));
@@ -39,7 +46,8 @@ function sanitize(p: ScorePayload): ScorePayload | null {
   const availability = clampInt(p.availability, 0, 100);
   const generation = clampInt(p.generation, 0, 130 * Math.max(1, day)); // 100%≈120MWh/日，留 130 緩衝
   const score = clampInt(p.score, 0, generation + 100 * 5 + day * 30 + 1000); // 與 KPI 公式一致的上界
-  return { nickname, classCode, score, availability, generation, day };
+  const studentId = String(p.studentId ?? "").trim().slice(0, 20);
+  return { nickname, classCode, score, availability, generation, day, studentId };
 }
 
 // 送分：POST JSON 到 Web App。用 no-cors + 純字串 body（text/plain 安全清單）避免 CORS preflight。

@@ -18,8 +18,9 @@ export default function ScoreSync() {
     lastSent.current = data.missionsDone;
     const score = computeScore(data);
     submitScore({
-      nickname: profile.nickname,
+      nickname: profile.nickname || profile.studentId,
       classCode: profile.classCode,
+      studentId: profile.studentId,
       score,
       availability: data.availability,
       generation: data.generationMWh,
