@@ -40,6 +40,7 @@ const data = await load("src/ui/data.ts");
 const flt = await load("src/ui/faults.ts");
 const cmap = await load("src/ui/courseMap.ts");
 const tut = await load("src/ui/tutorialSteps.ts");
+const tasks = await load("src/state/tasks.ts");
 const R = g.reducer, I = g.INITIAL;
 
 // ───────────────────────── INITIAL 不變量 ─────────────────────────
@@ -292,6 +293,36 @@ test("codex & components: every fault has a deep codex entry; components map 1:1
     const symptoms = c.faultIds.map((id) => flt.CODEX[id].symptom.zh);
     eq(symptoms.length, new Set(symptoms).size, `component ${c.id} symptoms are distinct`);
   }
+});
+test("ops-center task catalog: well-formed, balanced & generator stable (#2 expansion)", () => {
+  const T = tasks.TASKS;
+  ok(T.length >= 180, `tasks >= 180 (got ${T.length})`);
+  // id 唯一
+  const ids = T.map((t) => t.id);
+  eq(ids.length, new Set(ids).size, "task ids are unique");
+  const cats = new Set(["A", "B", "C", "D", "E", "F", "G"]);
+  const effKeys = new Set(["a", "b", "s", "g"]);
+  const perCat = {};
+  for (const t of T) {
+    ok(cats.has(t.cat), `task ${t.id} has a valid category`);
+    perCat[t.cat] = (perCat[t.cat] ?? 0) + 1;
+    ok(t.title?.zh && t.title?.en, `task ${t.id} title bilingual`);
+    ok(t.scenario?.zh && t.scenario?.en, `task ${t.id} scenario bilingual`);
+    ok(typeof t.xp === "number" && t.xp > 0, `task ${t.id} has xp`);
+    ok(Array.isArray(t.choices) && t.choices.length >= 2, `task ${t.id} has >=2 choices`);
+    ok(t.choices.some((c) => c.good), `task ${t.id} has at least one good choice`);
+    for (const c of t.choices) {
+      ok(c.label?.zh && c.label?.en, `task ${t.id} choice label bilingual`);
+      ok(c.feedback?.zh && c.feedback?.en, `task ${t.id} choice feedback bilingual`);
+      for (const k of Object.keys(c.eff ?? {})) ok(effKeys.has(k), `task ${t.id} eff key '${k}' valid`);
+    }
+  }
+  // 七大類皆有充足題量(避免某類太薄)
+  for (const c of cats) ok(perCat[c] >= 15, `category ${c} has >=15 tasks (got ${perCat[c]})`);
+  // generateTask 以 seed 可重現,且機組編號格式正確
+  const a = tasks.generateTask(5), b = tasks.generateTask(5);
+  eq(a.template.id, b.template.id, "generateTask(seed) is reproducible");
+  ok(/^CH-\d{2}$/.test(a.unit), "unit code formatted CH-NN");
 });
 test("OPS_DISPATCH consumes the part; blocked when out of stock", () => {
   const { state, turbine } = withFault("gearbox", "mechanical"); // stocks gearbox_oil:9
