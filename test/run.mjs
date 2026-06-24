@@ -384,6 +384,8 @@ test("tutorial gates are all satisfiable by walking the real work-order flow", (
   // 6) 完工 → questStage done
   s = R(s, { type: "FINISH_REPAIR", quest: camp.missionInstance(0), part: "gearbox_oil", discipline: "mechanical" });
   ok(gateOf("finish")(s, "repair"), "finish gate satisfied after FINISH_REPAIR");
+  // 重大故障改走大修：finish 閘門也須接受 overhaul（否則教學會卡在最後一步）
+  ok(gateOf("finish")({ ...I, questStage: "active", overhaul: { questId: "x", need: 3, progress: 0 } }, "repair"), "finish gate also accepts overhaul (major fault)");
 });
 
 test("guards: can't act beyond budget", () => {

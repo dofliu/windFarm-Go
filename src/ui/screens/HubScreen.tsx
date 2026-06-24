@@ -2,8 +2,7 @@ import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 
 import { C, FONT_SERIF, primaryBg, panel, panelHeader, panelTitle } from "../tokens";
 import { t } from "../../game/systems/i18n";
 import { useLang } from "../useLang";
-import { AdvisorPopup } from "../Portrait";
-import { exprUrl, NARRATOR_EXPR } from "../characters";
+import HubAdvisor from "../HubAdvisor";
 import { useGame } from "../../state/GameContext";
 import { useDialogue } from "../../state/DialogueContext";
 import { useCoachTarget } from "../../state/TutorialContext";
@@ -14,7 +13,7 @@ import { CAMPAIGN, missionInstance } from "../campaign";
 import { FAULTS } from "../faults";
 import { PARTS } from "../data";
 import { DISC } from "../disc";
-import { toWan, computeScore, QUARTER_DAYS, SLA_FLOOR, DEMURRAGE_PER_DAY, dailyStorageCost, FATIGUE_LIMIT, fatigueOf, fleetUptime, dailyRevenue, dailyPayroll, TEST_GRANT, type QuestStage } from "../../state/game";
+import { toWan, computeScore, QUARTER_DAYS, SLA_FLOOR, DEMURRAGE_PER_DAY, dailyStorageCost, FATIGUE_LIMIT, fatigueOf, fleetUptime, dailyRevenue, dailyPayroll, TEST_GRANT } from "../../state/game";
 import { FARMS } from "../../state/farms";
 import { fetchLeaderboard, type Row } from "../../cloud/sheet";
 import { getProfile } from "../../state/profile";
@@ -24,14 +23,6 @@ import { LedgerView } from "../Ledger";
 import { missionWeek } from "../../state/course";
 import type { I18n } from "../../game/systems/types";
 import type { Screen } from "../../App";
-
-// 莉莉台詞依工單階段
-const STAGE_LINE: Record<QuestStage, I18n> = {
-  available: { zh: "船長！有新工單，從左側『設施 · 調度中心』接單吧！", en: "Captain! New order — accept it via Facilities · Dispatch on the left!" },
-  active: { zh: "工單進行中～點中央『出海航行』前往機組！", en: "Order in progress — hit SET SAIL in the center!" },
-  done: { zh: "幹得好，船長！工單完成 🎉（點我換表情）", en: "Well done, Captain! Order complete 🎉 (click me)" },
-};
-const STAGE_EXPR: Record<QuestStage, number> = { available: 0, active: 1, done: 5 };
 
 // 左側設施列
 function FacRow({ char, label, stat, onClick, targetRef }: { char: string; label: I18n; stat?: I18n; onClick: () => void; targetRef?: (el: HTMLElement | null) => void }) {
@@ -68,8 +59,6 @@ export default function HubScreen({ setScreen, accent, onDispatch, onFacility, s
   const quest = data.customQuest ?? mission;
   const fault = FAULTS[quest.targetFault];
   const goSail = () => setScreen("sail");
-  const [ei, setEi] = useState<number | null>(null); // null = 跟隨階段表情
-  const exprIdx = ei ?? STAGE_EXPR[stage];
   const [opsOpen, setOpsOpen] = useState(true); // #6 抽屜預設展開
   // 新手教學高亮目標
   const acceptRef = useCoachTarget("accept");
@@ -402,16 +391,8 @@ export default function HubScreen({ setScreen, accent, onDispatch, onFacility, s
         <SecBtn icon="⚓" label={t(S.btn.restPort)} onClick={() => { Sfx.click(); dispatch({ type: "REST" }); say({ speaker: "narrator_girl", expr: "smile", line: { zh: "靠港休整一天，重新評估海象～", en: "Rested a day in port — sea state re-assessed." } }); }} />
       </div>
 
-      {/* 解說員少女：任務引導（點擊換表情/台詞） */}
-      <AdvisorPopup
-        id="narrator_girl"
-        src={exprUrl("narrator_girl", NARRATOR_EXPR[exprIdx])}
-        line={STAGE_LINE[stage]}
-        style={{ left: 980, bottom: 6 }}
-        portraitH={250}
-        bubbleSide="left"
-        onClick={() => setEi((exprIdx + 1) % NARRATOR_EXPR.length)}
-      />
+      {/* 母港常駐顧問莉莉：動態提示/建議、可收起（不再固定一句、不擋底部按鈕） */}
+      <HubAdvisor />
     </div>
   );
 }
