@@ -2,6 +2,7 @@ import type { I18n } from "../game/systems/types";
 import { FARMS } from "./farms";
 import { rollEvent, type EventStamp } from "./events";
 import { incidentAt, randomIncidentId } from "./incidents";
+import { BUILD_STAGES, BUILD_STAGE_COUNT, BUILD_REWARD_BASE, BUILD_REWARD_PER_SCORE, BUILD_REWARD_XP } from "./construction";
 
 // ───────── 全域遊戲狀態模型（A1 工單系統 / A2 採購 / A3 結算 / D1 存檔）─────────
 export type SeaState = "workable" | "caution" | "closed";
@@ -155,6 +156,9 @@ export interface GameData {
   questIndex: number; // 舊：工單池索引（保留相容）
   campaignIndex: number; // 主線戰役關卡索引（#20）
   campaignDone: boolean; // 戰役是否通關
+  buildStage: number; // 風場建置番外篇（#1）：目前階段索引（= BUILD_STAGE_COUNT 表示完工）
+  buildScore: number; // 建置品質/聲望分（決策累積）
+  buildDone: boolean; // 番外篇是否完工
   customQuest: Quest | null; // 課程模式臨時指派的任務（#6），非 null 時覆蓋主線
   repairDone: boolean; // 本工單維修是否完成
   cargoUsed: number;
@@ -310,6 +314,9 @@ export const INITIAL: GameData = {
   questIndex: 0,
   campaignIndex: 0,
   campaignDone: false,
+  buildStage: 0,
+  buildScore: 0,
+  buildDone: false,
   customQuest: null,
   repairDone: false,
   cargoUsed: 620,
@@ -548,6 +555,8 @@ export type Action =
   | { type: "OPS_ADVANCE" } // 戰情室推進一天（Phase C）：並行工單前進、隨機新增故障
   | { type: "NEXT_QUEST"; poolSize: number } // 下一關（#20 主線推進）
   | { type: "RESTART_CAMPAIGN" } // 重玩戰役（#20）
+  | { type: "BUILD_RESOLVE"; stage: number; choiceIdx: number } // 風場建置番外篇：階段決策（#1）
+  | { type: "BUILD_RESET" } // 重玩番外篇（#1）
   | { type: "ASSIGN_QUEST"; quest: Quest } // 課程模式臨時指派（#6）
   | { type: "RESOLVE_TASK"; dAvail: number; dBudget: number; dSafety: number; dGen: number; dHealth: number; xp: number } // 自由營運沙盒任務結算
   | { type: "LOAD_STATE"; state: Partial<GameData> } // 雲端存檔載入（#31）
@@ -789,6 +798,23 @@ export function reducer(s: GameData, a: Action): GameData {
     }
     case "RESTART_CAMPAIGN":
       return { ...s, campaignIndex: 0, campaignDone: false, customQuest: null, questStage: "available", repairDone: false, jobPhase: "office", repair: null };
+    case "BUILD_RESOLVE": {
+      // 風場建置番外篇（#1）：僅能決策「目前階段」、完工後不再受理
+      if (s.buildDone || a.stage !== s.buildStage) return s;
+      const stage = BUILD_STAGES[s.buildStage];
+      const choice = stage?.choices[a.choiceIdx];
+      if (!stage || !choice) return s;
+      const adv = advance(s, Math.max(1, choice.days)); // 工期推進（含天氣/經濟/隨機故障）
+      const budget = Math.max(0, (adv.budget ?? s.budget) - choice.cost);
+      const buildStage = s.buildStage + 1;
+      const buildScore = s.buildScore + choice.score;
+      const done = buildStage >= BUILD_STAGE_COUNT;
+      // 完工獎勵：基礎 + 依品質分加成（最低 0）、經驗值
+      const reward = done ? BUILD_REWARD_BASE + Math.max(0, buildScore) * BUILD_REWARD_PER_SCORE : 0;
+      return { ...s, ...adv, budget: budget + reward, xp: s.xp + (done ? BUILD_REWARD_XP : 0), buildStage, buildScore, buildDone: done };
+    }
+    case "BUILD_RESET":
+      return { ...s, buildStage: 0, buildScore: 0, buildDone: false };
     case "ASSIGN_QUEST":
       return { ...s, customQuest: a.quest, questStage: "available", repairDone: false, jobPhase: "office", repair: null };
     case "RESOLVE_TASK": {
