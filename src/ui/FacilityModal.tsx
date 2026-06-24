@@ -6,6 +6,7 @@ import { useGame } from "../state/GameContext";
 import { toWan, computeScore, VESSEL_SERVICE_COST, fatigueOf, FATIGUE_LIMIT, engineerBusy, type Discipline, type Engineer } from "../state/game";
 import { FARMS } from "../state/farms";
 import { Sfx } from "../audio/sfx";
+import { FallbackImg } from "./SceneVideo";
 import { FAULTS } from "./faults";
 import { DISC } from "./disc";
 import type { I18n } from "../game/systems/types";
@@ -78,6 +79,7 @@ export default function FacilityModal({ kind, onClose }: { kind: Facility | null
     const sovCost = 30_000_000;
     return shell(`🚢 ${t({ zh: "CTV 整備廠 · 船隊", en: "CTV Yard · Fleet" })}`, onClose, (
       <>
+        <FallbackImg file="drydock.jpg" style={{ display: "block", width: "100%", height: 120, objectFit: "cover", borderRadius: 6, marginBottom: 10 }} />
         <div style={{ fontSize: 13, color: C.mist, marginBottom: 10 }}>{t({ zh: "目前船舶", en: "Fleet" })}：CTV{data.ownsSOV ? " + SOV" : ""}　·　{t({ zh: "整備等級", en: "Level" })} Lv.{data.vesselLevel}</div>
         {/* 船舶保養（#7）：磨耗歸零，回復作業窗 */}
         {(() => {

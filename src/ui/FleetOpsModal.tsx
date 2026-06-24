@@ -4,6 +4,7 @@ import { t } from "../game/systems/i18n";
 import { useLang } from "./useLang";
 import { useGame } from "../state/GameContext";
 import { Sfx } from "../audio/sfx";
+import { FallbackImg } from "./SceneVideo";
 import { DISC } from "./disc";
 import { FARMS } from "../state/farms";
 import { incidentAt } from "../state/incidents";
@@ -70,6 +71,7 @@ export default function FleetOpsModal({ open, onClose }: { open: boolean; onClos
 
   return shell(`🛰 ${t({ zh: "風場戰情室（即時機組狀態）", en: "Fleet Ops Room (live)" })}`, onClose, (
     <div>
+      <FallbackImg file="scada.jpg" style={{ display: "block", width: "100%", height: 120, objectFit: "cover", borderRadius: 6, marginBottom: 10 }} />
       <div style={{ fontSize: 12, color: C.mist, marginBottom: 10, lineHeight: 1.6 }}>
         {t({ zh: "機組會隨時間隨機故障；指派對應科別技師並行搶修。停機越久、損失發電越多。每推進一天，工單前進、可能再有新故障。", en: "Turbines fault over time; dispatch matching-discipline crews to repair in parallel. The longer a unit is down, the more generation is lost. Each day advances jobs and may spawn new faults." })}
       </div>
