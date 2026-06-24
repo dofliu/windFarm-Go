@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useReducer, type ReactNode } from "react";
-import { INITIAL, reducer, type Action, type GameData } from "./game";
+import { INITIAL, reducer, migrateVessels, type Action, type GameData } from "./game";
 import { getProfile, saveKeyFor } from "./profile";
 import { SAVE_SYNC, loadCloudState, saveCloudState } from "../cloud/sheet";
 
@@ -11,7 +11,7 @@ function saveKey(): string {
 function load(): GameData {
   try {
     const raw = localStorage.getItem(saveKey());
-    if (raw) return { ...INITIAL, ...JSON.parse(raw) };
+    if (raw) return migrateVessels({ ...INITIAL, ...JSON.parse(raw) });
   } catch {
     // 忽略損壞存檔
   }

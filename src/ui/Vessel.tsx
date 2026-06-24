@@ -1,13 +1,16 @@
 import type { CSSProperties } from "react";
+import type { VesselClass } from "../state/vessels";
 
-// 不同船型（#5）：CTV 人員運輸船 / SOV 運維母船 / Jack-up 安裝船。純 CSS 側視圖。
-export type VesselType = "ctv" | "sov" | "jackup";
+// 不同船型（#4/#5）：快艇 / CTV / SOV / Jack-up / 母船。純 CSS 側視圖。
+export type VesselType = VesselClass;
 
 export const vesselTypeOf = (ownsSOV: boolean): VesselType => (ownsSOV ? "sov" : "ctv");
 export const VESSEL_LABEL: Record<VesselType, { zh: string; en: string }> = {
+  crew_boat: { zh: "快艇", en: "Crew Boat" },
   ctv: { zh: "CTV 人員運輸船", en: "CTV" },
   sov: { zh: "SOV 運維母船", en: "SOV" },
   jackup: { zh: "安裝船 (Jack-up)", en: "Jack-up" },
+  mothership: { zh: "母船 (W2W)", en: "Mothership" },
 };
 
 function Ctv() {
@@ -80,12 +83,60 @@ function Jackup() {
   );
 }
 
+function CrewBoat() {
+  return (
+    <div style={{ position: "relative", width: 70, height: 30 }}>
+      {/* 細長快艇船身 */}
+      <div style={{ position: "absolute", bottom: 0, left: 2, width: 64, height: 10, background: "linear-gradient(180deg,#5a6b80,#232e38)", borderRadius: "4px 14px 8px 8px/4px 4px 14px 14px" }} />
+      <div style={{ position: "absolute", bottom: 8, left: 8, width: 50, height: 6, background: "linear-gradient(180deg,#8c99a4,#586470)", borderRadius: 2 }} />
+      {/* 低矮駕駛艙 */}
+      <div style={{ position: "absolute", bottom: 13, left: 34, width: 18, height: 9, background: "linear-gradient(180deg,#eef3f4,#b6c4c9)", borderRadius: "3px 5px 0 0" }}>
+        <div style={{ position: "absolute", top: 2, left: 2, right: 2, height: 3, background: "#37596b" }} />
+      </div>
+      {/* 橘色撞墊艏 */}
+      <div style={{ position: "absolute", bottom: 8, left: 1, width: 7, height: 8, background: "#e0892e", borderRadius: "3px 0 0 4px" }} />
+    </div>
+  );
+}
+
+function Mothership() {
+  return (
+    <div style={{ position: "relative", width: 156, height: 66 }}>
+      {/* 大型船身 */}
+      <div style={{ position: "absolute", bottom: 0, left: 2, width: 152, height: 22, background: "linear-gradient(180deg,#4c5e70,#19232c)", borderRadius: "8px 14px 10px 10px/6px 10px 20px 20px" }} />
+      <div style={{ position: "absolute", bottom: 12, left: 4, width: 148, height: 3, background: "#e0a83e" }} />
+      {/* 多層上部結構 */}
+      <div style={{ position: "absolute", bottom: 20, left: 92, width: 56, height: 36, background: "linear-gradient(180deg,#eef3f4,#aebbc0)", borderRadius: "3px 4px 0 0" }}>
+        {[0, 1, 2, 3].map((r) => (
+          <div key={r} style={{ position: "absolute", top: 4 + r * 7, left: 4, right: 4, height: 4, background: "#43677a" }} />
+        ))}
+      </div>
+      <div style={{ position: "absolute", bottom: 56, left: 110, width: 20, height: 9, background: "#d7dee1", borderRadius: "2px 2px 0 0" }} />
+      {/* 直升機坪（前甲板，含 H 標記） */}
+      <div style={{ position: "absolute", bottom: 22, left: 14, width: 40, height: 7, background: "#6b7782", borderRadius: 2 }} />
+      <div style={{ position: "absolute", bottom: 24, left: 28, width: 12, height: 12, borderRadius: "50%", border: "1.5px solid #e8e2d2" }}>
+        <div style={{ position: "absolute", top: 2, left: "50%", transform: "translateX(-50%)", width: 2, height: 8, background: "#e8e2d2" }} />
+      </div>
+      {/* 運動補償舷梯 */}
+      <div style={{ position: "absolute", bottom: 32, left: -26, width: 50, height: 4, background: "#d9b24a", borderRadius: 2, transform: "rotate(-8deg)", transformOrigin: "right" }} />
+      <div style={{ position: "absolute", bottom: 32, left: 8, width: 4, height: 20, background: "#cdd4d8" }} />
+      {/* 甲板吊車 */}
+      <div style={{ position: "absolute", bottom: 24, left: 70, width: 3, height: 30, background: "#cdd4d8" }} />
+      <div style={{ position: "absolute", bottom: 54, left: 70, width: 30, height: 3, background: "#cdd4d8", transform: "rotate(24deg)", transformOrigin: "left" }} />
+      {/* 艉部子船（daughter craft） */}
+      <div style={{ position: "absolute", bottom: 14, left: 132, width: 18, height: 6, background: "#e0892e", borderRadius: "2px 4px 3px 3px" }} />
+    </div>
+  );
+}
+
 export default function Vessel({ type, scale = 1, opacity = 1, style }: { type: VesselType; scale?: number; opacity?: number; style?: CSSProperties }) {
   return (
     <div style={{ transform: `scale(${scale})`, transformOrigin: "bottom center", opacity, ...style }}>
+      {type === "crew_boat" && <CrewBoat />}
       {type === "ctv" && <Ctv />}
       {type === "sov" && <Sov />}
       {type === "jackup" && <Jackup />}
+      {type === "mothership" && <Mothership />}
     </div>
   );
 }

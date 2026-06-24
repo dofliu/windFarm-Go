@@ -9,7 +9,7 @@ import { DISC } from "./disc";
 import { FARMS } from "../state/farms";
 import { incidentAt } from "../state/incidents";
 import { PARTS } from "./data";
-import { fleetUptime, engineerBusy, fatigueOf, FATIGUE_LIMIT, vesselJobCap, onsiteJobCount, INSPECT_DAYS, SEA_INDEX, vesselSeaTol, SEA_LABEL, dailyPayroll, toWan, SORTIE_COST } from "../state/game";
+import { fleetUptime, engineerBusy, fatigueOf, FATIGUE_LIMIT, jobCapOf, onsiteJobCount, INSPECT_DAYS, SEA_INDEX, seaTolOf, activeVesselSpec, SEA_LABEL, dailyPayroll, toWan, sortieCostOf } from "../state/game";
 import { LedgerView } from "./Ledger";
 
 const STATUS_COLOR: Record<string, string> = { ok: "#3f7d52", fault: "#c0463a", repair: "#cf9a35" };
@@ -51,10 +51,11 @@ export default function FleetOpsModal({ open, onClose }: { open: boolean; onClos
   const selT = sel ? fleet.find((t) => t.id === sel) : null;
   const inc = selT ? incidentAt(selT.faultId) : undefined;
   const candidates = inc ? data.engineers.filter((e) => e.discipline === inc.discipline && !engineerBusy(data.opsJobs, e.id) && fatigueOf(e) < FATIGUE_LIMIT) : [];
-  const cap = vesselJobCap(data.ownsSOV, data.vesselLevel);
+  const cap = jobCapOf(data);
   const onsite = onsiteJobCount(data.opsJobs);
   const atCap = onsite >= cap;
-  const seaOk = SEA_INDEX[data.seaState] <= vesselSeaTol(data.ownsSOV); // 海象是否允許派船
+  const vSpec = activeVesselSpec(data);
+  const seaOk = SEA_INDEX[data.seaState] <= seaTolOf(data); // 海象是否允許派船（依目前作業船）
   const canDeploy = !atCap && seaOk;
   const idleCrew = data.engineers.filter((e) => !engineerBusy(data.opsJobs, e.id) && fatigueOf(e) < FATIGUE_LIMIT);
 
@@ -85,6 +86,7 @@ export default function FleetOpsModal({ open, onClose }: { open: boolean; onClos
         <Stat label={t({ zh: "停機損失", en: "Lost gen" })} value={`${data.fleetLostMWh} MWh`} color={C.amber2} />
         <Stat label={t({ zh: "已修復", en: "Resolved" })} value={String(data.fleetResolved)} color={C.green} />
         <Stat label={t({ zh: "薪資/月", en: "Payroll/mo" })} value={`◎${toWan(dailyPayroll(data.engineers) * 30)}萬`} color={C.mist2} />
+        <Stat label={t({ zh: "作業船", en: "Vessel" })} value={`${vSpec.icon} ${t(vSpec.short)}`} color={C.goldText} />
       </div>
 
       {/* 海象限制派船（接上天氣預報） */}
@@ -143,8 +145,8 @@ export default function FleetOpsModal({ open, onClose }: { open: boolean; onClos
       {faults > 0 && (
         <div style={{ fontSize: 11.5, color: onsite > 0 ? C.green : C.mist, marginBottom: 10 }}>
           🚢 {onsite > 0
-            ? t({ zh: `船隊已在海上：本航次再派工免動員費（同趟批次維修分攤 ◎${toWan(SORTIE_COST)}萬 出海成本）`, en: `Vessel already at sea: additional dispatches this trip are free of the ◎${toWan(SORTIE_COST)}M mobilization` })
-            : t({ zh: `下次派工將開新航次（動員費 ◎${toWan(SORTIE_COST)}萬）——一趟同時修多台最划算，別一部一部修`, en: `Next dispatch starts a new sortie (◎${toWan(SORTIE_COST)}M mobilization) — batch repairs in one trip rather than one-by-one` })}
+            ? t({ zh: `船隊已在海上：本航次再派工免動員費（同趟批次維修分攤 ◎${toWan(sortieCostOf(data))}萬 出海成本）`, en: `Vessel already at sea: additional dispatches this trip are free of the ◎${toWan(sortieCostOf(data))}M mobilization` })
+            : t({ zh: `下次派工將開新航次（${vSpec.icon}${t(vSpec.short)} 動員費 ◎${toWan(sortieCostOf(data))}萬）——一趟同時修多台最划算，別一部一部修`, en: `Next dispatch starts a new sortie (${vSpec.icon}${t(vSpec.short)} ◎${toWan(sortieCostOf(data))}M mobilization) — batch repairs in one trip rather than one-by-one` })}
         </div>
       )}
 
