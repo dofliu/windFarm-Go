@@ -3,6 +3,7 @@ import { C, FONT_SERIF, primaryBg, panel, panelHeader, panelTitle } from "../tok
 import { t } from "../../game/systems/i18n";
 import { useLang } from "../useLang";
 import HubAdvisor from "../HubAdvisor";
+import { FallbackImg } from "../SceneVideo";
 import { useGame } from "../../state/GameContext";
 import { useDialogue } from "../../state/DialogueContext";
 import { useCoachTarget } from "../../state/TutorialContext";
@@ -206,6 +207,8 @@ export default function HubScreen({ setScreen, accent, onDispatch, onFacility, s
           {data.lastEvent && (
             <div style={{ marginTop: 8, padding: "7px 9px", borderRadius: 4, background: data.lastEvent.good ? "rgba(127,206,142,.1)" : "rgba(227,173,66,.12)", border: `1px solid ${data.lastEvent.good ? "rgba(127,206,142,.28)" : "rgba(227,173,66,.32)"}` }}>
               <div style={{ fontSize: 11.5, fontWeight: 700, color: data.lastEvent.good ? C.green : C.amber2 }}>📣 {t({ zh: "最新事件", en: "Latest event" })} · {t(data.lastEvent.name)}</div>
+              {/* 事件情境圖(若該事件有對應圖片;無則自動隱藏) */}
+              <FallbackImg file={`event_${data.lastEvent.id}.jpg`} alt={t(data.lastEvent.name)} style={{ display: "block", width: "100%", height: 84, objectFit: "cover", borderRadius: 4, margin: "5px 0 2px" }} />
               <div style={{ color: "#cfe0e6", fontSize: 11.5, marginTop: 2 }}>{t(data.lastEvent.desc)}</div>
             </div>
           )}
