@@ -445,6 +445,19 @@ test("SLA settlement uses actual fleet uptime, not the legacy availability scala
   ok(b.lastSla.breached, "low fleet uptime breaches SLA despite availability 95");
   ok(u.lastSla && !u.lastSla.breached, "full fleet uptime meets SLA");
 });
+test("repair progress persists in state, resets on quest lifecycle (#33)", () => {
+  const r = { key: "0:m1", boarded: true, pick: 0, steps: [true, true, true, false, false], win: 5 };
+  const s1 = R(I, { type: "SET_REPAIR", repair: r });
+  eq(s1.repair.win, 5);
+  ok(s1.repair.boarded, "boarded persisted");
+  eq(s1.repair.pick, 0);
+  // 接新單 → 清空（避免把上一單進度帶到新單）
+  eq(R(s1, { type: "ACCEPT_QUEST" }).repair, null);
+  // 撤離（FAIL_REPAIR）→ 清空；作業窗不可被切畫面免費重置
+  seed(1); eq(R(s1, { type: "FAIL_REPAIR" }).repair, null);
+  // 明確清空
+  eq(R(s1, { type: "SET_REPAIR", repair: null }).repair, null);
+});
 test("dailyRevenue scales with running turbines; no-fleet fallback uses availability", () => {
   // 機組越多運轉 → 收入越高
   const few = { ...I, fleet: I.fleet.map((t, i) => (i < 20 ? { ...t, status: "fault", faultId: "gearbox" } : t)) };
