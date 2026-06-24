@@ -1,0 +1,46 @@
+# 雲端為主帳號／存檔／教師檢視 — 部署指南（v2 後端）
+
+本階段把「登入、存檔、學習紀錄」改為**雲端為主**（localStorage 退為離線快取），
+通關碼改由**後端驗證**才能防冒名。前端仍在 **GitHub Pages** 靜態運作；後端沿用
+**免費的 Google Apps Script Web App**。啟用需你重新部署一次後端，再打開前端開關。
+
+> ⚠️ 安全層級（教室用）：通關碼以前端弱雜湊(`pinHash`)傳輸、後端比對。`pinHash` 會出現在
+> GET 網址與 Apps Script 執行記錄中，足以**防止學生隨手冒名**，但**非銀行級**。請勿用真實密碼，
+> 通關碼僅供課堂識別。
+
+## 一次性設定步驟
+
+### 1) 重新部署後端 `Code.gs`（v2）
+1. 打開排行榜試算表 → 擴充功能 → Apps Script。
+2. 用 `docs/leaderboard-appsscript/Code.gs`（v2）**全部覆蓋**舊內容。
+3. 修改頂部的 `TEACHER_CODE`，改成你自己的教師碼（例如 `WF-TEACHER-2026`）。
+4. 部署 → **管理部署作業 → 編輯（鉛筆）→ 版本：新版本 → 部署**。
+   - 執行身分：**我**；具有存取權的使用者：**所有人**。
+   - ⚠️ 一定要選「新版本」，否則改動不會生效。
+5. 沿用既有的 `/exec` 網址即可（不必換網址）。
+
+後端會自動建立分頁：`accounts`、`saves`、`records`；排行仍寫入第一個分頁（Sheet1）。
+
+### 2) 打開前端開關 `src/cloud/sheet.ts`
+```ts
+export const CLOUD_FIRST = true;            // 由 false 改成 true
+export const TEACHER_CODE = "WF-TEACHER-2026"; // 與 Code.gs 的 TEACHER_CODE 完全一致
+```
+（`SHEET_CONFIG.webAppUrl` 維持你目前的 `/exec` 網址。）
+
+### 3) 重建並發佈 GitHub Pages
+照原本流程 `npm run build` 後發佈即可。
+
+## 行為說明
+- **註冊**：以**學號＋班級碼**為帳號（雲端唯一）、可取**暱稱**、設**通關碼**。需連線。
+- **登入**：選本機帳號輸入通關碼 → 後端驗證；**斷線時**自動退回本機離線驗證（離線快取）。
+- **跨裝置／新裝置**：登入畫面「我在別台登入過 / 新裝置登入」→ 用學號＋班級碼＋通關碼從雲端登入。
+- **存檔**：雲端為主＋本機快取。登入時以**較新者為準**對齊；遊玩中去抖 1.5 秒上傳雲端。
+  短暫斷線仍可遊玩，恢復連線後自動續傳。
+- **教師檢視**（端點已就緒，面板 UI 於下一階段）：`GET …/exec?do=teacher&classCode=A1&code=教師碼`
+  會回該班每位學生的 `studentId / nickname / score / day / availability / generation / updatedAt`。
+
+## 疑難排解
+- 登入一直失敗、或註冊回應怪異：多半是**忘了選「新版本」**重新部署，後端仍是舊版。
+- `bad-code`：前端 `TEACHER_CODE` 與 `Code.gs` 的 `TEACHER_CODE` 不一致。
+- 想先沿用舊的純本機登入：把 `CLOUD_FIRST` 留 `false` 即可（行為與上一版相同）。

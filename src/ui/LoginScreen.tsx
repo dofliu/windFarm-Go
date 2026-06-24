@@ -4,8 +4,11 @@ import { t } from "../game/systems/i18n";
 import { useLang } from "./useLang";
 import { setProfile, listAccounts, upsertAccount, removeAccount, touchAccount, findAccount, verifyPin, hashPin, validPinFormat, normClass, normId, normNick, idOf, displayName, type Account } from "../state/profile";
 import { Sfx } from "../audio/sfx";
+import { CLOUD_FIRST } from "../cloud/sheet";
+import { cloudEnabled, isOnline, registerAccount, loginAccount } from "../cloud/api";
 
-type Mode = "picker" | "pin" | "create";
+type Mode = "picker" | "pin" | "create" | "remote";
+const useCloud = (): boolean => CLOUD_FIRST && cloudEnabled();
 
 // 開場登入（強制 PIN）：本機帳號清單 → 選擇帳號輸入 PIN，或新建帳號（暱稱+班級碼+PIN）。
 // 同一台教室電腦可保有多位學生帳號，各自獨立存檔與紀錄。另保留「訪客」單機試玩（不計排行/紀錄）。
@@ -22,6 +25,7 @@ export default function LoginScreen({ onDone }: { onDone: () => void }) {
   const [pin, setPin] = useState("");
   const [pin2, setPin2] = useState("");
   const [err, setErr] = useState("");
+  const [busy, setBusy] = useState(false);
 
   const field: React.CSSProperties = {
     width: "100%", padding: "11px 14px", marginTop: 6, borderRadius: 6,
@@ -37,10 +41,26 @@ export default function LoginScreen({ onDone }: { onDone: () => void }) {
 
   const enterGuest = () => { Sfx.click(); finish({ studentId: "GUEST", nickname: "訪客", classCode: "", pinHash: "", guest: true }); };
 
-  // 選定帳號 → 通關碼驗證
+  // 選定本機帳號 → 通關碼驗證（雲端為主時由後端驗證，離線則退回本機）
   const startPin = (a: Account) => { Sfx.click(); setSel(a); setPin(""); setErr(""); setMode("pin"); };
-  const submitPin = () => {
-    if (!sel) return;
+  const submitPin = async () => {
+    if (!sel || busy) return;
+    const typedHash = hashPin(pin, idOf(sel));
+    if (useCloud() && isOnline()) {
+      setBusy(true);
+      const r = await loginAccount({ studentId: sel.studentId, classCode: sel.classCode, pinHash: typedHash });
+      setBusy(false);
+      if (r) { // 後端給了明確結果
+        if (!r.ok) { Sfx.error(); setErr(r.err === "no-account" ? t({ zh: "雲端查無此帳號", en: "Account not found in cloud" }) : t({ zh: "通關碼不正確", en: "Incorrect passcode" })); return; }
+        const nick = r.nickname || sel.nickname;
+        Sfx.success();
+        const now = Date.now();
+        upsertAccount({ ...sel, nickname: nick, pinHash: typedHash, lastSeen: now });
+        finish({ studentId: sel.studentId, classCode: sel.classCode, nickname: nick, pinHash: typedHash });
+        return;
+      }
+      // r === null → 連線失敗 → 退回本機離線驗證
+    }
     if (!verifyPin(sel, pin)) { Sfx.error(); setErr(t({ zh: "通關碼不正確", en: "Incorrect passcode" })); return; }
     Sfx.success();
     const now = Date.now();
@@ -48,8 +68,29 @@ export default function LoginScreen({ onDone }: { onDone: () => void }) {
     finish({ studentId: sel.studentId, classCode: sel.classCode, nickname: sel.nickname, pinHash: sel.pinHash });
   };
 
-  // 新建帳號
-  const submitCreate = () => {
+  // 跨裝置/新裝置登入：以學號+班級碼+通關碼向雲端驗證（不需本機快取）
+  const submitRemote = async () => {
+    if (busy) return;
+    const sid = normId(studentId), cls = normClass(classCode);
+    if (!sid || !cls || !pin) { setErr(t({ zh: "請輸入學號、班級碼與通關碼", en: "Enter student ID, class code & passcode" })); return; }
+    const id = idOf({ studentId: sid, classCode: cls });
+    const typedHash = hashPin(pin, id);
+    if (!isOnline()) { setErr(t({ zh: "跨裝置登入需要連線", en: "Cross-device login needs a connection" })); return; }
+    setBusy(true);
+    const r = await loginAccount({ studentId: sid, classCode: cls, pinHash: typedHash });
+    setBusy(false);
+    if (!r) { Sfx.error(); setErr(t({ zh: "連線失敗，請稍後再試", en: "Connection failed, try again" })); return; }
+    if (!r.ok) { Sfx.error(); setErr(r.err === "no-account" ? t({ zh: "查無此帳號，請改用「新建帳號」", en: "No such account — create one instead" }) : t({ zh: "通關碼不正確", en: "Incorrect passcode" })); return; }
+    Sfx.success();
+    const now = Date.now();
+    const nick = r.nickname || "";
+    upsertAccount({ studentId: sid, classCode: cls, nickname: nick, pinHash: typedHash, createdAt: now, lastSeen: now });
+    finish({ studentId: sid, classCode: cls, nickname: nick, pinHash: typedHash });
+  };
+
+  // 新建帳號（雲端為主時向後端註冊；離線或未啟用則只建本機）
+  const submitCreate = async () => {
+    if (busy) return;
     const sid = normId(studentId), cls = normClass(classCode), nick = normNick(nickname);
     if (!sid) { setErr(t({ zh: "請輸入學號", en: "Enter a student ID" })); return; }
     if (!cls) { setErr(t({ zh: "請輸入班級碼", en: "Enter a class code" })); return; }
@@ -57,11 +98,24 @@ export default function LoginScreen({ onDone }: { onDone: () => void }) {
     if (pin !== pin2) { setErr(t({ zh: "兩次通關碼不一致", en: "Passcodes don't match" })); return; }
     const id = idOf({ studentId: sid, classCode: cls });
     if (findAccount(id)) { Sfx.error(); setErr(t({ zh: "此班級已有相同學號，請改用「選擇帳號」登入", en: "That student ID already exists in this class — log in from the list" })); setMode("picker"); return; }
+    const pinHash = hashPin(pin, id);
+    if (useCloud()) {
+      if (!isOnline()) { setErr(t({ zh: "建立帳號需要連線", en: "Creating an account needs a connection" })); return; }
+      setBusy(true);
+      const r = await registerAccount({ studentId: sid, classCode: cls, nickname: nick, pinHash });
+      setBusy(false);
+      if (!r) { Sfx.error(); setErr(t({ zh: "連線失敗，請稍後再試", en: "Connection failed, try again" })); return; }
+      if (!r.ok) {
+        Sfx.error();
+        if (r.err === "exists") { setErr(t({ zh: "雲端已有此學號，請改用「我在別台登入過」", en: "That ID exists in cloud — use cross-device login" })); setMode("remote"); return; }
+        setErr(t({ zh: "建立失敗，請稍後再試", en: "Create failed, try again" })); return;
+      }
+    }
     Sfx.success();
     const now = Date.now();
-    const acct: Account = { studentId: sid, classCode: cls, nickname: nick, pinHash: hashPin(pin, id), createdAt: now, lastSeen: now };
+    const acct: Account = { studentId: sid, classCode: cls, nickname: nick, pinHash, createdAt: now, lastSeen: now };
     upsertAccount(acct);
-    finish({ studentId: sid, classCode: cls, nickname: nick, pinHash: acct.pinHash });
+    finish({ studentId: sid, classCode: cls, nickname: nick, pinHash });
   };
 
   const del = (a: Account, e: React.MouseEvent) => {
@@ -101,6 +155,27 @@ export default function LoginScreen({ onDone }: { onDone: () => void }) {
               <button onClick={() => { Sfx.click(); setStudentId(""); setClassCode(""); setNickname(""); setPin(""); setPin2(""); setErr(""); setMode("create"); }} style={{ width: "100%", padding: "12px 0", borderRadius: 6, border: "1px solid rgba(255,236,196,.6)", background: primaryBg(C.gold), color: C.ink, fontFamily: FONT_SERIF, fontWeight: 900, fontSize: 16, cursor: "pointer" }}>
                 ＋ {t({ zh: "新建帳號", en: "New account" })}
               </button>
+              {useCloud() && (
+                <div onClick={() => { Sfx.click(); setStudentId(""); setClassCode(""); setPin(""); setErr(""); setMode("remote"); }} style={{ textAlign: "center", marginTop: 12, fontSize: 12, color: C.mist, cursor: "pointer", textDecoration: "underline" }}>{t({ zh: "我在別台登入過 / 新裝置登入", en: "Logged in elsewhere / new device" })}</div>
+              )}
+            </>
+          )}
+
+          {/* 跨裝置/新裝置登入（雲端） */}
+          {mode === "remote" && (
+            <>
+              <div style={{ fontSize: 13, color: C.mist, lineHeight: 1.6, marginBottom: 6 }}>
+                {t({ zh: "用學號、班級碼與通關碼從雲端登入（適用新裝置或換電腦）。", en: "Log in from the cloud with your student ID, class code & passcode (for a new device)." })}
+              </div>
+              <label style={label}>{t({ zh: "學號", en: "Student ID" })}</label>
+              <input style={field} value={studentId} maxLength={20} onChange={(e) => { setStudentId(e.target.value); setErr(""); }} placeholder={t({ zh: "例如：S1090123", en: "e.g. S1090123" })} />
+              <label style={label}>{t({ zh: "班級碼", en: "Class code" })}</label>
+              <input style={field} value={classCode} maxLength={12} onChange={(e) => { setClassCode(e.target.value); setErr(""); }} placeholder={t({ zh: "教師提供", en: "from teacher" })} />
+              <label style={label}>{t({ zh: "通關碼", en: "Passcode" })}</label>
+              <input style={field} type="password" inputMode="numeric" value={pin} maxLength={6} onChange={(e) => { setPin(e.target.value.replace(/\D/g, "")); setErr(""); }} onKeyDown={(e) => { if (e.key === "Enter") submitRemote(); }} placeholder="••••" />
+              {err && <div style={{ color: C.redText, fontSize: 12.5, marginTop: 8 }}>{err}</div>}
+              <button disabled={busy} onClick={submitRemote} style={{ width: "100%", marginTop: 18, padding: "13px 0", borderRadius: 6, border: "1px solid rgba(255,236,196,.6)", background: primaryBg(C.gold), color: C.ink, fontFamily: FONT_SERIF, fontWeight: 900, fontSize: 17, cursor: busy ? "wait" : "pointer", opacity: busy ? 0.7 : 1 }}>{busy ? t({ zh: "登入中…", en: "Logging in…" }) : t({ zh: "雲端登入", en: "CLOUD LOG IN" })}</button>
+              <div onClick={() => { Sfx.click(); setErr(""); setMode(listAccounts().length ? "picker" : "create"); }} style={{ textAlign: "center", marginTop: 12, fontSize: 12, color: C.mist, cursor: "pointer", textDecoration: "underline" }}>{t({ zh: "← 返回", en: "← Back" })}</div>
             </>
           )}
 
@@ -112,7 +187,7 @@ export default function LoginScreen({ onDone }: { onDone: () => void }) {
               <label style={label}>{t({ zh: "輸入通關碼", en: "Enter passcode" })}</label>
               <input style={field} type="password" inputMode="numeric" value={pin} autoFocus maxLength={6} onChange={(e) => { setPin(e.target.value.replace(/\D/g, "")); setErr(""); }} onKeyDown={(e) => { if (e.key === "Enter") submitPin(); }} placeholder="••••" />
               {err && <div style={{ color: C.redText, fontSize: 12.5, marginTop: 8 }}>{err}</div>}
-              <button onClick={submitPin} style={{ width: "100%", marginTop: 18, padding: "13px 0", borderRadius: 6, border: "1px solid rgba(255,236,196,.6)", background: primaryBg(C.gold), color: C.ink, fontFamily: FONT_SERIF, fontWeight: 900, fontSize: 17, cursor: "pointer" }}>{t({ zh: "登 入", en: "LOG IN" })}</button>
+              <button disabled={busy} onClick={submitPin} style={{ width: "100%", marginTop: 18, padding: "13px 0", borderRadius: 6, border: "1px solid rgba(255,236,196,.6)", background: primaryBg(C.gold), color: C.ink, fontFamily: FONT_SERIF, fontWeight: 900, fontSize: 17, cursor: busy ? "wait" : "pointer", opacity: busy ? 0.7 : 1 }}>{busy ? t({ zh: "登入中…", en: "Logging in…" }) : t({ zh: "登 入", en: "LOG IN" })}</button>
               <div onClick={() => { Sfx.click(); setErr(""); setMode("picker"); }} style={{ textAlign: "center", marginTop: 12, fontSize: 12, color: C.mist, cursor: "pointer", textDecoration: "underline" }}>{t({ zh: "← 返回帳號清單", en: "← Back to accounts" })}</div>
             </>
           )}
@@ -134,7 +209,7 @@ export default function LoginScreen({ onDone }: { onDone: () => void }) {
               <label style={label}>{t({ zh: "再次輸入通關碼", en: "Confirm passcode" })}</label>
               <input style={field} type="password" inputMode="numeric" value={pin2} maxLength={6} onChange={(e) => { setPin2(e.target.value.replace(/\D/g, "")); setErr(""); }} onKeyDown={(e) => { if (e.key === "Enter") submitCreate(); }} placeholder="••••" />
               {err && <div style={{ color: C.redText, fontSize: 12.5, marginTop: 8 }}>{err}</div>}
-              <button onClick={submitCreate} style={{ width: "100%", marginTop: 18, padding: "13px 0", borderRadius: 6, border: "1px solid rgba(255,236,196,.6)", background: primaryBg(C.gold), color: C.ink, fontFamily: FONT_SERIF, fontWeight: 900, fontSize: 17, cursor: "pointer" }}>{t({ zh: "建立並開始", en: "CREATE & START" })}</button>
+              <button disabled={busy} onClick={submitCreate} style={{ width: "100%", marginTop: 18, padding: "13px 0", borderRadius: 6, border: "1px solid rgba(255,236,196,.6)", background: primaryBg(C.gold), color: C.ink, fontFamily: FONT_SERIF, fontWeight: 900, fontSize: 17, cursor: busy ? "wait" : "pointer", opacity: busy ? 0.7 : 1 }}>{busy ? t({ zh: "處理中…", en: "Working…" }) : t({ zh: "建立並開始", en: "CREATE & START" })}</button>
               {listAccounts().length > 0 && (
                 <div onClick={() => { Sfx.click(); setErr(""); setMode("picker"); }} style={{ textAlign: "center", marginTop: 12, fontSize: 12, color: C.mist, cursor: "pointer", textDecoration: "underline" }}>{t({ zh: "← 返回帳號清單", en: "← Back to accounts" })}</div>
               )}

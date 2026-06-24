@@ -48,6 +48,7 @@ const tut = await load("src/ui/tutorialSteps.ts");
 const tasks = await load("src/state/tasks.ts");
 const cons = await load("src/state/construction.ts");
 const prof = await load("src/state/profile.ts");
+const api = await load("src/cloud/api.ts");
 const R = g.reducer, I = g.INITIAL;
 
 // ───────────────────────── INITIAL 不變量 ─────────────────────────
@@ -967,6 +968,31 @@ test("profile: localStorage-backed registry round-trips & remove works", () => {
   eq(prof.listAccounts().length, 1, "removed one");
   ok(!prof.findAccount("A1/S01"), "gone after remove");
   localStorage.clear();
+});
+
+// ───────────────────────── 雲端為主客戶端（階段 2，純函式） ─────────────────────────
+test("cloud/api: buildQuery encodes & skips empty/undefined", () => {
+  eq(api.buildQuery({ do: "login", studentId: "S 01", classCode: "A1", x: "", y: undefined }), "do=login&studentId=S%2001&classCode=A1", "encode + skip empty/undefined");
+  eq(api.buildQuery({}), "", "empty params → empty string");
+});
+test("cloud/api: apiUrl prefixes the web app base", () => {
+  const u = api.apiUrl({ do: "load", studentId: "S01", classCode: "A1" });
+  ok(u.indexOf("/exec?") > 0, "uses /exec base");
+  ok(u.indexOf("do=load") > 0 && u.indexOf("studentId=S01") > 0, "carries params");
+});
+test("cloud/api: pickNewer prefers newer; cloud wins ties; handles nulls", () => {
+  eq(api.pickNewer(null, null), null, "both null → null");
+  eq(api.pickNewer({ state: "L", savedAt: 5 }, null).from, "local", "only local");
+  eq(api.pickNewer(null, { state: "C", savedAt: 5 }).from, "cloud", "only cloud");
+  eq(api.pickNewer({ state: "L", savedAt: 9 }, { state: "C", savedAt: 5 }).from, "local", "local newer wins");
+  eq(api.pickNewer({ state: "L", savedAt: 5 }, { state: "C", savedAt: 9 }).from, "cloud", "cloud newer wins");
+  eq(api.pickNewer({ state: "L", savedAt: 5 }, { state: "C", savedAt: 5 }).from, "cloud", "tie → cloud (server authoritative)");
+});
+test("cloud/api: identityOf & cloudKey are consistent with profile.idOf", () => {
+  const p = { studentId: "S01", classCode: "A1", pinHash: "h", nickname: "x" };
+  const id = api.identityOf(p);
+  eq(id.studentId, "S01"); eq(id.classCode, "A1"); eq(id.pinHash, "h");
+  eq(api.cloudKey(p), prof.idOf(p), "cloudKey === idOf");
 });
 
 console.log(`\n${pass} passed, ${fail} failed (${pass + fail} total)`);
