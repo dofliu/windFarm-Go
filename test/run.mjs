@@ -29,6 +29,11 @@ function test(name, fn) {
   finally { unseed(); }
 }
 function ok(cond, msg = "expected truthy") { if (!cond) throw new Error(msg); }
+// localStorage 測試替身（profile.ts 帳號清單等需要）
+globalThis.localStorage = (() => {
+  const m = new Map();
+  return { getItem: (k) => (m.has(k) ? m.get(k) : null), setItem: (k, v) => m.set(k, String(v)), removeItem: (k) => m.delete(k), clear: () => m.clear() };
+})();
 function eq(a, b, msg) { if (a !== b) throw new Error(msg || `expected ${JSON.stringify(b)}, got ${JSON.stringify(a)}`); }
 function near(a, b, tol, msg) { if (Math.abs(a - b) > tol) throw new Error(msg || `expected ~${b}±${tol}, got ${a}`); }
 
@@ -42,6 +47,7 @@ const cmap = await load("src/ui/courseMap.ts");
 const tut = await load("src/ui/tutorialSteps.ts");
 const tasks = await load("src/state/tasks.ts");
 const cons = await load("src/state/construction.ts");
+const prof = await load("src/state/profile.ts");
 const R = g.reducer, I = g.INITIAL;
 
 // ───────────────────────── INITIAL 不變量 ─────────────────────────
@@ -908,6 +914,59 @@ test("completing all stages sets buildDone and pays the reward", () => {
 test("buildGrade: best run is S, worst is D", () => {
   ok(cons.buildGrade(cons.BUILD_MAX_SCORE).en.startsWith("S"), "max → S grade");
   ok(cons.buildGrade(-99).en.startsWith("D"), "very negative → D grade");
+});
+
+// ───────────────────────── 登入 / 帳號 / 通關碼（階段 1，學號為帳號） ─────────────────────────
+test("profile: passcode hash deterministic & verify; format guard", () => {
+  const id = prof.idOf({ studentId: "S01", classCode: "A1" });
+  const h = prof.hashPin("1234", id);
+  eq(h, prof.hashPin("1234", id), "hash is deterministic");
+  ok(h !== prof.hashPin("1234", prof.idOf({ studentId: "S01", classCode: "A2" })), "hash salted by identity");
+  ok(prof.verifyPin({ studentId: "S01", classCode: "A1", pinHash: h }, "1234"), "correct passcode verifies");
+  ok(!prof.verifyPin({ studentId: "S01", classCode: "A1", pinHash: h }, "0000"), "wrong passcode rejected");
+  ok(prof.validPinFormat("1234") && prof.validPinFormat("123456"), "4-6 digits ok");
+  ok(!prof.validPinFormat("123") && !prof.validPinFormat("12a4") && !prof.validPinFormat("1234567"), "bad formats rejected");
+});
+test("profile: normalisation, identity, displayName & save/record keys", () => {
+  eq(prof.normClass(" a1 "), "A1", "class upper-trimmed");
+  eq(prof.normId(" s01 "), "S01", "student id upper-trimmed");
+  eq(prof.normNick("  Ming "), "Ming", "nick trimmed");
+  eq(prof.idOf({ studentId: "S01", classCode: "A1" }), "A1/S01", "id = class/student");
+  eq(prof.displayName({ nickname: "Ming", studentId: "S01" }), "Ming", "nickname preferred");
+  eq(prof.displayName({ nickname: "", studentId: "S01" }), "S01", "falls back to student id");
+  eq(prof.saveKeyFor({ studentId: "S01", classCode: "A1" }), "windfarm-go-save::A1/S01", "save key by class/student");
+  eq(prof.recordKeyFor({ studentId: "S01", classCode: "A1" }), "wfg-record::A1/S01");
+  eq(prof.saveKeyFor(null), "windfarm-go-save::guest");
+});
+test("profile: account registry upsert dedups by identity, newest first", () => {
+  const a1 = { studentId: "S01", classCode: "A1", nickname: "Ming", pinHash: "x", createdAt: 1, lastSeen: 1 };
+  const a2 = { studentId: "S02", classCode: "A1", nickname: "Hua", pinHash: "y", createdAt: 2, lastSeen: 2 };
+  let list = prof.upsertAccountIn([], a1);
+  list = prof.upsertAccountIn(list, a2);
+  eq(list.length, 2, "two distinct accounts");
+  // 同學號再 upsert → 取代、不重複，更新 lastSeen 排序到最前
+  list = prof.upsertAccountIn(list, { ...a1, pinHash: "z", lastSeen: 9 });
+  eq(list.length, 2, "same identity dedups");
+  eq(list[0].studentId, "S01", "most-recent first");
+  eq(list[0].pinHash, "z", "pinHash updated on re-upsert");
+});
+test("profile: isAuthed requires passcode+studentId or guest", () => {
+  ok(!prof.isAuthed(null), "no profile");
+  ok(!prof.isAuthed({ studentId: "S01", classCode: "A1", nickname: "x", pinHash: "" }), "legacy no-pin profile not authed");
+  ok(prof.isAuthed({ studentId: "S01", classCode: "A1", nickname: "x", pinHash: "h" }), "passcode profile authed");
+  ok(prof.isAuthed({ studentId: "GUEST", classCode: "", nickname: "訪客", pinHash: "", guest: true }), "guest authed");
+});
+test("profile: localStorage-backed registry round-trips & remove works", () => {
+  localStorage.clear();
+  const now = 100;
+  prof.upsertAccount({ studentId: "S01", classCode: "A1", nickname: "Ming", pinHash: "h1", createdAt: now, lastSeen: now });
+  prof.upsertAccount({ studentId: "S02", classCode: "A1", nickname: "Hua", pinHash: "h2", createdAt: now, lastSeen: now + 1 });
+  eq(prof.listAccounts().length, 2, "two accounts stored");
+  ok(prof.findAccount("A1/S01"), "find by id");
+  prof.removeAccount("A1/S01");
+  eq(prof.listAccounts().length, 1, "removed one");
+  ok(!prof.findAccount("A1/S01"), "gone after remove");
+  localStorage.clear();
 });
 
 console.log(`\n${pass} passed, ${fail} failed (${pass + fail} total)`);

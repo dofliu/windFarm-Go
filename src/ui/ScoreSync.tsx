@@ -12,7 +12,7 @@ export default function ScoreSync() {
 
   useEffect(() => {
     const profile = getProfile();
-    if (!profile) return;
+    if (!profile || profile.guest) return; // 訪客不計排行
     // 只在「完成任務數」推進時送分，避免洗版
     if (data.missionsDone === lastSent.current) return;
     lastSent.current = data.missionsDone;
