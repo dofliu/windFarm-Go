@@ -608,6 +608,177 @@ export const FAULTS: Record<string, Fault> = {
   },
 };
 
+// ───────── 知識圖鑑解說（圖鑑擴充）：每個故障的深度排查知識 ─────────
+// 同一元件可由不同根因造成不同故障，differential 點出「如何與同元件其他根因區分」。
+export interface CodexEntry {
+  mechanism: I18n;    // 成因機制 / 原理
+  symptom: I18n;      // 典型症狀（SCADA 告警 + 現場徵兆）
+  differential: I18n; // 鑑別重點：如何與同元件的其他根因區分
+  consequence: I18n;  // 若不處理的後果
+  tip: I18n;          // 維修 / 安全提示
+}
+
+export const CODEX: Record<string, CodexEntry> = {
+  gearbox_overheat: {
+    mechanism: { zh: "潤滑油位過低或油質劣化，使潤滑膜與散熱能力下降，摩擦熱累積導致油溫攀升。", en: "Low oil level or degraded oil thins the lubricating film and cuts heat removal, so friction heat builds up and oil temp climbs." },
+    symptom: { zh: "油溫紅色告警（如 78°C）、濾芯壓差升高、發電機振動警戒同步出現。", en: "Red oil-temp alarm (e.g. 78°C), rising filter ΔP, and a concurrent generator-vibration warning." },
+    differential: { zh: "油溫高但金屬碎屑正常 → 散熱/潤滑問題（本症）；若油溫正常卻碎屑驟增 → 屬『軸承磨耗』。", en: "High temp with normal debris → cooling/lubrication (this); normal temp but debris spike → it's 'bearing wear'." },
+    consequence: { zh: "持續過熱會加速齒面與軸承劣化，最終演變為金屬剝離的大修。", en: "Sustained overheating accelerates gear/bearing wear, eventually escalating to a spalling overhaul." },
+    tip: { zh: "先補油/換濾芯與齒輪油即可復歸，屬例行可作業範圍。", en: "Top up oil, replace filter & gear oil to reset — a routine workable job." },
+  },
+  gearbox_bearing_wear: {
+    mechanism: { zh: "內部軸承或齒面長期疲勞剝離（spalling），金屬顆粒進入油路、高頻振動上升。", en: "Long-term fatigue spalling of internal bearings/gear teeth sheds metal particles into the oil and raises HF vibration." },
+    symptom: { zh: "線上油液監測金屬碎屑驟增、高頻振動超標，但油溫可正常。", en: "Online oil-debris count spikes and HF vibration exceeds limits, while oil temp may be normal." },
+    differential: { zh: "關鍵是『碎屑＋高頻振動』而油溫正常，可與『油溫過高』散熱問題區分。", en: "The tell is debris + HF vibration with normal temp — distinguishing it from the cooling-related overheat." },
+    consequence: { zh: "剝離擴展會打齒、咬死傳動鏈，須重吊/安裝船級大修。", en: "Spreading spall can strip teeth and seize the drivetrain — a heavy-lift / jack-up overhaul." },
+    tip: { zh: "重大故障：拆檢後轉多回合大修，需連續可作業天氣窗。", en: "Major fault: strip down then run a multi-day overhaul needing consecutive workable windows." },
+  },
+  yaw_misalign: {
+    mechanism: { zh: "偏航煞車液壓未完全洩除，齒盤卡滯，使指令與回授位置產生偏差。", en: "Yaw brake hydraulics not fully released jam the ring gear, creating a gap between commanded and feedback position." },
+    symptom: { zh: "偏航位置偏差（如 +12°）、偏航電機電流偏高、風向標跳動、無法迎風。", en: "Yaw position error (e.g. +12°), high yaw-motor current, vane jitter, and failure to face the wind." },
+    differential: { zh: "煞車未釋放屬『控制/煞車』面；若可動但有異音與背隙則屬『齒盤磨損』機械面。", en: "An unreleased brake is the control/brake path; movable but noisy with backlash is the mechanical ring-gear-wear path." },
+    consequence: { zh: "長期失準使機組偏離最佳迎風角，發電量下滑、載荷不均。", en: "Chronic misalignment keeps the rotor off optimal yaw, cutting output and unevenly loading the structure." },
+    tip: { zh: "確認煞車液壓完全洩除、釋放卡滯片並潤滑齒盤後複歸定位。", en: "Confirm full hydraulic release, free the stuck pads, re-grease the ring gear, then re-home." },
+  },
+  yaw_gear_wear: {
+    mechanism: { zh: "偏航齒輪/齒盤齒面長期磨損、潤滑不足，造成背隙過大與運轉異音。", en: "Long-term wear and poor lubrication of the yaw gear/ring teeth cause excessive backlash and running noise." },
+    symptom: { zh: "偏航可動但明顯異音、背隙過大、齒面出現金屬屑，而煞車液壓正常。", en: "Yaw moves but is loud with large backlash and gear swarf, while brake hydraulics are normal." },
+    differential: { zh: "煞車液壓正常是關鍵——排除『偏航失準』的控制面，指向齒盤機械磨損。", en: "Normal brake hydraulics is key — it rules out the control-side misalignment and points to mechanical ring-gear wear." },
+    consequence: { zh: "背隙惡化會打齒、定位漂移，最終須更換整組偏航齒輪。", en: "Worsening backlash strips teeth and drifts positioning, ending in a full yaw-gear-set replacement." },
+    tip: { zh: "檢查齒面磨損與背隙，更換齒輪組並重新潤滑後校正定位。", en: "Inspect teeth & backlash, replace the gear set, re-grease, then re-align." },
+  },
+  gen_vibration: {
+    mechanism: { zh: "發電機軸承內環疲勞剝落，滾動體通過缺陷時在 BPFI 特徵頻率激發振動突波。", en: "Generator bearing inner-race fatigue spalling excites a vibration spike at the BPFI characteristic frequency as rollers pass the defect." },
+    symptom: { zh: "振動 RMS 超標、FFT 在 BPFI 頻率出現突波、軸承溫度上升、噪音增加。", en: "Vibration RMS over limit, an FFT spike at BPFI, rising bearing temp and increasing noise." },
+    differential: { zh: "BPFI 突波＝軸承內環，與『繞組過溫』（冷卻）、『碳刷』（激磁火花）截然不同。", en: "A BPFI spike = bearing inner race — quite different from winding overtemp (cooling) or brush wear (excitation sparking)." },
+    consequence: { zh: "軸承失效會損及轉子與定子，演變為發電機級大修。", en: "Bearing failure can damage rotor and stator, escalating to a generator-level overhaul." },
+    tip: { zh: "重大故障：採頻譜定位後須重吊更換軸承並重新對心。", en: "Major fault: locate via spectrum, then heavy-lift replace the bearing and re-align." },
+  },
+  gen_brush_wear: {
+    mechanism: { zh: "碳刷磨耗、彈簧壓力不足或集電環髒污，接觸不良造成激磁電流跳動與火花。", en: "Worn brushes, weak spring pressure or a dirty slip-ring make poor contact, causing excitation-current jitter and sparking." },
+    symptom: { zh: "集電環火花、碳粉堆積、激磁電流跳動。", en: "Slip-ring sparking, carbon-dust build-up and excitation-current jitter." },
+    differential: { zh: "『火花＋碳粉＋激磁跳動』指向碳刷/集電環，與振動（軸承）或過溫（冷卻）無關。", en: "Sparking + dust + excitation jitter points to brushes/slip-ring — unrelated to vibration (bearing) or overtemp (cooling)." },
+    consequence: { zh: "持續火花會燒蝕集電環、使激磁失穩甚至跳機。", en: "Continued sparking erodes the slip-ring and destabilises excitation, risking a trip." },
+    tip: { zh: "檢查碳刷磨耗量與彈簧壓力，更換碳刷並清潔集電環即可。", en: "Check brush wear & spring pressure, replace brushes and clean the slip-ring." },
+  },
+  gen_overtemp: {
+    mechanism: { zh: "冷卻系統（泵/風扇/水路）效能不足，繞組散熱不良導致溫度過高、被迫降載。", en: "An underperforming cooling system (pump/fan/loop) fails to dissipate winding heat, forcing overtemp and derate." },
+    symptom: { zh: "繞組溫度過高、冷卻風扇異常、輸出降載，但振動與激磁正常。", en: "High winding temp, cooling-fan fault and output derate, while vibration and excitation are normal." },
+    differential: { zh: "振動正常排除軸承、激磁正常排除碳刷——剩下的根因就是冷卻系統。", en: "Normal vibration rules out the bearing, normal excitation rules out brushes — leaving the cooling system." },
+    consequence: { zh: "長期過溫使絕緣老化、縮短繞組壽命。", en: "Prolonged overtemp ages insulation and shortens winding life." },
+    tip: { zh: "檢查冷卻泵流量與風扇，更換冷卻泵並補充冷卻液後降溫復歸。", en: "Check coolant flow & fan, replace the pump, top up coolant, then cool down and reset." },
+  },
+  pitch_fault: {
+    mechanism: { zh: "失電時變槳依賴後備電池/超級電容順槳停機，電池失效將無法安全順槳。", en: "On power loss, pitch relies on a backup battery/supercap to feather; a dead battery prevents safe feathering." },
+    symptom: { zh: "強風下無法順槳停機、後備電池電壓低、轉速偏高（過速）。", en: "Can't feather to stop in high wind, low backup-battery voltage and overspeed." },
+    differential: { zh: "後備電池『失電』面——與『液壓洩漏』（壓力/油位下降、反應遲鈍）的機械面不同。", en: "This is the power-loss path — distinct from the hydraulic-leak path (falling pressure/level, sluggish motion)." },
+    consequence: { zh: "無法順槳將使轉子過速，是危及結構安全的重大風險。", en: "Failure to feather lets the rotor overspeed — a serious structural-safety risk." },
+    tip: { zh: "量測後備電池電壓，更換電池模組並自檢後做順槳測試。", en: "Measure backup-battery voltage, replace the module, self-test, then run a feather test." },
+  },
+  pitch_hydraulic_leak: {
+    mechanism: { zh: "液壓閥或油封洩漏使系統壓力與油位下降，變槳作動力道不足、反應遲鈍。", en: "A leaking hydraulic valve or seal drops system pressure and oil level, leaving pitch underpowered and sluggish." },
+    symptom: { zh: "變槳能動但反應遲鈍、液壓壓力與油位下降，後備電池正常。", en: "Pitch works but is sluggish, with falling pressure and oil level — backup battery OK." },
+    differential: { zh: "電池正常是關鍵：排除『失電無法順槳』，指向液壓漏油的機械根因。", en: "A healthy battery is key: it rules out the power-loss failure and points to the hydraulic-leak mechanical cause." },
+    consequence: { zh: "壓力持續流失將使變槳完全失能，喪失調節與停機能力。", en: "Continued pressure loss disables pitch entirely, losing both regulation and shutdown capability." },
+    tip: { zh: "定位洩漏點並做壓力測試，更換閥組/油封並補油後行程測試。", en: "Locate the leak, pressure-test, replace the valve block/seals, refill, then travel-test." },
+  },
+  converter_fault: {
+    mechanism: { zh: "冷卻系統流量不足或堵塞，IGBT 散熱不良反覆觸發過溫保護跳脫。", en: "Insufficient or blocked coolant flow starves IGBT cooling, repeatedly tripping overtemp protection." },
+    symptom: { zh: "變流器 IGBT 過溫、冷卻水流量低、輸出功率受限、反覆跳脫。", en: "Converter IGBT overtemp, low coolant flow, curtailed output and repeated trips." },
+    differential: { zh: "『冷卻流量不足』影響整體散熱；若冷卻正常卻單一橋臂跳脫則屬『IGBT 模組劣化』。", en: "Low coolant flow affects overall cooling; if cooling is fine but one bridge leg trips, it's IGBT-module degradation." },
+    consequence: { zh: "反覆過溫加速功率模組老化，最終演變為模組級故障。", en: "Repeated overtemp ages the power modules, eventually becoming a module-level failure." },
+    tip: { zh: "檢查冷卻泵與管路流量，清理散熱器/更換濾網後復歸測試。", en: "Check coolant pump & loop flow, clean the radiator / replace filters, then reset-test." },
+  },
+  converter_igbt: {
+    mechanism: { zh: "單一橋臂 IGBT 功率模組劣化/失效，即使冷卻正常也反覆觸發短路（desat）保護。", en: "A single bridge-leg IGBT power module degrades/fails and keeps tripping desat protection even with cooling normal." },
+    symptom: { zh: "模組溫差異常、單一橋臂反覆短路保護跳脫，冷卻流量卻正常。", en: "Abnormal module ΔT and one bridge leg repeatedly tripping on desat, while coolant flow is normal." },
+    differential: { zh: "『單臂跳脫＋冷卻正常』是關鍵，與整體『冷卻流量不足』的過溫不同。", en: "Single-leg trip with normal cooling is the tell — unlike the overall low-coolant-flow overtemp." },
+    consequence: { zh: "模組徹底失效將使該相無法輸出，整機停機。", en: "Total module failure loses that phase's output and stops the whole turbine." },
+    tip: { zh: "讀故障碼定位故障橋臂，更換 IGBT 模組與導熱介面後低壓測試。", en: "Read fault codes to locate the leg, replace the IGBT module & thermal interface, then low-voltage test." },
+  },
+  blade_crack: {
+    mechanism: { zh: "葉片殼體結構性裂紋在循環載荷下擴展，危及整支葉片結構完整性。", en: "A structural shell crack propagates under cyclic loading, threatening the whole blade's integrity." },
+    symptom: { zh: "可見結構裂紋、葉片異音、不平衡振動。", en: "Visible structural crack, blade noise and imbalance vibration." },
+    differential: { zh: "『結構裂紋』屬重大（不可帶病運轉）；僅前緣塗層剝落、無裂紋則屬輕度『侵蝕』。", en: "A structural crack is major (never run on it); coating loss without a crack is the minor 'erosion' case." },
+    consequence: { zh: "裂紋擴展可能導致葉片斷裂、飛擲碎片，屬最高安全風險。", en: "A growing crack can fracture the blade and throw debris — the highest safety risk." },
+    tip: { zh: "重大故障：須停機並以安裝船吊裝更換葉片，再做動平衡。", en: "Major fault: stop and jack-up replace the blade, then re-balance." },
+  },
+  blade_erosion: {
+    mechanism: { zh: "雨蝕/砂蝕使前緣塗層剝落，破壞氣動外形、造成功率略降與氣動噪音。", en: "Rain/sand erosion strips the leading-edge coating, spoiling the aero profile and causing slight power loss and aero noise." },
+    symptom: { zh: "前緣塗層剝落、功率曲線下滑、氣動噪音，但無結構裂紋。", en: "Leading-edge coating loss, a drooping power curve and aero noise, but no structural crack." },
+    differential: { zh: "無結構裂紋是關鍵：屬輕度可修補，與須吊裝更換的『裂紋』重大故障不同。", en: "No structural crack is key: a minor repairable case, unlike the major crack needing a lift replacement." },
+    consequence: { zh: "侵蝕擴大會持續吃掉發電量，並可能往結構層發展。", en: "Spreading erosion keeps eating output and can progress into the structure." },
+    tip: { zh: "繩索進場檢查範圍，打磨修補並貼前緣保護帶即可，成本遠低於換葉片。", en: "Rope-access inspect, sand/fill and apply leading-edge tape — far cheaper than a new blade." },
+  },
+  cable_insulation: {
+    mechanism: { zh: "海纜或接頭絕緣劣化，對地絕緣電阻下降並出現局部放電，趨向擊穿。", en: "Subsea cable/joint insulation degrades, dropping insulation resistance and showing partial discharge — heading toward breakdown." },
+    symptom: { zh: "對地絕緣電阻持續下降、偵測到局部放電、接地電流上升。", en: "Falling insulation resistance, detected partial discharge and rising ground current." },
+    differential: { zh: "『絕緣電阻＋局放』明確指向海纜絕緣系統，非機組內部元件。", en: "Insulation resistance + PD clearly points to the cable insulation system, not an in-turbine component." },
+    consequence: { zh: "絕緣擊穿會造成接地故障停電，修復海纜成本高、停機久。", en: "Insulation breakdown causes a ground-fault outage — cable repair is costly and downtime is long." },
+    tip: { zh: "以絕緣電阻/局放量測定位劣化段，更換接頭/段並做耐壓測試。", en: "Use IR/PD testing to locate the bad section, replace the joint/segment and hi-pot test." },
+  },
+  tower_bolt_loose: {
+    mechanism: { zh: "法蘭螺栓預拉力流失，連接面出現微動與縫隙位移，激發結構低頻振動。", en: "Loss of flange-bolt preload lets the joint micro-move and the gap shift, exciting low-frequency structural vibration." },
+    symptom: { zh: "螺栓預拉力下降、法蘭縫隙位移、結構低頻振動。", en: "Reduced bolt preload, flange-gap movement and low-frequency structural vibration." },
+    differential: { zh: "低頻結構振動＋法蘭位移指向螺栓預拉力，與旋轉件高頻振動完全不同。", en: "LF structural vibration + flange movement points to bolt preload — unlike rotating-part HF vibration." },
+    consequence: { zh: "預拉力持續流失會使連接失效，危及塔架整體結構安全。", en: "Continued preload loss can fail the joint, endangering the tower's structural safety." },
+    tip: { zh: "標記並量測螺栓扭力/伸長量，更換失效螺栓並依規範鎖付。", en: "Mark and measure bolt torque/elongation, replace failed bolts and torque to spec." },
+  },
+  anemometer_fault: {
+    mechanism: { zh: "機艙頂風速計/風向標訊號故障，錯誤量測讓控制器誤判，造成偏航誤動作。", en: "A faulty nacelle anemometer/vane feeds bad measurements, misleading the controller into yaw hunting." },
+    symptom: { zh: "偏航頻繁誤動作、功率波動、風速凍結，但機械與電氣均正常。", en: "Frequent yaw hunting, power swings and frozen wind speed, while mechanics and electrics are fine." },
+    differential: { zh: "機械電氣皆正常時優先懷疑量測源（感測器），而非執行機構。", en: "With mechanics & electrics fine, suspect the measurement source (sensor) first, not the actuators." },
+    consequence: { zh: "持續誤動作浪費發電並增加偏航系統磨耗。", en: "Continuous hunting wastes generation and adds wear to the yaw system." },
+    tip: { zh: "比對風速/風向感測訊號，更換風速計並校正後復歸測試。", en: "Cross-check wind signals, replace the anemometer, calibrate, then reset-test." },
+  },
+  controller_comm: {
+    mechanism: { zh: "該機主控制器/通訊模組故障，PLC 與 SCADA 失聯、心跳訊號遺失。", en: "That unit's main controller / comms module fails, losing the PLC–SCADA link and heartbeat." },
+    symptom: { zh: "單台機組與 SCADA 失聯、遠端無法控制，但鄰機正常。", en: "One unit loses its SCADA link and remote control, while neighbours are fine." },
+    differential: { zh: "鄰機正常排除全場性電網問題，聚焦該機自身控制器/通訊模組。", en: "Healthy neighbours rule out a farm-wide grid issue — focus on that unit's own controller/comms module." },
+    consequence: { zh: "失聯期間無法遠端控制與監測，故障難以及時發現。", en: "While offline, no remote control or monitoring — faults go undetected." },
+    tip: { zh: "檢查通訊鏈路與控制器狀態燈，更換控制器並回載參數後連線測試。", en: "Check the comms link & status LEDs, replace the controller, restore parameters, then link-test." },
+  },
+  transformer_overtemp: {
+    mechanism: { zh: "機組變壓器油位/油質不良或散熱風道阻塞，油溫過高被迫降載。", en: "Poor transformer oil level/quality or blocked cooling ducts push oil temp high, forcing a derate." },
+    symptom: { zh: "變壓器油溫過高、負載受限，而風機機械正常。", en: "High transformer oil temp and limited load, while the turbine mechanicals are normal." },
+    differential: { zh: "根因在『油與散熱』而非風機機械，先查油位/油質與散熱風道。", en: "The cause is oil & cooling, not turbine mechanics — check oil level/quality and cooling ducts first." },
+    consequence: { zh: "長期過溫使變壓器絕緣劣化，存在跳機與火災風險。", en: "Prolonged overtemp degrades transformer insulation, risking a trip or fire." },
+    tip: { zh: "檢查油位/油質與散熱風道，必要時換油並清理散熱後負載測試。", en: "Check oil level/quality & cooling ducts, change oil if needed, clean cooling, then load-test." },
+  },
+  lift_fault: {
+    mechanism: { zh: "塔內升降機制動或限位開關故障，載人運轉有墜落風險，屬工安停用情境。", en: "A faulty service-lift brake or limit switch makes crewed operation a fall risk — an HSE lock-out situation." },
+    symptom: { zh: "升降機制動異常、過載保護動作、限位開關報錯。", en: "Abnormal lift brake, overload trips and limit-switch errors." },
+    differential: { zh: "這是『工安/HSE』情境而非發電性能問題：安全永遠優先於發電。", en: "This is an HSE situation, not a generation-performance one: safety always comes before output." },
+    consequence: { zh: "若帶病載人，制動失效將造成人員墜落的重大工安事故。", en: "Carrying crew on a faulty lift risks a brake failure and a fatal fall — a major HSE incident." },
+    tip: { zh: "停用升降機上鎖（LOTO）、改爬梯，先修復制動/限位再載重測試復用。", en: "Lock out the lift (LOTO), use the ladder, fix brake/limit, then load-test before reuse." },
+  },
+};
+
+// ───────── 元件分組（多重根因題組）：同一元件可由多種根因造成不同故障 ─────────
+export interface ComponentGroup {
+  id: string;
+  name: I18n;
+  icon: string;
+  faultIds: string[]; // 該元件的多種根因故障（≥2 即可做鑑別診斷練習）
+}
+
+export const COMPONENTS: ComponentGroup[] = [
+  { id: "gearbox", name: { zh: "齒輪箱 / 傳動鏈", en: "Gearbox / Drivetrain" }, icon: "⚙️", faultIds: ["gearbox_overheat", "gearbox_bearing_wear"] },
+  { id: "yaw", name: { zh: "偏航系統", en: "Yaw System" }, icon: "🧭", faultIds: ["yaw_misalign", "yaw_gear_wear"] },
+  { id: "generator", name: { zh: "發電機", en: "Generator" }, icon: "🔌", faultIds: ["gen_vibration", "gen_brush_wear", "gen_overtemp"] },
+  { id: "pitch", name: { zh: "變槳系統", en: "Pitch System" }, icon: "🌀", faultIds: ["pitch_fault", "pitch_hydraulic_leak"] },
+  { id: "converter", name: { zh: "變流器 / 電力電子", en: "Converter / Power Electronics" }, icon: "⚡", faultIds: ["converter_fault", "converter_igbt"] },
+  { id: "blade", name: { zh: "葉片", en: "Blade" }, icon: "🛩️", faultIds: ["blade_crack", "blade_erosion"] },
+  { id: "cable", name: { zh: "海纜 / 電氣連接", en: "Cable / Electrical" }, icon: "🪢", faultIds: ["cable_insulation"] },
+  { id: "tower", name: { zh: "塔架 / 結構", en: "Tower / Structure" }, icon: "🏗️", faultIds: ["tower_bolt_loose"] },
+  { id: "transformer", name: { zh: "機組變壓器", en: "Turbine Transformer" }, icon: "🔋", faultIds: ["transformer_overtemp"] },
+  { id: "sensor", name: { zh: "量測 / 控制", en: "Sensors / Control" }, icon: "📡", faultIds: ["anemometer_fault", "controller_comm"] },
+  { id: "lift", name: { zh: "升降機 / 工安", en: "Service Lift / HSE" }, icon: "🚧", faultIds: ["lift_fault"] },
+];
+
+// 具多重根因（≥2 種故障）的元件——可生成鑑別診斷題組
+export const MULTI_CAUSE_COMPONENTS = COMPONENTS.filter((c) => c.faultIds.length >= 2);
+
 // 作業地點（#33）：故障 → 維修場景。資料驅動，可擴充更多場景。
 export type RepairLocation = "nacelle" | "hub" | "tower" | "deck";
 export const LOCATION_LABEL: Record<RepairLocation, I18n> = {

@@ -269,6 +269,30 @@ test("content catalog: faults/incidents/parts/course are consistent (#3 expansio
   const discs = new Set(faults.map((f) => f.discipline));
   for (const d of ["mechanical", "electrical", "control", "structural", "hse"]) ok(discs.has(d), `faults cover discipline ${d}`);
 });
+test("codex & components: every fault has a deep codex entry; components map 1:1 to faults (C: 圖鑑/多重根因)", () => {
+  const faultIds = Object.keys(flt.FAULTS);
+  // 每個故障都有完整的圖鑑解說(五欄 + 雙語)
+  for (const id of faultIds) {
+    const c = flt.CODEX[id];
+    ok(c, `fault ${id} has a CODEX entry`);
+    for (const k of ["mechanism", "symptom", "differential", "consequence", "tip"]) {
+      ok(c[k] && c[k].zh && c[k].en, `codex ${id}.${k} bilingual present`);
+    }
+  }
+  // 元件分組:每個 faultId 都存在、無重複、且涵蓋全部故障
+  const inComponents = flt.COMPONENTS.flatMap((c) => c.faultIds);
+  eq(inComponents.length, new Set(inComponents).size, "no fault appears in two components");
+  for (const id of inComponents) ok(flt.FAULTS[id], `component faultId '${id}' must exist in FAULTS`);
+  for (const id of faultIds) ok(inComponents.includes(id), `fault '${id}' must belong to a component`);
+  // 多重根因元件:確實 ≥2 個根因,用於鑑別診斷題組
+  ok(flt.MULTI_CAUSE_COMPONENTS.length >= 4, `>=4 multi-cause components (got ${flt.MULTI_CAUSE_COMPONENTS.length})`);
+  for (const c of flt.MULTI_CAUSE_COMPONENTS) ok(c.faultIds.length >= 2, `component ${c.id} is multi-cause`);
+  // 同元件內症狀不應重複(鑑別診斷題組才有意義)
+  for (const c of flt.MULTI_CAUSE_COMPONENTS) {
+    const symptoms = c.faultIds.map((id) => flt.CODEX[id].symptom.zh);
+    eq(symptoms.length, new Set(symptoms).size, `component ${c.id} symptoms are distinct`);
+  }
+});
 test("OPS_DISPATCH consumes the part; blocked when out of stock", () => {
   const { state, turbine } = withFault("gearbox", "mechanical"); // stocks gearbox_oil:9
   const before = state.inventory.gearbox_oil;
