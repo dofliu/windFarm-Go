@@ -90,6 +90,36 @@ export function buildFleet(farmsOwned: number): Turbine[] {
 export const fleetUptime = (fleet: Turbine[]): number => (fleet.length ? Math.round((fleet.filter((t) => t.status === "ok").length / fleet.length) * 100) : 100);
 export const engineerBusy = (jobs: OpsJob[], id: string): boolean => jobs.some((j) => j.engineerId === id);
 
+// 妥善率單一真實來源（#3）：可用率 = 機隊運轉比例（fleetUptime）。任何「拉高/拉低可用率」的效果
+// （突發事件、任務選擇…）都改以「使機組故障/修復」實作,讓變化真實反映在發電、SLA、績效,
+// 不再維護一個會與機隊漂移的獨立純量。
+export function faultTurbines(fleet: Turbine[], n: number): Turbine[] {
+  const out = fleet.map((t) => ({ ...t }));
+  const oks = out.filter((t) => t.status === "ok");
+  for (let k = 0; k < n && oks.length; k++) {
+    const pick = oks.splice(Math.floor(Math.random() * oks.length), 1)[0];
+    const i = out.findIndex((t) => t.id === pick.id);
+    out[i] = { ...out[i], status: "fault", faultId: randomIncidentId() };
+  }
+  return out;
+}
+export function restoreTurbines(fleet: Turbine[], n: number): Turbine[] {
+  const out = fleet.map((t) => ({ ...t }));
+  const down = out.filter((t) => t.status === "fault"); // 僅復歸「故障待派」;維修中(repair)交由工單完工,避免干擾進行中的派工
+  for (let k = 0; k < n && down.length; k++) {
+    const pick = down.splice(Math.floor(Math.random() * down.length), 1)[0];
+    const i = out.findIndex((t) => t.id === pick.id);
+    out[i] = { ...out[i], status: "ok", faultId: undefined };
+  }
+  return out;
+}
+// 將「妥善率百分點變化」換算為機組台數並套用（任務／沙盒效果用，至少動 1 台以保留決策意義）。
+export function applyAvailDelta(fleet: Turbine[], points: number): Turbine[] {
+  if (!fleet.length || !points) return fleet;
+  const n = Math.max(1, Math.round((Math.abs(points) / 100) * fleet.length));
+  return points > 0 ? restoreTurbines(fleet, n) : faultTurbines(fleet, n);
+}
+
 export const SEA_INDEX: Record<SeaState, number> = { workable: 0, caution: 1, closed: 2 };
 export const vesselSeaTol = (ownsSOV: boolean) => (ownsSOV ? 2 : 1); // CTV 可到 caution；SOV 可到 closed
 export const BASE_GEN_PER_DAY = 120; // 100% 可用率每日發電量 (MWh)
@@ -242,10 +272,17 @@ function ownedFarmGen(farmsOwned: number): number {
   return g;
 }
 
-// 綜合績效分（單一真實來源，#28/#34/#3/Phase C）：
-// 綜合績效分：發電量(已為淨值，停機損失已於 advance 折抵) + 可用率×5 + 完成任務×30 − 安全×20 + 風場×10 − SLA違約×25 + 戰情室修復×8
+// 每 MWh 停機損失的額外績效扣分（#2）：發電量已是淨值（停機那部分本就沒進帳），
+// 這項是在「少賺」之外，再對累積停機損失課一筆績效罰金 → 讓「放著機組不修」直接傷排行分,
+// 強化教學訊號(妥善率管理 = 績效核心)。係數刻意偏小,避免與淨發電量重複懲罰過重。
+export const DOWNTIME_SCORE_PENALTY = 0.3;
+// 綜合績效分（單一真實來源，#28/#34/#3/#2/Phase C）：
+// 發電量(淨值) + 可用率×5 + 完成任務×30 − 安全×20 + 風場×10 − SLA違約×25 + 戰情室修復×8 − 停機損失×0.3
 export function computeScore(d: GameData): number {
-  return Math.max(0, d.generationMWh + d.availability * 5 + d.missionsDone * 30 - d.safetyIncidents * 20 + d.farmsOwned * 10 - (d.slaPenalties ?? 0) * 25 + (d.fleetResolved ?? 0) * 8);
+  return Math.max(
+    0,
+    d.generationMWh + d.availability * 5 + d.missionsDone * 30 - d.safetyIncidents * 20 + d.farmsOwned * 10 - (d.slaPenalties ?? 0) * 25 + (d.fleetResolved ?? 0) * 8 - Math.round((d.fleetLostMWh ?? 0) * DOWNTIME_SCORE_PENALTY),
+  );
 }
 
 // 每日實際發電量（MWh）：以「運轉中的機組」為單一真實來源 —— 故障/維修中的機組不發電。
@@ -260,13 +297,14 @@ export function dailyRevenue(d: GameData): number {
   return dailyProduction(d) * ELECTRICITY_PRICE;
 }
 
+const INITIAL_FLEET = buildFleet(1); // 建一次,供 fleet 與 availability 共用 → 開局妥善率即與機隊自洽（#3）
 export const INITIAL: GameData = {
   budget: 84_200_000,
   xp: 0,
   day: 21,
   techAvail: 24,
   techTotal: 30,
-  availability: 86,
+  availability: fleetUptime(INITIAL_FLEET), // 妥善率 = 機隊運轉比例（單一真實來源，#3）
   seaState: "workable",
   questStage: "available",
   questIndex: 0,
@@ -302,7 +340,7 @@ export const INITIAL: GameData = {
   lastSpoil: null,
   diagLevel: 0,
   vesselWear: 0,
-  fleet: buildFleet(1),
+  fleet: INITIAL_FLEET,
   opsJobs: [],
   fleetLostMWh: 0,
   fleetResolved: 0,
@@ -365,17 +403,21 @@ function advance(s: GameData, days = 1): Partial<GameData> {
   if (s.overhaul) { const dem = DEMURRAGE_PER_DAY * days; cash -= dem; ledger.demurrage = -dem; }
   // 健康度越低 → 突發事件機率越高、且偏向壞事件（連鎖故障）
   const riskBoost = ((100 - health) / 100) * 0.4;
+  let startFleet = s.fleet; // 本次推進的起始機隊（事件的故障/修復先套用於此，再進入每日推進）
   const ev = rollEvent(riskBoost, health);
   if (ev) {
     // 事件以「起始預算」為基準算出現金影響（±），其餘欄位照常合併；預算本身於末段一次性結算。
     const evPatch = ev.apply({ ...s, ...patch, budget: s.budget } as GameData);
     if (evPatch.budget !== undefined) { ledger.event = evPatch.budget - s.budget; cash += ledger.event; delete evPatch.budget; }
+    // 機隊效果（#3）：事件對可用率的影響改以真實機組故障/修復實作 → 同步反映在發電、SLA、績效。
+    if (ev.fault) startFleet = faultTurbines(startFleet, ev.fault);
+    if (ev.restore) startFleet = restoreTurbines(startFleet, ev.restore);
     patch = { ...patch, ...evPatch, lastEvent: { id: ev.id, name: ev.name, desc: ev.desc, good: !!ev.good, day } };
   }
   // 活體戰情層（Phase C）：每日推進並行工單、隨機新增故障、累計停機發電損失
   let slaUptime: number | null = null; // 本次推進每日平均妥善率（fleet 推進後填入，供 SLA 取真實值）
-  if (s.fleet.length) {
-    let fleet = s.fleet.map((tt) => ({ ...tt }));
+  if (startFleet.length) {
+    let fleet = startFleet.map((tt) => ({ ...tt }));
     let jobs = s.opsJobs.map((j) => ({ ...j }));
     let resolved = s.fleetResolved;
     let engs = patch.engineers ?? s.engineers;
@@ -441,9 +483,12 @@ function advance(s: GameData, days = 1): Partial<GameData> {
     patch.generationMWh = (patch.generationMWh ?? s.generationMWh) + produced;
     ledger.revenue = revenue;
   }
+  // 妥善率單一真實來源（#3）：可用率 = 機隊實際運轉比例。advance 後一律以機隊重算 availability，
+  // 取代過去散落各 action／事件的 ±N 純量加減（會與機隊漂移）。無機組模型時退回原純量。
+  const finalFleet = patch.fleet ?? startFleet;
+  if (finalFleet.length) patch.availability = fleetUptime(finalFleet);
   // 合約 SLA（#3）：每日累計「實際可用率」，跨季結算；平均低於底線 → 扣違約金。
-  // 實際可用率以戰情室機隊運轉比例為準（與售電收入同一真實來源）；無機組模型時退回 availability 純量。
-  const finalFleet = patch.fleet ?? s.fleet;
+  // 取本次推進的每日平均妥善率（多日推進更精確）；無機組模型時退回 availability 純量。
   const avail = slaUptime ?? (finalFleet.length ? fleetUptime(finalFleet) : (patch.availability ?? s.availability));
   let qStart = s.quarterStartDay;
   let quarter = s.quarter;
@@ -593,12 +638,13 @@ export function reducer(s: GameData, a: Action): GameData {
     case "FAIL_REPAIR": {
       // 撤離/返航改期 = 安全近失事件（#34）+ 空耗 1 天（Phase B）
       const adv = advance(s, 1);
-      return { ...s, ...adv, jobPhase: "office", availability: Math.max(0, (adv.availability ?? s.availability) - 4), safetyIncidents: s.safetyIncidents + 1, repair: null };
+      // 可用率不再用純量 −4：撤離本身不直接使機組故障；安全近失以 safetyIncidents 計入績效（#3）。
+      return { ...s, ...adv, jobPhase: "office", safetyIncidents: s.safetyIncidents + 1, repair: null };
     }
     case "REST": {
       const adv = advance(s, 1);
-      // 基於 advance 後的值（保留當日事件對可用率/健康度的影響）再加休整回復
-      return { ...s, ...adv, availability: Math.min(100, (adv.availability ?? s.availability) + 1), fleetHealth: clampN((adv.fleetHealth ?? s.fleetHealth) + 1.5, 0, 100) };
+      // 可用率由機隊重算（#3，adv 已設定）；休整僅回復技師疲勞與機組健康度。
+      return { ...s, ...adv, fleetHealth: clampN((adv.fleetHealth ?? s.fleetHealth) + 1.5, 0, 100) };
     }
     case "REMOTE_CHECK": {
       // 遠端巡檢：不派船、消耗 1 天，早期偵測微幅回復健康度並累積經驗
@@ -672,7 +718,8 @@ export function reducer(s: GameData, a: Action): GameData {
       }
       const seen = s.seenFaults.includes(a.quest.targetFault) ? s.seenFaults : [...s.seenFaults, a.quest.targetFault];
       const engs = a.discipline ? deployFatigue(adv.engineers ?? s.engineers, a.discipline) : (adv.engineers ?? s.engineers); // 出勤技師累積疲勞（#7）
-      return { ...s, ...adv, repairDone: true, questStage: "done", jobPhase: "office", repair: null, budget: (adv.budget ?? s.budget) + a.quest.rewardBudget, xp: s.xp + a.quest.rewardXp, availability: Math.min(100, (adv.availability ?? s.availability) + 8 + s.techLevel * 2), fleetHealth: clampN((adv.fleetHealth ?? s.fleetHealth) + 8, 0, 100), inventory: inv, cargoUsed: cargo, seenFaults: seen, missionsDone: s.missionsDone + 1, engineers: engs };
+      // 可用率改由機隊單一來源決定（#3）：完工獎勵維持 budget/xp/健康度/任務數；機隊妥善率回升須在戰情室實際修復機組。
+      return { ...s, ...adv, repairDone: true, questStage: "done", jobPhase: "office", repair: null, budget: (adv.budget ?? s.budget) + a.quest.rewardBudget, xp: s.xp + a.quest.rewardXp, fleetHealth: clampN((adv.fleetHealth ?? s.fleetHealth) + 8, 0, 100), inventory: inv, cargoUsed: cargo, seenFaults: seen, missionsDone: s.missionsDone + 1, engineers: engs };
     }
     case "START_OVERHAUL": {
       if (s.questStage !== "active" || s.overhaul) return s;
@@ -710,7 +757,7 @@ export function reducer(s: GameData, a: Action): GameData {
             jobPhase: "office",
             budget: (adv.budget ?? s.budget) + oh.rewardBudget,
             xp: s.xp + oh.rewardXp,
-            availability: Math.min(100, (adv.availability ?? s.availability) + 10 + s.techLevel * 2),
+            // 可用率由機隊單一來源決定（#3）；大修獎勵維持 budget/xp/健康度。
             fleetHealth: clampN((adv.fleetHealth ?? s.fleetHealth) + 12, 0, 100),
             seenFaults: seen,
             missionsDone: s.missionsDone + 1,
@@ -724,7 +771,8 @@ export function reducer(s: GameData, a: Action): GameData {
     }
     case "DO_ROUTINE": {
       const adv = advance(s, 1);
-      return { ...s, ...adv, budget: (adv.budget ?? s.budget) + a.budget, xp: s.xp + a.xp, availability: Math.min(100, (adv.availability ?? s.availability) + 1), missionsDone: s.missionsDone + 1 };
+      // 可用率由機隊重算（#3）；例行作業給予 budget/xp/任務數。
+      return { ...s, ...adv, budget: (adv.budget ?? s.budget) + a.budget, xp: s.xp + a.xp, missionsDone: s.missionsDone + 1 };
     }
     case "UPGRADE": {
       if (a.cost > s.budget) return s;
@@ -746,10 +794,13 @@ export function reducer(s: GameData, a: Action): GameData {
     case "RESOLVE_TASK": {
       // 自由營運沙盒：推進一天（含突發事件）後套用選擇效果，計入績效（沙盒，衝排行）
       const adv = advance(s, 1);
+      // 可用率效果（dAvail）改以真實機組故障/修復實作（#3 單一真實來源）→ 同步反映在發電、SLA、績效。
+      const taskFleet = applyAvailDelta(adv.fleet ?? s.fleet, a.dAvail);
       return {
         ...s,
         ...adv,
-        availability: Math.max(0, Math.min(100, (adv.availability ?? s.availability) + a.dAvail)),
+        fleet: taskFleet,
+        availability: fleetUptime(taskFleet),
         budget: Math.max(0, (adv.budget ?? s.budget) + a.dBudget),
         generationMWh: Math.max(0, (adv.generationMWh ?? s.generationMWh) + a.dGen),
         safetyIncidents: s.safetyIncidents + a.dSafety,
