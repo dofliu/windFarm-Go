@@ -12,7 +12,7 @@ import { exprUrl } from "../characters";
 import { FAULTS, LOCATION_LABEL, locationOf, isMajorFault } from "../faults";
 import RepairScene from "../RepairScene";
 import { FallbackImg } from "../SceneVideo";
-import { vesselWindowPenalty, type RepairState } from "../../state/game";
+import { vesselWindowPenalty, windowBonusOf, type RepairState } from "../../state/game";
 import { PARTS } from "../data";
 import { missionInstance } from "../campaign";
 import type { Screen } from "../../App";
@@ -26,7 +26,7 @@ export default function RepairScreen({ setScreen, mode = "sim" }: { setScreen: (
   const q = fault.quiz;
 
   // 作業窗（#17）：海象越差，可用時段越少；船隊升級加窗；船舶磨耗扣窗（#7）
-  const windowMax = Math.max(4, (data.seaState === "closed" ? 6 : data.seaState === "caution" ? 8 : 10) + data.vesselLevel * 2 - vesselWindowPenalty(data.vesselWear));
+  const windowMax = Math.max(4, (data.seaState === "closed" ? 6 : data.seaState === "caution" ? 8 : 10) + data.vesselLevel * 2 + windowBonusOf(data) - vesselWindowPenalty(data.vesselWear));
 
   // 維修進度持久化（#33）：存進 game state（以工單 key 綁定），切換畫面不丟失、作業窗不被免費重置。
   const repairKey = `${data.customQuest ? "c" : data.campaignIndex}:${quest.id}`;

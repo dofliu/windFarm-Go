@@ -154,9 +154,12 @@ test("OPS_DISPATCH blocked in closed seas without SOV; remote reset still works"
   const base = { ...I, fleet, seaState: "closed", ownsSOV: false, engineers: [{ id: "m", name: "m", discipline: "mechanical", level: 1, fatigue: 0 }], inventory: { gearbox_oil: 9 } };
   const blocked = R(base, { type: "OPS_DISPATCH", turbine: fleet[idx].id, engineerId: "m" });
   eq(blocked.opsJobs.length, 0, "no crew dispatch in closed seas (CTV)");
-  // SOV can sail in closed seas
-  const withSov = R({ ...base, ownsSOV: true }, { type: "OPS_DISPATCH", turbine: fleet[idx].id, engineerId: "m" });
+  // SOV can sail in closed seas (multi-vessel #4: must operate a closed-tolerant vessel)
+  const withSov = R({ ...base, ownsSOV: true, ownedVessels: ["ctv", "sov"], activeVessel: "sov" }, { type: "OPS_DISPATCH", turbine: fleet[idx].id, engineerId: "m" });
   eq(withSov.opsJobs.length, 1, "SOV can deploy in closed seas");
+  // ...but an active CTV still cannot, even if you own an SOV
+  const ctvActive = R({ ...base, ownsSOV: true, ownedVessels: ["ctv", "sov"], activeVessel: "ctv" }, { type: "OPS_DISPATCH", turbine: fleet[idx].id, engineerId: "m" });
+  eq(ctvActive.opsJobs.length, 0, "active CTV can't deploy in closed seas even if an SOV is owned");
   // resettable fault: remote reset works regardless of weather
   const soft = { ...I, fleet: I.fleet.map((t, i) => (i === idx ? { ...t, status: "fault", faultId: "converter" } : t)), seaState: "closed", ownsSOV: false };
   const reset = R(soft, { type: "OPS_RESET", turbine: I.fleet[idx].id });
@@ -562,6 +565,91 @@ test("BUY_DIAGNOSTICS unlocks once and is idempotent", () => {
 test("BUY_SOV advances exactly 2 days and sets ownsSOV", () => {
   seed(3); const s = R(I, { type: "BUY_SOV", cost: 0 });
   eq(s.day, I.day + 2); eq(s.ownsSOV, true);
+  ok(s.ownedVessels.includes("sov"), "BUY_SOV adds sov to the fleet");
+  eq(s.activeVessel, "sov", "BUY_SOV activates the sov");
+});
+
+// ───────────────────────── 多元船隊（#4） ─────────────────────────
+const ves = await load("src/state/vessels.ts");
+test("vessel catalog: 5 classes, well-formed, CTV matches legacy constants", () => {
+  const V = ves.VESSELS;
+  eq(V.length, 5, "five vessel classes");
+  const ids = V.map((v) => v.id);
+  eq(ids.length, new Set(ids).size, "vessel ids unique");
+  for (const v of V) {
+    ok(v.name?.zh && v.name?.en && v.short?.zh && v.desc?.en, `vessel ${v.id} bilingual fields`);
+    ok([0, 1, 2].includes(v.seaTol), `vessel ${v.id} seaTol in 0..2`);
+    ok(v.cargo > 0 && v.jobCap > 0, `vessel ${v.id} positive cargo & jobCap`);
+    ok(v.mobilizeDays >= 0 && v.sortieCost > 0 && v.wearRate > 0, `vessel ${v.id} sane costs`);
+  }
+  const ctv = V.find((v) => v.id === "ctv");
+  eq(ctv.purchaseCost, 0, "CTV owned from start");
+  eq(ctv.seaTol, 1, "CTV sea-tol matches legacy vesselSeaTol(false)");
+  eq(ctv.jobCap, 2, "CTV jobCap matches legacy vesselJobCap(false,0)");
+  eq(ctv.sortieCost, g.SORTIE_COST, "CTV sortie cost matches legacy SORTIE_COST");
+  eq(ctv.wearRate, g.VESSEL_WEAR_PER_SORTIE, "CTV wear matches legacy VESSEL_WEAR_PER_SORTIE");
+  // 至少一種僅可作業(快艇)、一種可到停航(SOV/Jack-up/母船)
+  ok(V.some((v) => v.seaTol === 0), "a calm-only vessel exists (crew boat)");
+  ok(V.filter((v) => v.seaTol === 2).length >= 3, "several closed-tolerant vessels exist");
+});
+test("INITIAL owns only CTV and operates it", () => {
+  ok(I.ownedVessels.includes("ctv") && I.ownedVessels.length === 1, "starts with only CTV");
+  eq(I.activeVessel, "ctv", "CTV is the active vessel");
+});
+test("derived helpers read the active vessel", () => {
+  const sovState = { ...I, ownedVessels: ["ctv", "sov"], activeVessel: "sov", ownsSOV: true };
+  eq(g.seaTolOf(sovState), 2, "SOV active → sea-tol 2");
+  eq(g.jobCapOf(sovState), 4 + I.vesselLevel, "SOV active → jobCap 4 (+level)");
+  const boat = { ...I, ownedVessels: ["ctv", "crew_boat"], activeVessel: "crew_boat" };
+  eq(g.seaTolOf(boat), 0, "crew boat → sea-tol 0 (calm only)");
+  ok(g.sortieCostOf(boat) < g.sortieCostOf(I), "crew boat is cheaper per sortie than CTV");
+});
+test("BUY_VESSEL: buys, activates, advances mobilization days, marks ownsSOV for closed-tolerant", () => {
+  seed(7);
+  const s = R(I, { type: "BUY_VESSEL", id: "jackup", cost: 0 });
+  ok(s.ownedVessels.includes("jackup"), "jackup added to fleet");
+  eq(s.activeVessel, "jackup", "jackup activated");
+  eq(s.ownsSOV, true, "closed-tolerant purchase marks ownsSOV");
+  eq(s.day, I.day + ves.vesselSpec("jackup").mobilizeDays, "advances by mobilization days");
+  // crew boat does NOT grant closed tolerance
+  const cb = R(I, { type: "BUY_VESSEL", id: "crew_boat", cost: 0 });
+  eq(cb.ownsSOV, false, "crew boat purchase doesn't mark ownsSOV");
+});
+test("BUY_VESSEL blocked when unaffordable or already owned", () => {
+  const poor = R({ ...I, budget: 10 }, { type: "BUY_VESSEL", id: "mothership", cost: 120_000_000 });
+  ok(!poor.ownedVessels.includes("mothership"), "can't buy what you can't afford");
+  const dup = R(I, { type: "BUY_VESSEL", id: "ctv", cost: 0 });
+  eq(dup.ownedVessels.length, 1, "can't re-buy an owned vessel");
+});
+test("SET_ACTIVE_VESSEL requires ownership", () => {
+  const ok1 = R({ ...I, ownedVessels: ["ctv", "sov"] }, { type: "SET_ACTIVE_VESSEL", id: "sov" });
+  eq(ok1.activeVessel, "sov", "can switch to an owned vessel");
+  const bad = R(I, { type: "SET_ACTIVE_VESSEL", id: "mothership" });
+  eq(bad.activeVessel, "ctv", "can't switch to an unowned vessel");
+});
+test("migrateVessels backfills old saves (SOV owner keeps the SOV)", () => {
+  // 舊存檔：擁有 SOV 但無多元船隊欄位
+  const old = { ...I, ownsSOV: true };
+  delete old.ownedVessels; delete old.activeVessel;
+  const m = g.migrateVessels(old);
+  ok(m.ownedVessels.includes("ctv") && m.ownedVessels.includes("sov"), "SOV backfilled into fleet");
+  // 透過 LOAD_STATE 走遷移：可切換到 SOV
+  const loaded = R(I, { type: "LOAD_STATE", state: { ownsSOV: true } });
+  ok(loaded.ownedVessels.includes("sov"), "LOAD_STATE migrates an SOV save");
+  const sw = R(loaded, { type: "SET_ACTIVE_VESSEL", id: "sov" });
+  eq(sw.activeVessel, "sov", "migrated SOV is selectable");
+  // activeVessel 不在已擁有清單時退回 ctv
+  const weird = g.migrateVessels({ ...I, ownedVessels: ["ctv"], activeVessel: "mothership" });
+  eq(weird.activeVessel, "ctv", "unowned active vessel falls back to CTV");
+});
+test("OPS_DISPATCH sortie cost & wear follow the active vessel", () => {
+  const idx = I.fleet.findIndex((t) => t.status === "ok");
+  const fleet = I.fleet.map((t, i) => (i === idx ? { ...t, status: "fault", faultId: "gearbox" } : t));
+  const engineers = [{ id: "m", name: "m", discipline: "mechanical", level: 1, fatigue: 0 }];
+  const base = { ...I, fleet, engineers, inventory: { gearbox_oil: 9 }, vesselWear: 0, ownedVessels: ["ctv", "crew_boat"], activeVessel: "crew_boat" };
+  const s = R(base, { type: "OPS_DISPATCH", turbine: fleet[idx].id, engineerId: "m" });
+  eq(base.budget - s.budget, ves.vesselSpec("crew_boat").sortieCost, "sortie cost uses crew boat's cost");
+  eq(s.vesselWear, ves.vesselSpec("crew_boat").wearRate, "wear uses crew boat's rate");
 });
 
 // ───────────────────────── 收入：每日售電 ─────────────────────────

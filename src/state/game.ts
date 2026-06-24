@@ -3,6 +3,7 @@ import { FARMS } from "./farms";
 import { rollEvent, type EventStamp } from "./events";
 import { incidentAt, randomIncidentId } from "./incidents";
 import { BUILD_STAGES, BUILD_STAGE_COUNT, BUILD_REWARD_BASE, BUILD_REWARD_PER_SCORE, BUILD_REWARD_XP } from "./construction";
+import { VESSELS, vesselSpec, type VesselClass } from "./vessels";
 
 // ───────── 全域遊戲狀態模型（A1 工單系統 / A2 採購 / A3 結算 / D1 存檔）─────────
 export type SeaState = "workable" | "caution" | "closed";
@@ -70,6 +71,28 @@ export const INSPECT_FAULT_MULT = 0.4; // 定檢生效期間的故障率倍率
 // 船舶可同時支援的現場工單數（Phase C2）：CTV 基礎 2、SOV 4，每整備等級 +1（遠端重啟不占用）
 export const vesselJobCap = (ownsSOV: boolean, vesselLevel: number): number => (ownsSOV ? 4 : 2) + vesselLevel;
 export const onsiteJobCount = (jobs: OpsJob[]): number => jobs.filter((j) => !j.remote).length;
+
+// 多元船隊（#4）：以「目前作業船(activeVessel)」的規格驅動派船能力與成本，取代二元 CTV/SOV。
+// 取規格時容錯：舊狀態無 activeVessel 時退回 CTV/SOV 的等效規格，確保相容。
+export function activeVesselSpec(s: { activeVessel?: VesselClass; ownsSOV?: boolean }) {
+  if (s.activeVessel) return vesselSpec(s.activeVessel);
+  return vesselSpec(s.ownsSOV ? "sov" : "ctv");
+}
+export const seaTolOf = (s: { activeVessel?: VesselClass; ownsSOV?: boolean }): number => activeVesselSpec(s).seaTol;
+export const jobCapOf = (s: { activeVessel?: VesselClass; ownsSOV?: boolean; vesselLevel: number }): number => activeVesselSpec(s).jobCap + s.vesselLevel;
+export const sortieCostOf = (s: { activeVessel?: VesselClass; ownsSOV?: boolean }): number => activeVesselSpec(s).sortieCost;
+export const vesselWearOf = (s: { activeVessel?: VesselClass; ownsSOV?: boolean }): number => activeVesselSpec(s).wearRate;
+export const windowBonusOf = (s: { activeVessel?: VesselClass; ownsSOV?: boolean }): number => activeVesselSpec(s).windowBonus;
+
+// 存檔遷移（#4）：補齊多元船隊欄位。舊存檔可能無 ownedVessels/activeVessel；
+// 已購 SOV(ownsSOV) 的舊存檔須把 sov 補進船隊，並確保 activeVessel 為已擁有船型。
+export function migrateVessels(s: GameData): GameData {
+  const owned = Array.isArray(s.ownedVessels) && s.ownedVessels.length ? [...s.ownedVessels] : ["ctv" as VesselClass];
+  if (!owned.includes("ctv")) owned.unshift("ctv");
+  if (s.ownsSOV && !owned.includes("sov")) owned.push("sov");
+  const active = s.activeVessel && owned.includes(s.activeVessel) ? s.activeVessel : "ctv";
+  return { ...s, ownedVessels: owned, activeVessel: active };
+}
 
 // 依擁有風場建立機組陣列（每座 farm.units 台，發電佔比 = genPerDay/units）
 export function buildFleetForFarm(f: number): Turbine[] {
@@ -171,7 +194,9 @@ export interface GameData {
   missionsDone: number; // 排行榜 KPI
   pendingOrders: { partId: string; arriveDay: number; qty: number }[]; // 備品在途（lead time，C）
   engineers: Engineer[]; // 已招募技師（#27）
-  ownsSOV: boolean; // 是否擁有 SOV（#26，可在高海象出航）
+  ownsSOV: boolean; // 是否擁有 SOV（#26，可在高海象出航）；多元船隊下 = 擁有任一耐停航船型
+  ownedVessels: VesselClass[]; // 多元船隊（#4）：已擁有船型
+  activeVessel: VesselClass; // 目前作業船：驅動耐海象/載量/同時工單/成本/作業窗/磨耗
   jobPhase: JobPhase; // 出勤階段（#25）：office→enroute→onsite
   generationMWh: number; // 累積發電量（#28 KPI）
   farmsOwned: number; // 營運中的風場數（#34，預設 1）
@@ -330,6 +355,8 @@ export const INITIAL: GameData = {
   pendingOrders: [],
   engineers: [{ id: "eng_start", name: "阿銘", discipline: "mechanical", level: 1, fatigue: 0 }], // 起始機械技師
   ownsSOV: false,
+  ownedVessels: ["ctv"],
+  activeVessel: "ctv",
   jobPhase: "office",
   generationMWh: 0,
   farmsOwned: 1,
@@ -542,7 +569,9 @@ export type Action =
   | { type: "UPGRADE"; kind: "vessel" | "tech" | "tool"; cost: number } // 設施升級（A）
   | { type: "HIRE"; engineer: Engineer; cost: number } // 招募技師（#27）
   | { type: "FIRE"; id: string } // 解僱技師（出勤中不可解僱）
-  | { type: "BUY_SOV"; cost: number } // 購置 SOV（#26）
+  | { type: "BUY_SOV"; cost: number } // 購置 SOV（#26，相容保留）
+  | { type: "BUY_VESSEL"; id: VesselClass; cost: number } // 購置船型（#4）
+  | { type: "SET_ACTIVE_VESSEL"; id: VesselClass } // 切換目前作業船（#4）
   | { type: "UNLOCK_FARM"; cost: number } // 拓展新風場（#34）
   | { type: "DEPART" } // 出航 → enroute（#25）
   | { type: "ARRIVE" } // 抵達 → onsite（#25）
@@ -622,7 +651,19 @@ export function reducer(s: GameData, a: Action): GameData {
     case "BUY_SOV": {
       if (a.cost > s.budget || s.ownsSOV) return s;
       const adv = advance(s, 2); // 購置/動員 SOV 耗時 2 天
-      return { ...s, ...adv, budget: Math.max(0, (adv.budget ?? s.budget) - a.cost), ownsSOV: true };
+      const owned = s.ownedVessels.includes("sov") ? s.ownedVessels : [...s.ownedVessels, "sov" as VesselClass];
+      return { ...s, ...adv, budget: Math.max(0, (adv.budget ?? s.budget) - a.cost), ownsSOV: true, ownedVessels: owned, activeVessel: "sov" };
+    }
+    case "BUY_VESSEL": {
+      const spec = VESSELS.find((v) => v.id === a.id);
+      if (!spec || a.cost > s.budget || s.ownedVessels.includes(a.id)) return s;
+      const adv = advance(s, Math.max(1, spec.mobilizeDays)); // 購置/動員就緒耗時
+      const ownsSOV = s.ownsSOV || spec.seaTol >= 2; // 取得耐停航船型 → 標記可高海象出航
+      return { ...s, ...adv, budget: Math.max(0, (adv.budget ?? s.budget) - a.cost), ownedVessels: [...s.ownedVessels, a.id], activeVessel: a.id, ownsSOV };
+    }
+    case "SET_ACTIVE_VESSEL": {
+      if (!s.ownedVessels.includes(a.id)) return s; // 僅能切換已擁有船型
+      return { ...s, activeVessel: a.id };
     }
     case "UNLOCK_FARM": {
       if (a.cost > s.budget || s.farmsOwned >= FARMS.length) return s;
@@ -630,8 +671,8 @@ export function reducer(s: GameData, a: Action): GameData {
       return { ...s, ...adv, budget: Math.max(0, (adv.budget ?? s.budget) - a.cost), farmsOwned: s.farmsOwned + 1, fleet: [...(adv.fleet ?? s.fleet), ...buildFleetForFarm(s.farmsOwned)] };
     }
     case "DEPART":
-      // 出航累積船舶磨耗（#7）
-      return { ...s, jobPhase: "enroute", vesselWear: clampN(s.vesselWear + VESSEL_WEAR_PER_SORTIE, 0, 100) };
+      // 出航累積船舶磨耗（#7）；磨耗率依目前作業船（#4）
+      return { ...s, jobPhase: "enroute", vesselWear: clampN(s.vesselWear + vesselWearOf(s), 0, 100) };
     case "SERVICE_VESSEL": {
       if (a.cost > s.budget || s.vesselWear === 0) return s;
       const adv = advance(s, 1); // 進廠保養耗時 1 天
@@ -672,15 +713,15 @@ export function reducer(s: GameData, a: Action): GameData {
       if (!inc || eng.discipline !== inc.discipline) return s; // 需對應科別技師
       if (fatigueOf(eng) >= FATIGUE_LIMIT) return s; // 過勞不可派
       if (engineerBusy(s.opsJobs, eng.id)) return s; // 該技師已在執行工單
-      if (onsiteJobCount(s.opsJobs) >= vesselJobCap(s.ownsSOV, s.vesselLevel)) return s; // 船舶現場工單已達上限（#7/C2）
-      if (SEA_INDEX[s.seaState] > vesselSeaTol(s.ownsSOV)) return s; // 海象過劣，無法派船（可改遠端重啟或等天氣窗）
+      if (onsiteJobCount(s.opsJobs) >= jobCapOf(s)) return s; // 船舶現場工單已達上限（依目前作業船，#4）
+      if (SEA_INDEX[s.seaState] > seaTolOf(s)) return s; // 海象超過目前作業船耐受度，無法派船（可改遠端重啟或等天氣窗）
       if ((s.inventory[inc.part] ?? 0) <= 0) return s; // 缺必備備品，無法現場維修（接上真實備品價格）
       const inv = { ...s.inventory, [inc.part]: (s.inventory[inc.part] ?? 0) - 1 };
       const fleet = s.fleet.map((x) => (x.id === tb.id ? { ...x, status: "repair" as TurbineStatus } : x));
       const job: OpsJob = { id: "job_" + Math.random().toString(36).slice(2, 9), turbine: tb.id, engineerId: eng.id, discipline: eng.discipline, daysLeft: inc.repairDays };
-      // 出海動員費：僅當「目前沒有船在海上」時收（同一趟出海可同時派多台維修 → 分攤成本，鼓勵批次）
+      // 出海動員費：僅當「目前沒有船在海上」時收（同一趟出海可同時派多台維修 → 分攤成本，鼓勵批次）；費用與磨耗依目前作業船
       const newSortie = onsiteJobCount(s.opsJobs) === 0;
-      return { ...s, fleet, opsJobs: [...s.opsJobs, job], inventory: inv, cargoUsed: Math.max(0, s.cargoUsed - 1), budget: newSortie ? Math.max(0, s.budget - SORTIE_COST) : s.budget, vesselWear: newSortie ? clampN(s.vesselWear + VESSEL_WEAR_PER_SORTIE, 0, 100) : s.vesselWear };
+      return { ...s, fleet, opsJobs: [...s.opsJobs, job], inventory: inv, cargoUsed: Math.max(0, s.cargoUsed - 1), budget: newSortie ? Math.max(0, s.budget - sortieCostOf(s)) : s.budget, vesselWear: newSortie ? clampN(s.vesselWear + vesselWearOf(s), 0, 100) : s.vesselWear };
     }
     case "OPS_RESET": {
       const tb = s.fleet.find((x) => x.id === a.turbine);
@@ -696,11 +737,11 @@ export function reducer(s: GameData, a: Action): GameData {
       if (!eng) return s;
       if (fatigueOf(eng) >= FATIGUE_LIMIT) return s; // 過勞不可派
       if (engineerBusy(s.opsJobs, eng.id)) return s; // 已在執行工單
-      if (onsiteJobCount(s.opsJobs) >= vesselJobCap(s.ownsSOV, s.vesselLevel)) return s; // 船舶現場工單上限
-      if (SEA_INDEX[s.seaState] > vesselSeaTol(s.ownsSOV)) return s; // 海象過劣無法派船
+      if (onsiteJobCount(s.opsJobs) >= jobCapOf(s)) return s; // 船舶現場工單上限（依目前作業船，#4）
+      if (SEA_INDEX[s.seaState] > seaTolOf(s)) return s; // 海象超過目前作業船耐受度，無法派船
       const job: OpsJob = { id: "ins_" + Math.random().toString(36).slice(2, 9), turbine: "__sweep__", engineerId: eng.id, discipline: eng.discipline, daysLeft: INSPECT_DAYS, kind: "inspect" };
       const newSortie = onsiteJobCount(s.opsJobs) === 0; // 定檢也算一趟出海
-      return { ...s, opsJobs: [...s.opsJobs, job], budget: newSortie ? Math.max(0, s.budget - SORTIE_COST) : s.budget, vesselWear: newSortie ? clampN(s.vesselWear + VESSEL_WEAR_PER_SORTIE, 0, 100) : s.vesselWear };
+      return { ...s, opsJobs: [...s.opsJobs, job], budget: newSortie ? Math.max(0, s.budget - sortieCostOf(s)) : s.budget, vesselWear: newSortie ? clampN(s.vesselWear + vesselWearOf(s), 0, 100) : s.vesselWear };
     }
     case "BUY": {
       if (a.cost > s.budget) return s;
@@ -838,7 +879,7 @@ export function reducer(s: GameData, a: Action): GameData {
     case "GRANT_FUNDS":
       return { ...s, budget: s.budget + Math.max(0, a.amount) };
     case "LOAD_STATE":
-      return { ...INITIAL, ...a.state };
+      return migrateVessels({ ...INITIAL, ...a.state });
     case "RESET":
       return { ...INITIAL };
     default:

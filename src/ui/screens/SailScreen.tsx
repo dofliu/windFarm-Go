@@ -8,12 +8,12 @@ import { exprUrl } from "../characters";
 import { useGame } from "../../state/GameContext";
 import { useCoachTarget } from "../../state/TutorialContext";
 import { Sfx } from "../../audio/sfx";
-import { SEA_INDEX, vesselSeaTol, availableEngineer } from "../../state/game";
+import { SEA_INDEX, seaTolOf, activeVesselSpec, availableEngineer } from "../../state/game";
 import { FAULTS, isMajorFault } from "../faults";
 import { missionInstance } from "../campaign";
 import { DISC, hasEngineer } from "../disc";
 import { PARTS } from "../data";
-import Vessel, { vesselTypeOf, type VesselType } from "../Vessel";
+import Vessel, { type VesselType } from "../Vessel";
 import RouteMap from "../RouteMap";
 import { SceneVideo } from "../SceneVideo";
 import { ForecastStrip, StormWarning } from "../Forecast";
@@ -46,14 +46,15 @@ export default function SailScreen({ setScreen, accent, mode = "sim" }: { setScr
   const quest = data.customQuest ?? missionInstance(data.campaignIndex);
   const fault = FAULTS[quest.targetFault];
   const part = PARTS.find((p) => p.id === fault?.part);
-  // 重大作業出動安裝船(jack-up)，否則依擁有船型
-  const fleetType = fault && isMajorFault(fault.id) ? "jackup" : vesselTypeOf(data.ownsSOV);
+  // 重大作業出動安裝船(jack-up)，否則依目前作業船（#4）
+  const spec = activeVesselSpec(data);
+  const fleetType: VesselType = fault && isMajorFault(fault.id) ? "jackup" : data.activeVessel;
 
   // 出勤就緒檢查（#25）；技師需未超過輪班上限（#7 疲勞）
   const hasAnyEng = fault ? hasEngineer(data.engineers, fault.discipline) : false;
   const engOk = fault ? availableEngineer(data.engineers, fault.discipline) : false;
   const partOk = fault ? (data.inventory[fault.part] ?? 0) > 0 : false;
-  const seaOk = SEA_INDEX[data.seaState] <= vesselSeaTol(data.ownsSOV);
+  const seaOk = SEA_INDEX[data.seaState] <= seaTolOf(data);
   const ready = active && engOk && partOk && seaOk;
 
   // 航行動畫（enroute → onsite）
@@ -110,7 +111,7 @@ export default function SailScreen({ setScreen, accent, mode = "sim" }: { setScr
         <span style={{ color: accent, fontSize: 16 }}>⚑</span>
         <div>
           <div style={{ color: C.cream, fontSize: 14, fontWeight: 700 }}>{t({ zh: "航向", en: "Heading" })} · {active ? quest.unit : "—"}</div>
-          <div style={{ color: C.mist, fontSize: 11 }}>{t({ zh: "船舶", en: "Vessel" })}: {data.ownsSOV ? "SOV" : "CTV"} · {t({ zh: "耐海象", en: "sea-tol" })} {vesselSeaTol(data.ownsSOV)}</div>
+          <div style={{ color: C.mist, fontSize: 11 }}>{t({ zh: "船舶", en: "Vessel" })}: {fault && isMajorFault(fault.id) ? t({ zh: "安裝船", en: "Jack-up" }) : t(spec.short)} · {t({ zh: "耐海象", en: "sea-tol" })} {seaTolOf(data)} · {t({ zh: "動員", en: "mob." })} {spec.mobilizeDays}d</div>
         </div>
       </div>
 
@@ -137,7 +138,7 @@ export default function SailScreen({ setScreen, accent, mode = "sim" }: { setScr
             </div>
           ) : data.jobPhase === "office" ? (
             <>
-              <Check ok={true} label={`${t({ zh: "船舶", en: "Vessel" })}：${data.ownsSOV ? "SOV" : "CTV"}`} />
+              <Check ok={true} label={`${t({ zh: "船舶", en: "Vessel" })}：${t(spec.short)}（${t({ zh: "耐海象", en: "sea-tol" })} ${spec.seaTol}）`} />
               <Check ok={engOk} label={`${t({ zh: "技師", en: "Engineer" })}（${t(fault ? DISC[fault.discipline] : { zh: "", en: "" })}）`} hint={t(hasAnyEng ? { zh: "技師過勞、需靠港休整", en: "crew fatigued — rest in port" } : { zh: "去技師公會招募", en: "hire at Tech Guild" })} />
               <Check ok={true} label={`${t({ zh: "工具", en: "Tools" })} Lv.${data.toolLevel}`} />
               <Check ok={partOk} label={`${t({ zh: "備品", en: "Part" })}：${t(part?.n ?? { zh: fault?.part ?? "", en: fault?.part ?? "" })}`} hint={t({ zh: "去交易所購買", en: "buy at Market" })} />

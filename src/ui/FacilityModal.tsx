@@ -5,6 +5,7 @@ import { useLang } from "./useLang";
 import { useGame } from "../state/GameContext";
 import { toWan, computeScore, VESSEL_SERVICE_COST, fatigueOf, FATIGUE_LIMIT, engineerBusy, type Discipline, type Engineer } from "../state/game";
 import { FARMS } from "../state/farms";
+import { VESSELS } from "../state/vessels";
 import { PARTS } from "./data";
 import { Sfx } from "../audio/sfx";
 import { FallbackImg } from "./SceneVideo";
@@ -74,21 +75,63 @@ export default function FacilityModal({ kind, onClose }: { kind: Facility | null
     ));
   }
 
-  // CTV 整備廠（船隊）
+  // 船隊整備廠（多元船隊 #4）
   if (kind === "vessel") {
     const lvCost = (data.vesselLevel + 1) * 1_000_000;
-    const sovCost = 30_000_000;
-    return shell(`🚢 ${t({ zh: "CTV 整備廠 · 船隊", en: "CTV Yard · Fleet" })}`, onClose, (
+    const SEA_TOL_LABEL = ["可作業", "警戒", "停航"]; // index = seaTol
+    const SEA_TOL_LABEL_EN = ["calm", "caution", "closed"];
+    return shell(`⚓ ${t({ zh: "船隊整備廠 · 多元船隊", en: "Fleet Yard · Multi-vessel" })}`, onClose, (
       <>
-        <FallbackImg file="drydock.jpg" style={{ display: "block", width: "100%", height: 120, objectFit: "cover", borderRadius: 6, marginBottom: 10 }} />
-        <div style={{ fontSize: 13, color: C.mist, marginBottom: 10 }}>{t({ zh: "目前船舶", en: "Fleet" })}：CTV{data.ownsSOV ? " + SOV" : ""}　·　{t({ zh: "整備等級", en: "Level" })} Lv.{data.vesselLevel}</div>
+        <FallbackImg file="drydock.jpg" style={{ display: "block", width: "100%", height: 110, objectFit: "cover", borderRadius: 6, marginBottom: 10 }} />
+
+        {/* 船型型錄：購置 / 切換目前作業船 */}
+        <div style={{ fontSize: 11.5, color: C.gold, fontWeight: 700, letterSpacing: ".06em", marginBottom: 6 }}>{t({ zh: "船型型錄（耐海象 / 載量 / 同時工單 / 動員 / 出航成本 / 作業窗 / 磨耗）", en: "Vessel catalog (sea-tol / cargo / jobs / mob. / sortie / window / wear)" })}</div>
+        {VESSELS.map((v) => {
+          const owned = data.ownedVessels.includes(v.id);
+          const active = data.activeVessel === v.id;
+          const canBuy = data.budget >= v.purchaseCost;
+          return (
+            <div key={v.id} style={{ padding: "8px 10px", borderRadius: 6, marginBottom: 7, background: active ? "rgba(127,206,142,.1)" : "rgba(255,255,255,.04)", border: `1px solid ${active ? "rgba(127,206,142,.45)" : owned ? "rgba(214,167,84,.3)" : "rgba(214,167,84,.18)"}` }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={{ fontSize: 16 }}>{v.icon}</span>
+                <span style={{ color: C.cream, fontSize: 13.5, fontWeight: 800, fontFamily: FONT_SERIF }}>{t(v.name)}</span>
+                {active && <span style={{ fontSize: 10, color: C.green, padding: "1px 6px", borderRadius: 9, border: "1px solid rgba(127,206,142,.5)" }}>{t({ zh: "使用中", en: "Active" })}</span>}
+                <span style={{ marginLeft: "auto" }}>
+                  {active ? (
+                    <span style={{ color: C.green, fontSize: 12, fontWeight: 700 }}>✔</span>
+                  ) : owned ? (
+                    <button onClick={() => { Sfx.click(); dispatch({ type: "SET_ACTIVE_VESSEL", id: v.id }); }} style={{ padding: "5px 12px", borderRadius: 5, border: "1px solid rgba(214,167,84,.5)", background: "rgba(15,40,50,.82)", color: C.cream, fontFamily: FONT_SERIF, fontWeight: 700, fontSize: 12, cursor: "pointer" }}>{t({ zh: "切換使用", en: "Use" })}</button>
+                  ) : (
+                    <button disabled={!canBuy} onClick={() => { Sfx.cash(); dispatch({ type: "BUY_VESSEL", id: v.id, cost: v.purchaseCost }); }} style={{ padding: "5px 12px", borderRadius: 5, border: "1px solid rgba(255,236,196,.6)", background: canBuy ? primaryBg() : "rgba(255,255,255,.08)", color: canBuy ? C.ink : C.mist, fontFamily: FONT_SERIF, fontWeight: 900, fontSize: 12, cursor: canBuy ? "pointer" : "not-allowed", whiteSpace: "nowrap" }}>{t({ zh: "購置", en: "Buy" })} ◎{toWan(v.purchaseCost)}{t({ zh: "萬", en: "M" })}</button>
+                  )}
+                </span>
+              </div>
+              {/* 規格列 */}
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6, margin: "6px 0 3px" }}>
+                {[
+                  `🌊 ${t({ zh: "耐", en: "" })}${t({ zh: SEA_TOL_LABEL[v.seaTol], en: SEA_TOL_LABEL_EN[v.seaTol] })}`,
+                  `📦 ${v.cargo}`,
+                  `🔧 ${v.jobCap}`,
+                  `⏱ ${v.mobilizeDays}d`,
+                  `◎ ${toWan(v.sortieCost)}${t({ zh: "萬/趟", en: "M/trip" })}`,
+                  v.windowBonus ? `＋${v.windowBonus} ${t({ zh: "窗", en: "win" })}` : `0 ${t({ zh: "窗", en: "win" })}`,
+                  `🛠 ${v.wearRate}%`,
+                ].map((chip, i) => (
+                  <span key={i} style={{ fontSize: 10.5, color: C.mist2, padding: "1px 6px", borderRadius: 4, background: "rgba(255,255,255,.05)", border: "1px solid rgba(214,167,84,.16)" }}>{chip}</span>
+                ))}
+              </div>
+              <div style={{ fontSize: 11, color: C.mist, lineHeight: 1.5 }}>{t(v.desc)}</div>
+            </div>
+          );
+        })}
+
         {/* 船舶保養（#7）：磨耗歸零，回復作業窗 */}
         {(() => {
           const wear = Math.round(data.vesselWear);
           const wc = wear >= 85 ? C.red : wear >= 55 ? C.amber : C.green;
           const can = data.budget >= VESSEL_SERVICE_COST && wear > 0;
           return (
-            <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderTop: "1px solid rgba(255,255,255,.08)" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderTop: "1px solid rgba(255,255,255,.08)", marginTop: 4 }}>
               <div style={{ flex: 1 }}>
                 <div style={{ color: C.cream, fontSize: 13, fontWeight: 700 }}>{t({ zh: "進廠保養", en: "Service" })} · <span style={{ color: wc }}>{t({ zh: "磨耗", en: "wear" })} {wear}%</span></div>
                 <div style={{ fontSize: 11, color: C.mist }}>{t({ zh: "磨耗歸零；過高會縮短維修作業窗 · 進廠 1 天", en: "Reset wear; high wear shortens the work window · 1 day" })}</div>
@@ -98,16 +141,8 @@ export default function FacilityModal({ kind, onClose }: { kind: Facility | null
           );
         })()}
         <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderTop: "1px solid rgba(255,255,255,.08)" }}>
-          <div style={{ flex: 1 }}><div style={{ color: C.cream, fontSize: 13, fontWeight: 700 }}>{t({ zh: "整備升級", en: "Refit" })}</div><div style={{ fontSize: 11, color: C.mist }}>{t({ zh: "每級 +2 作業窗 · 耗時 1 天", en: "+2 work-window per level · 1 day" })}</div></div>
+          <div style={{ flex: 1 }}><div style={{ color: C.cream, fontSize: 13, fontWeight: 700 }}>{t({ zh: "整備升級", en: "Refit" })} · Lv.{data.vesselLevel}</div><div style={{ fontSize: 11, color: C.mist }}>{t({ zh: "每級 +2 作業窗、同時工單 +1 · 耗時 1 天", en: "+2 work-window & +1 job per level · 1 day" })}</div></div>
           <button disabled={data.budget < lvCost} onClick={() => { Sfx.cash(); dispatch({ type: "UPGRADE", kind: "vessel", cost: lvCost }); }} style={{ padding: "7px 16px", borderRadius: 5, border: "1px solid rgba(255,236,196,.6)", background: data.budget >= lvCost ? primaryBg() : "rgba(255,255,255,.08)", color: data.budget >= lvCost ? C.ink : C.mist, fontFamily: FONT_SERIF, fontWeight: 900, fontSize: 13, cursor: data.budget >= lvCost ? "pointer" : "not-allowed" }}>◎ {toWan(lvCost)}萬</button>
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderTop: "1px solid rgba(255,255,255,.08)" }}>
-          <div style={{ flex: 1 }}><div style={{ color: C.cream, fontSize: 13, fontWeight: 700 }}>{t({ zh: "購置 SOV", en: "Buy SOV" })}</div><div style={{ fontSize: 11, color: C.mist }}>{t({ zh: "可在高海象(警戒/停航)出航 · 動員 2 天", en: "Sail in rough/closed seas · 2 days" })}</div></div>
-          {data.ownsSOV ? (
-            <span style={{ color: C.green, fontWeight: 700, fontSize: 13 }}>{t({ zh: "已擁有", en: "Owned" })}</span>
-          ) : (
-            <button disabled={data.budget < sovCost} onClick={() => { Sfx.cash(); dispatch({ type: "BUY_SOV", cost: sovCost }); }} style={{ padding: "7px 16px", borderRadius: 5, border: "1px solid rgba(255,236,196,.6)", background: data.budget >= sovCost ? primaryBg() : "rgba(255,255,255,.08)", color: data.budget >= sovCost ? C.ink : C.mist, fontFamily: FONT_SERIF, fontWeight: 900, fontSize: 13, cursor: data.budget >= sovCost ? "pointer" : "not-allowed" }}>◎ {toWan(sovCost)}萬</button>
-          )}
         </div>
       </>
     ));

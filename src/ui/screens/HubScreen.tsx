@@ -14,7 +14,7 @@ import { CAMPAIGN, missionInstance } from "../campaign";
 import { FAULTS } from "../faults";
 import { PARTS } from "../data";
 import { DISC } from "../disc";
-import { toWan, computeScore, QUARTER_DAYS, SLA_FLOOR, DEMURRAGE_PER_DAY, dailyStorageCost, FATIGUE_LIMIT, fatigueOf, fleetUptime, dailyRevenue, dailyPayroll, TEST_GRANT } from "../../state/game";
+import { toWan, computeScore, QUARTER_DAYS, SLA_FLOOR, DEMURRAGE_PER_DAY, dailyStorageCost, FATIGUE_LIMIT, fatigueOf, fleetUptime, dailyRevenue, dailyPayroll, TEST_GRANT, activeVesselSpec, seaTolOf } from "../../state/game";
 import { FARMS } from "../../state/farms";
 import { BUILD_STAGE_COUNT } from "../../state/construction";
 import { fetchLeaderboard, type Row } from "../../cloud/sheet";
@@ -60,6 +60,7 @@ export default function HubScreen({ setScreen, accent, onDispatch, onFacility, s
   const mission = missionInstance(data.campaignIndex);
   const quest = data.customQuest ?? mission;
   const fault = FAULTS[quest.targetFault];
+  const vSpec = activeVesselSpec(data);
   const goSail = () => setScreen("sail");
   const [opsOpen, setOpsOpen] = useState(true); // #6 抽屜預設展開
   // 新手教學高亮目標
@@ -149,7 +150,7 @@ export default function HubScreen({ setScreen, accent, onDispatch, onFacility, s
           <FacRow char="師" label={{ zh: "技師公會", en: "Tech Guild" }} stat={{ zh: `技師 ${data.engineers.length} 名 · 在勤 ${data.techAvail}/${data.techTotal}`, en: `${data.engineers.length} engineers · ${data.techAvail}/${data.techTotal} on duty` }} onClick={() => { Sfx.click(); onFacility?.("tech"); }} />
           <FacRow char="工" label={{ zh: "機具工坊", en: "Workshop" }} stat={{ zh: `工具 Lv.${data.toolLevel}`, en: `Tools Lv.${data.toolLevel}` }} onClick={() => { Sfx.click(); onFacility?.("tool"); }} />
           <FacRow char="備" label={{ zh: "備品交易所", en: "Parts Market" }} stat={{ zh: `庫存 ${invItems.length} 類`, en: `${invItems.length} part types in stock` }} onClick={() => { Sfx.click(); setScreen("market"); }} targetRef={marketRef} />
-          <FacRow char="船" label={{ zh: "CTV 整備廠", en: "CTV Yard" }} stat={{ zh: `${data.ownsSOV ? "SOV" : "CTV"} · Lv.${data.vesselLevel}`, en: `${data.ownsSOV ? "SOV" : "CTV"} · Lv.${data.vesselLevel}` }} onClick={() => { Sfx.click(); onFacility?.("vessel"); }} />
+          <FacRow char="船" label={{ zh: "船隊整備廠", en: "Fleet Yard" }} stat={{ zh: `${vSpec.icon} ${vSpec.short.zh} · ${data.ownedVessels.length} 艘 · Lv.${data.vesselLevel}`, en: `${vSpec.icon} ${vSpec.short.en} · ${data.ownedVessels.length} ships · Lv.${data.vesselLevel}` }} onClick={() => { Sfx.click(); onFacility?.("vessel"); }} />
           <FacRow char="場" label={{ zh: "風場拓展", en: "Expand Farms" }} stat={{ zh: `營運 ${data.farmsOwned}/${FARMS.length} 座風場`, en: `${data.farmsOwned}/${FARMS.length} farms operating` }} onClick={() => { Sfx.click(); onFacility?.("farms"); }} />
           <FacRow char="建" label={{ zh: "風場建置（番外篇）", en: "Build a Farm (Side)" }} stat={data.buildDone ? { zh: `🎉 已完工 · 品質 ${data.buildScore}`, en: `🎉 Built · quality ${data.buildScore}` } : { zh: `EPC 建置短戰役 · 階段 ${data.buildStage}/${BUILD_STAGE_COUNT}`, en: `EPC build campaign · phase ${data.buildStage}/${BUILD_STAGE_COUNT}` }} onClick={() => { Sfx.click(); onBuild?.(); }} />
           <div style={{ display: "flex", gap: 6 }}>
@@ -306,7 +307,7 @@ export default function HubScreen({ setScreen, accent, onDispatch, onFacility, s
 
               {/* 船隊（含磨耗保養 #7） */}
               <OpsBlock title={{ zh: "船隊", en: "Fleet" }}>
-                <div style={kvRow}><span style={{ color: C.mist }}>{data.ownsSOV ? "SOV" : "CTV"}</span><span>Lv.{data.vesselLevel} · {t({ zh: "耐海象", en: "sea-tol" })} {data.ownsSOV ? 2 : 1}</span></div>
+                <div style={kvRow}><span style={{ color: C.mist }}>{vSpec.icon} {t(vSpec.short)}</span><span>Lv.{data.vesselLevel} · {t({ zh: "耐海象", en: "sea-tol" })} {seaTolOf(data)}</span></div>
                 {(() => {
                   const wear = Math.round(data.vesselWear);
                   const wc = wear >= 85 ? C.red : wear >= 55 ? C.amber : C.green;
