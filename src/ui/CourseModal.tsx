@@ -3,6 +3,7 @@ import { C, FONT_SERIF, primaryBg, panel } from "./tokens";
 import { t } from "../game/systems/i18n";
 import { useLang } from "./useLang";
 import { useGame } from "../state/GameContext";
+import { useTutorial } from "../state/TutorialContext";
 import { Sfx } from "../audio/sfx";
 import { COURSE_WEEKS } from "./courseMap";
 import { FAULTS } from "./faults";
@@ -20,6 +21,7 @@ function toI18n(v: unknown, fallback: I18n): I18n {
 export default function CourseModal({ open, onClose, week = 1, onSetWeek }: { open: boolean; onClose: () => void; week?: number; onSetWeek?: (w: number) => void }) {
   useLang();
   const { dispatch } = useGame();
+  const { start: startTutorial } = useTutorial();
   const [text, setText] = useState("");
   const [err, setErr] = useState("");
   if (!open) return null;
@@ -74,6 +76,19 @@ export default function CourseModal({ open, onClose, week = 1, onSetWeek }: { op
         </div>
 
         <div style={{ padding: "14px 16px" }}>
+          {/* 新手教學：重新播放莉莉互動導覽 */}
+          <button
+            onClick={() => { Sfx.click(); onClose(); startTutorial(); }}
+            style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 6, background: "rgba(95,168,217,.12)", border: "1px solid rgba(95,168,217,.4)", color: C.cream, cursor: "pointer", marginBottom: 14, textAlign: "left" }}
+          >
+            <span style={{ fontSize: 20 }}>🎓</span>
+            <div style={{ flex: 1 }}>
+              <div style={{ color: C.goldText, fontWeight: 900, fontFamily: FONT_SERIF, fontSize: 14 }}>{t({ zh: "重新播放新手教學", en: "Replay tutorial" })}</div>
+              <div style={{ color: C.mist, fontSize: 11.5, marginTop: 2 }}>{t({ zh: "由莉莉手把手帶你走一遍工單流程。", en: "Lily walks you through the work-order loop step by step." })}</div>
+            </div>
+            <span style={{ color: C.mist2, fontSize: 14 }}>▶</span>
+          </button>
+
           {/* 教師端：目前開放週次（鎖定計分主線；沙盒不受限） */}
           <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 6, background: "rgba(217,164,65,.1)", border: "1px solid rgba(214,167,84,.4)", marginBottom: 14 }}>
             <div style={{ flex: 1 }}>

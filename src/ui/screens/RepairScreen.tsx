@@ -5,6 +5,7 @@ import { useLang } from "../useLang";
 import { AdvisorPopup, Avatar } from "../Portrait";
 import { useGame } from "../../state/GameContext";
 import { useDialogue } from "../../state/DialogueContext";
+import { useCoachTarget } from "../../state/TutorialContext";
 import { S } from "../../i18n/strings";
 import { Sfx } from "../../audio/sfx";
 import { exprUrl } from "../characters";
@@ -44,6 +45,12 @@ export default function RepairScreen({ setScreen, mode = "sim" }: { setScreen: (
   const need = fault.part; // 必備備品
   const needPart = PARTS.find((p) => p.id === need);
   const hasPart = (data.inventory[need] ?? 0) > 0;
+
+  // 新手教學高亮目標
+  const boardRef = useCoachTarget("board");
+  const quizRef = useCoachTarget("quiz");
+  const sopRef = useCoachTarget("sop");
+  const finishRef = useCoachTarget("finish");
 
   const quizCorrect = pick === q.correct;
   const allSteps = steps.every(Boolean);
@@ -153,7 +160,7 @@ export default function RepairScreen({ setScreen, mode = "sim" }: { setScreen: (
                   : t({ zh: "海象平穩，可安全登船，前往作業地點。", en: "Calm seas — board safely and proceed to the work area." })}
               </div>
               <div style={{ fontSize: 12, color: C.mist, marginBottom: 12 }}>{t({ zh: "作業地點", en: "Work area" })}：<b style={{ color: C.cream }}>{t(LOCATION_LABEL[location])}</b></div>
-              <button onClick={board} style={{ width: "100%", padding: "12px 0", borderRadius: 6, border: "1px solid rgba(255,236,196,.6)", background: primaryBg(), color: C.ink, fontFamily: FONT_SERIF, fontWeight: 900, fontSize: 15, cursor: "pointer" }}>
+              <button ref={boardRef} onClick={board} style={{ width: "100%", padding: "12px 0", borderRadius: 6, border: "1px solid rgba(255,236,196,.6)", background: primaryBg(), color: C.ink, fontFamily: FONT_SERIF, fontWeight: 900, fontSize: 15, cursor: "pointer" }}>
                 {roughBoarding ? t({ zh: "頂浪登船（延誤 −3 時段）", en: "Board in swell (−3 slots)" }) : t({ zh: "登船登塔，開始作業", en: "Board & start work" })}
               </button>
               {roughBoarding && (
@@ -253,7 +260,7 @@ export default function RepairScreen({ setScreen, mode = "sim" }: { setScreen: (
         </div>
 
         {/* quiz */}
-        <div style={{ ...panel, boxShadow: "0 12px 30px rgba(0,0,0,.45)" }}>
+        <div ref={quizRef} style={{ ...panel, boxShadow: "0 12px 30px rgba(0,0,0,.45)" }}>
           <div style={panelHeader}>
             <Avatar id="elec_eng" src={exprUrl("elec_eng", "neutral")} size={26} headShot />
             <span style={panelTitle}>{t(S.panel.quiz)}</span>
@@ -288,7 +295,7 @@ export default function RepairScreen({ setScreen, mode = "sim" }: { setScreen: (
         </div>
 
         {/* SOP checklist (interactive) */}
-        <div style={{ ...panel, flex: 1, boxShadow: "0 12px 30px rgba(0,0,0,.45)", display: "flex", flexDirection: "column" }}>
+        <div ref={sopRef} style={{ ...panel, flex: 1, boxShadow: "0 12px 30px rgba(0,0,0,.45)", display: "flex", flexDirection: "column" }}>
           <div style={panelHeader}>
             <span style={panelTitle}>{t(S.panel.sop)}</span>
             <span style={{ marginLeft: "auto", fontSize: 11, color: C.mist }}>{steps.filter(Boolean).length}/{steps.length}</span>
@@ -328,6 +335,7 @@ export default function RepairScreen({ setScreen, mode = "sim" }: { setScreen: (
               </button>
             ) : (
               <button
+                ref={finishRef}
                 disabled={!ready}
                 onClick={finish}
                 style={{ width: "100%", padding: "11px 0", borderRadius: 6, border: "1px solid rgba(255,236,196,.6)", background: ready ? primaryBg() : "rgba(255,255,255,.08)", color: ready ? C.ink : C.mist, fontFamily: FONT_SERIF, fontWeight: 900, fontSize: 15, letterSpacing: ".08em", cursor: ready ? "pointer" : "not-allowed" }}

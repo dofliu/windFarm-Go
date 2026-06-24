@@ -3,6 +3,7 @@ import { C, FONT_SERIF } from "./tokens";
 import { t } from "../game/systems/i18n";
 import { useLang } from "./useLang";
 import { useDialogue } from "../state/DialogueContext";
+import { useTutorial } from "../state/TutorialContext";
 import { CHARACTERS, portraitUrl, exprUrl } from "./characters";
 import { S } from "../i18n/strings";
 import { Sfx } from "../audio/sfx";
@@ -11,6 +12,7 @@ import { Sfx } from "../audio/sfx";
 export default function DialogueLayer() {
   useLang();
   const { current, next } = useDialogue();
+  const { running: tutorialRunning } = useTutorial();
   const full = current ? t(current.line) : "";
   const [shown, setShown] = useState("");
   const [done, setDone] = useState(false);
@@ -31,7 +33,7 @@ export default function DialogueLayer() {
     return () => window.clearInterval(id);
   }, [current, full]);
 
-  if (!current) return null;
+  if (!current || tutorialRunning) return null; // 教學進行中暫停一般對話框，改由導覽覆蓋層主導
   const ch = CHARACTERS[current.speaker];
   const img = current.expr ? exprUrl(current.speaker, current.expr) : portraitUrl(current.speaker);
 

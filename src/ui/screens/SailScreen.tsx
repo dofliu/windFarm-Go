@@ -6,6 +6,7 @@ import { SailTurbines } from "../Turbine";
 import { AdvisorPopup } from "../Portrait";
 import { exprUrl } from "../characters";
 import { useGame } from "../../state/GameContext";
+import { useCoachTarget } from "../../state/TutorialContext";
 import { Sfx } from "../../audio/sfx";
 import { SEA_INDEX, vesselSeaTol, availableEngineer } from "../../state/game";
 import { FAULTS, isMajorFault } from "../faults";
@@ -75,6 +76,9 @@ export default function SailScreen({ setScreen, accent, mode = "sim" }: { setScr
     Sfx.click();
     dispatch({ type: "DEPART" });
   };
+  // 新手教學高亮目標
+  const departRef = useCoachTarget("depart");
+  const startRepairRef = useCoachTarget("startrepair");
 
   return (
     <div style={{ position: "absolute", inset: 0, zIndex: 2 }}>
@@ -137,6 +141,7 @@ export default function SailScreen({ setScreen, accent, mode = "sim" }: { setScr
               <ForecastStrip forecast={data.forecast} compact />
               <StormWarning forecast={data.forecast} />
               <button
+                ref={departRef}
                 disabled={!ready}
                 onClick={depart}
                 style={{ width: "100%", marginTop: 10, padding: "12px 0", borderRadius: 6, border: "1px solid rgba(255,236,196,.6)", background: ready ? primaryBg(accent) : "rgba(255,255,255,.08)", color: ready ? C.ink : C.mist, fontFamily: FONT_SERIF, fontWeight: 900, fontSize: 16, letterSpacing: ".08em", cursor: ready ? "pointer" : "not-allowed" }}
@@ -155,7 +160,7 @@ export default function SailScreen({ setScreen, accent, mode = "sim" }: { setScr
           ) : (
             <>
               <div style={{ fontSize: 13, color: C.green, marginBottom: 10 }}>✔ {t({ zh: "已抵達並完成登塔，可開始維修。", en: "Arrived & boarded — ready to repair." })}</div>
-              <button onClick={() => { Sfx.click(); setScreen("repair"); }} style={{ width: "100%", padding: "12px 0", borderRadius: 6, border: "1px solid rgba(255,236,196,.6)", background: primaryBg(accent), color: C.ink, fontFamily: FONT_SERIF, fontWeight: 900, fontSize: 16, cursor: "pointer" }}>
+              <button ref={startRepairRef} onClick={() => { Sfx.click(); setScreen("repair"); }} style={{ width: "100%", padding: "12px 0", borderRadius: 6, border: "1px solid rgba(255,236,196,.6)", background: primaryBg(accent), color: C.ink, fontFamily: FONT_SERIF, fontWeight: 900, fontSize: 16, cursor: "pointer" }}>
                 {t({ zh: "登塔開始維修", en: "Start Repair" })}
               </button>
             </>

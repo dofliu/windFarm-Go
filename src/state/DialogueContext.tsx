@@ -8,13 +8,14 @@ export interface DlgMsg {
   expr?: string; // 表情（narrator_girl 專用）
 }
 
-const Ctx = createContext<{ current: DlgMsg | null; say: (m: DlgMsg | DlgMsg[]) => void; next: () => void } | null>(null);
+const Ctx = createContext<{ current: DlgMsg | null; say: (m: DlgMsg | DlgMsg[]) => void; next: () => void; clear: () => void } | null>(null);
 
 export function DialogueProvider({ children }: { children: ReactNode }) {
   const [queue, setQueue] = useState<DlgMsg[]>([]);
   const say = useCallback((m: DlgMsg | DlgMsg[]) => setQueue((q) => [...q, ...(Array.isArray(m) ? m : [m])]), []);
   const next = useCallback(() => setQueue((q) => q.slice(1)), []);
-  return <Ctx.Provider value={{ current: queue[0] ?? null, say, next }}>{children}</Ctx.Provider>;
+  const clear = useCallback(() => setQueue([]), []); // 清空對話佇列（新手教學期間避免對話框與覆蓋層打架）
+  return <Ctx.Provider value={{ current: queue[0] ?? null, say, next, clear }}>{children}</Ctx.Provider>;
 }
 
 export function useDialogue() {
