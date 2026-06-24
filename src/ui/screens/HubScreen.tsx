@@ -16,6 +16,7 @@ import { PARTS } from "../data";
 import { DISC } from "../disc";
 import { toWan, computeScore, QUARTER_DAYS, SLA_FLOOR, DEMURRAGE_PER_DAY, dailyStorageCost, FATIGUE_LIMIT, fatigueOf, fleetUptime, dailyRevenue, dailyPayroll, TEST_GRANT } from "../../state/game";
 import { FARMS } from "../../state/farms";
+import { BUILD_STAGE_COUNT } from "../../state/construction";
 import { fetchLeaderboard, type Row } from "../../cloud/sheet";
 import { getProfile } from "../../state/profile";
 import { MODE_LABEL, MODE_ICON, type SceneMode } from "../scenes";
@@ -51,7 +52,7 @@ function OpsBlock({ title, children }: { title: I18n; children: ReactNode }) {
 
 const kvRow: CSSProperties = { display: "flex", justifyContent: "space-between", fontSize: 13, color: C.cream, padding: "3px 0" };
 
-export default function HubScreen({ setScreen, accent, onDispatch, onFacility, sceneName, onCycleScene, aerial, onToggleView, mode = "sim", onCycleMode, onOps, onFleet, week = 1 }: { setScreen: (s: Screen) => void; accent: string; onDispatch?: () => void; onFacility?: (k: "vessel" | "tech" | "tool" | "codex" | "ranking" | "farms") => void; sceneName?: I18n; onCycleScene?: () => void; aerial?: boolean; onToggleView?: () => void; mode?: SceneMode; onCycleMode?: () => void; onOps?: () => void; onFleet?: () => void; week?: number }) {
+export default function HubScreen({ setScreen, accent, onDispatch, onFacility, sceneName, onCycleScene, aerial, onToggleView, mode = "sim", onCycleMode, onOps, onFleet, onBuild, week = 1 }: { setScreen: (s: Screen) => void; accent: string; onDispatch?: () => void; onFacility?: (k: "vessel" | "tech" | "tool" | "codex" | "ranking" | "farms") => void; sceneName?: I18n; onCycleScene?: () => void; aerial?: boolean; onToggleView?: () => void; mode?: SceneMode; onCycleMode?: () => void; onOps?: () => void; onFleet?: () => void; onBuild?: () => void; week?: number }) {
   useLang();
   const { data, dispatch } = useGame();
   const { say } = useDialogue();
@@ -150,6 +151,7 @@ export default function HubScreen({ setScreen, accent, onDispatch, onFacility, s
           <FacRow char="備" label={{ zh: "備品交易所", en: "Parts Market" }} stat={{ zh: `庫存 ${invItems.length} 類`, en: `${invItems.length} part types in stock` }} onClick={() => { Sfx.click(); setScreen("market"); }} targetRef={marketRef} />
           <FacRow char="船" label={{ zh: "CTV 整備廠", en: "CTV Yard" }} stat={{ zh: `${data.ownsSOV ? "SOV" : "CTV"} · Lv.${data.vesselLevel}`, en: `${data.ownsSOV ? "SOV" : "CTV"} · Lv.${data.vesselLevel}` }} onClick={() => { Sfx.click(); onFacility?.("vessel"); }} />
           <FacRow char="場" label={{ zh: "風場拓展", en: "Expand Farms" }} stat={{ zh: `營運 ${data.farmsOwned}/${FARMS.length} 座風場`, en: `${data.farmsOwned}/${FARMS.length} farms operating` }} onClick={() => { Sfx.click(); onFacility?.("farms"); }} />
+          <FacRow char="建" label={{ zh: "風場建置（番外篇）", en: "Build a Farm (Side)" }} stat={data.buildDone ? { zh: `🎉 已完工 · 品質 ${data.buildScore}`, en: `🎉 Built · quality ${data.buildScore}` } : { zh: `EPC 建置短戰役 · 階段 ${data.buildStage}/${BUILD_STAGE_COUNT}`, en: `EPC build campaign · phase ${data.buildStage}/${BUILD_STAGE_COUNT}` }} onClick={() => { Sfx.click(); onBuild?.(); }} />
           <div style={{ display: "flex", gap: 6 }}>
             <FacRowMini char="鑑" label={{ zh: "圖鑑", en: "Codex" }} onClick={() => { Sfx.click(); onFacility?.("codex"); }} />
             <FacRowMini char="榜" label={{ zh: "排行", en: "Ranking" }} onClick={() => { Sfx.click(); onFacility?.("ranking"); }} />

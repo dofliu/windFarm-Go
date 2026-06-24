@@ -41,6 +41,7 @@ const flt = await load("src/ui/faults.ts");
 const cmap = await load("src/ui/courseMap.ts");
 const tut = await load("src/ui/tutorialSteps.ts");
 const tasks = await load("src/state/tasks.ts");
+const cons = await load("src/state/construction.ts");
 const R = g.reducer, I = g.INITIAL;
 
 // ───────────────────────── INITIAL 不變量 ─────────────────────────
@@ -712,8 +713,10 @@ function randomAction(s, rnd) {
     "REST", "REST", "REMOTE_CHECK", "OPS_ADVANCE", "OPS_ADVANCE", "ACCEPT_QUEST", "DEPART", "ARRIVE", "BUY", "SELL",
     "UPGRADE", "HIRE", "BUY_SOV", "UNLOCK_FARM", "SERVICE_VESSEL", "BUY_DIAGNOSTICS", "DO_ROUTINE",
     "OPS_DISPATCH", "OPS_DISPATCH", "OPS_RESET", "OPS_INSPECT", "FINISH_REPAIR", "FAIL_REPAIR", "NEXT_QUEST", "RESOLVE_TASK", "RESTART_CAMPAIGN",
+    "BUILD_RESOLVE", "BUILD_RESOLVE", "BUILD_RESET",
   ]);
   switch (t) {
+    case "BUILD_RESOLVE": return { type: "BUILD_RESOLVE", stage: s.buildStage, choiceIdx: Math.floor(rnd() * 2) };
     case "BUY": return { type: "BUY", partId: pick(["gearbox_oil", "yaw_motor", "converter"]), qty: 1 + Math.floor(rnd() * 3), cost: Math.floor(rnd() * 200000), leadDays: Math.floor(rnd() * 4) };
     case "SELL": return { type: "SELL", partId: "gearbox_oil", gain: 1000 };
     case "UPGRADE": return { type: "UPGRADE", kind: pick(["vessel", "tech", "tool"]), cost: Math.floor(rnd() * 100000) };
@@ -758,6 +761,67 @@ test("fuzz: 3000 random actions never produce an invalid state or throw", () => 
 });
 
 // ── 結果 ──
+// ───────────────────────── 風場建置番外篇短戰役（#1） ─────────────────────────
+test("construction catalog: stages well-formed & BUILD_MAX_SCORE consistent", () => {
+  const S = cons.BUILD_STAGES;
+  ok(S.length >= 6, `>=6 build stages (got ${S.length})`);
+  eq(cons.BUILD_STAGE_COUNT, S.length, "BUILD_STAGE_COUNT matches");
+  const ids = S.map((x) => x.id);
+  eq(ids.length, new Set(ids).size, "stage ids unique");
+  let maxSum = 0;
+  S.forEach((st, i) => {
+    eq(st.phase, i + 1, `phase numbering sequential at ${st.id}`);
+    ok(st.title?.zh && st.title?.en && st.scenario?.zh && st.scenario?.en, `stage ${st.id} bilingual`);
+    ok(Array.isArray(st.choices) && st.choices.length >= 2, `stage ${st.id} >=2 choices`);
+    ok(st.choices.some((c) => c.good), `stage ${st.id} has a good choice`);
+    for (const c of st.choices) {
+      ok(c.label?.zh && c.feedback?.en, `stage ${st.id} choice bilingual`);
+      ok(c.days > 0 && c.cost >= 0, `stage ${st.id} choice sane cost/days`);
+    }
+    maxSum += Math.max(...st.choices.map((c) => c.score));
+  });
+  eq(cons.BUILD_MAX_SCORE, maxSum, "BUILD_MAX_SCORE = sum of best per stage");
+  ok(cons.BUILD_MAX_SCORE > 0, "max score positive");
+});
+test("INITIAL build state is fresh", () => {
+  eq(I.buildStage, 0); eq(I.buildScore, 0); eq(I.buildDone, false);
+});
+test("BUILD_RESOLVE advances stage, applies cost/days/score, guards wrong stage", () => {
+  seed(31);
+  const best = cons.BUILD_STAGES[0].choices.findIndex((c) => c.good);
+  const c0 = cons.BUILD_STAGES[0].choices[best];
+  const s = R(I, { type: "BUILD_RESOLVE", stage: 0, choiceIdx: best });
+  eq(s.buildStage, 1, "advanced to next stage");
+  eq(s.buildScore, c0.score, "score applied");
+  eq(s.day, I.day + c0.days, "days advanced by choice");
+  ok(s.budget <= I.budget, "cost charged (net of any daily income)");
+  // 指定錯誤階段不生效
+  const noop = R(s, { type: "BUILD_RESOLVE", stage: 0, choiceIdx: 0 });
+  eq(noop.buildStage, s.buildStage, "resolving a non-current stage is a no-op");
+});
+test("completing all stages sets buildDone and pays the reward", () => {
+  seed(33);
+  let s = I;
+  for (let i = 0; i < cons.BUILD_STAGE_COUNT; i++) {
+    const gi = cons.BUILD_STAGES[i].choices.findIndex((c) => c.good);
+    s = R(s, { type: "BUILD_RESOLVE", stage: i, choiceIdx: gi });
+  }
+  eq(s.buildDone, true, "campaign complete");
+  eq(s.buildStage, cons.BUILD_STAGE_COUNT, "stage pointer at end");
+  eq(s.buildScore, cons.BUILD_MAX_SCORE, "all-good run hits max score");
+  ok(s.xp >= I.xp + cons.BUILD_REWARD_XP, "xp reward granted");
+  // 再決策無效
+  const after = R(s, { type: "BUILD_RESOLVE", stage: cons.BUILD_STAGE_COUNT, choiceIdx: 0 });
+  eq(after.buildStage, s.buildStage, "no resolve after done");
+  // 重置
+  const reset = R(s, { type: "BUILD_RESET" });
+  eq(reset.buildStage, 0); eq(reset.buildDone, false); eq(reset.buildScore, 0);
+});
+test("buildGrade: best run is S, worst is D", () => {
+  ok(cons.buildGrade(cons.BUILD_MAX_SCORE).en.startsWith("S"), "max → S grade");
+  ok(cons.buildGrade(-99).en.startsWith("D"), "very negative → D grade");
+});
+
 console.log(`\n${pass} passed, ${fail} failed (${pass + fail} total)`);
 if (fail) { console.log("\nFailures:"); for (const f of fails) console.log("  ✗ " + f); process.exit(1); }
 console.log("✓ all green");
