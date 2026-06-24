@@ -128,17 +128,18 @@ export const TUTORIAL_STEPS: CoachStep[] = [
     screen: "repair",
     expr: "surprise",
     text: {
-      zh: "全部就緒!點「完工結算」回報 SCADA,完成這張工單。",
-      en: "All set! Tap 'Finish & report' to close out this work order.",
+      zh: "全部就緒!點下方按鈕結算回報 SCADA。(若是大型組件,會轉為『大修』,需回母港逐日推進——一樣算完成這一步!)",
+      en: "All set! Tap the button below to report to SCADA. (Major components switch to a multi-day 'overhaul' back at port — that still counts here!)",
     },
-    gate: (d) => d.questStage === "done",
+    // 一般工單 → questStage done；重大故障 → 轉入大修(overhaul)。兩種結果都視為走完這一步,避免卡關。
+    gate: (d) => d.questStage === "done" || !!d.overhaul || d.repairDone,
   },
   {
     id: "done",
     expr: "wink",
     text: {
-      zh: "太棒了,船長!你已經走完一張工單的完整流程 🎉 接下來多接工單、到「風場戰情室」管理機隊、衝排行榜吧!想再看一次教學,可從右上齒輪⚙設定重新播放~",
-      en: "Brilliant, Captain! You've completed a full work-order loop 🎉 Take on more jobs, manage the fleet in 'Fleet Ops', and climb the leaderboard! Replay this tutorial anytime from the ⚙ settings.",
+      zh: "太棒了,船長!你已經走完一張工單的核心流程 🎉 接下來多接工單、到「風場戰情室」管理機隊、衝排行榜吧!想再看一次教學,可從右上齒輪⚙設定重新播放~",
+      en: "Brilliant, Captain! You've completed the core work-order loop 🎉 Take on more jobs, manage the fleet in 'Fleet Ops', and climb the leaderboard! Replay this tutorial anytime from the ⚙ settings.",
     },
   },
 ];

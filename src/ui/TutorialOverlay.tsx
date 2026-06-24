@@ -27,6 +27,7 @@ export default function TutorialOverlay({ screen }: { screen: Screen }) {
   const { data } = useGame();
   const { running, step, total, getTarget, version, advance, skip } = useTutorial();
   const [rect, setRect] = useState<Rect | null>(null);
+  const [grace, setGrace] = useState(false); // 行動步驟等待逾時 → 顯示「跳過此步」安全網，避免任何存檔狀態硬卡住
   const cur = running ? TUTORIAL_STEPS[step] : null;
 
   // 進入步驟時，記錄閘門是否「已達成」（重看時可能一開始就成立 → 改為手動下一步，不自動略過）。
@@ -36,6 +37,14 @@ export default function TutorialOverlay({ screen }: { screen: Screen }) {
     entrySatisfied.current = cur.gate ? cur.gate(data, screen) : false;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step, running]);
+
+  // 進入新步驟時重置安全網計時；行動步驟若等待逾時則顯示「跳過此步」。
+  useEffect(() => {
+    setGrace(false);
+    if (!cur || !cur.gate) return;
+    const id = window.setTimeout(() => setGrace(true), 7000);
+    return () => window.clearTimeout(id);
+  }, [cur, step]);
 
   // 行動步驟：閘門由未達成轉為達成 → 自動前進。
   useEffect(() => {
@@ -131,7 +140,14 @@ export default function TutorialOverlay({ screen }: { screen: Screen }) {
                 {step + 1 >= total ? t({ zh: "完成 ✓", en: "Done ✓" }) : t({ zh: "下一步 ▶", en: "Next ▶" })}
               </button>
             ) : (
-              <span style={{ fontSize: 12, color: C.mist2 }}>{t({ zh: "（照著做即可繼續）", en: "(do the action to continue)" })}</span>
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <span style={{ fontSize: 12, color: C.mist2 }}>{t({ zh: "（照著做即可繼續）", en: "(do the action to continue)" })}</span>
+                {grace && (
+                  <button onClick={() => { Sfx.click(); advance(); }} style={{ padding: "5px 14px", borderRadius: 6, border: "1px solid rgba(214,167,84,.5)", background: "rgba(15,40,50,.82)", color: C.cream, fontFamily: FONT_SERIF, fontWeight: 700, fontSize: 12.5, cursor: "pointer" }}>
+                    {t({ zh: "跳過此步 ▶", en: "Skip step ▶" })}
+                  </button>
+                )}
+              </div>
             )}
           </div>
         </div>
