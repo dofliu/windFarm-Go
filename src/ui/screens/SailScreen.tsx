@@ -15,6 +15,7 @@ import { DISC, hasEngineer } from "../disc";
 import { PARTS } from "../data";
 import Vessel, { vesselTypeOf, type VesselType } from "../Vessel";
 import RouteMap from "../RouteMap";
+import { SceneVideo } from "../SceneVideo";
 import { ForecastStrip, StormWarning } from "../Forecast";
 import type { Screen } from "../../App";
 
@@ -98,6 +99,11 @@ export default function SailScreen({ setScreen, accent, mode = "sim" }: { setScr
       ) : (
         <CtvShip left="42%" top={392} scale={1.25} opacity={1} type={fleetType} />
       )}
+
+      {/* 場景影片:出海航行(enroute)鋪底 —— 漫畫模式用大航海動畫版,其餘用寫實版 */}
+      {data.jobPhase === "enroute" && <SceneVideo file={mode === "comic" ? "comic_sailing.mp4" : "sailing.mp4"} poster={mode === "comic" ? "comic_sailing.jpg" : "real_sailing.jpg"} />}
+      {/* 大修進行中:安裝船吊裝場景鋪底 */}
+      {!!data.overhaul && data.jobPhase === "office" && <SceneVideo file="overhaul.mp4" poster="real_overhaul.jpg" />}
 
       {/* destination chip */}
       <div style={{ position: "absolute", left: 40, top: 96, padding: "9px 16px", borderRadius: 6, background: "rgba(10,28,36,.82)", border: "1px solid rgba(214,167,84,.4)", backdropFilter: "blur(3px)", display: "flex", alignItems: "center", gap: 10 }}>
