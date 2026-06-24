@@ -38,6 +38,7 @@ const camp = await load("src/ui/campaign.ts");
 const course = await load("src/state/course.ts");
 const data = await load("src/ui/data.ts");
 const flt = await load("src/ui/faults.ts");
+const cmap = await load("src/ui/courseMap.ts");
 const tut = await load("src/ui/tutorialSteps.ts");
 const R = g.reducer, I = g.INITIAL;
 
@@ -242,6 +243,55 @@ test("incidents pool: resettable subset exists; all have discipline+repairDays+p
   ok(inc.INCIDENTS.some((x) => x.resettable), "some resettable");
   ok(inc.INCIDENTS.some((x) => !x.resettable), "some require crew");
   ok(inc.INCIDENTS.every((x) => x.discipline && x.repairDays > 0 && x.part && x.weight > 0));
+});
+test("content catalog: faults/incidents/parts/course are consistent (#3 expansion)", () => {
+  const partIds = new Set(data.PARTS.map((p) => p.id));
+  const faults = Object.values(flt.FAULTS);
+  // 規模成長(擴充後)
+  ok(data.PARTS.length >= 20, `parts >= 20 (got ${data.PARTS.length})`);
+  ok(faults.length >= 15, `faults >= 15 (got ${faults.length})`);
+  ok(inc.INCIDENTS.length >= 15, `incidents >= 15 (got ${inc.INCIDENTS.length})`);
+  // 每個故障:備品存在、quiz 4 選且正解在範圍、SOP 5 步、欄位齊全
+  for (const f of faults) {
+    ok(partIds.has(f.part), `fault ${f.id} part '${f.part}' must exist in PARTS`);
+    eq(f.quiz.options.length, 4, `fault ${f.id} quiz must have 4 options`);
+    ok(f.quiz.correct >= 0 && f.quiz.correct < 4, `fault ${f.id} correct in range`);
+    eq(f.sop.length, 5, `fault ${f.id} sop must have 5 steps`);
+    ok(f.discipline && f.part && f.knowledge_point, `fault ${f.id} fields present`);
+    ok(["nacelle", "hub", "tower", "deck"].includes(flt.locationOf(f.id)), `fault ${f.id} has a valid location`);
+  }
+  // quiz 正解不應全部相同(避免「答案都差不多」)
+  ok(new Set(faults.map((f) => f.quiz.correct)).size >= 3, "quiz correct answers are spread across options");
+  // 每個戰情室故障的備品都存在
+  for (const x of inc.INCIDENTS) ok(partIds.has(x.part), `incident ${x.id} part '${x.part}' must exist in PARTS`);
+  // 課程週次指派的 faultId 必須存在;涵蓋全部五大科別
+  for (const w of cmap.COURSE_WEEKS) ok(flt.FAULTS[w.faultId], `course week ${w.week} faultId '${w.faultId}' must exist`);
+  const discs = new Set(faults.map((f) => f.discipline));
+  for (const d of ["mechanical", "electrical", "control", "structural", "hse"]) ok(discs.has(d), `faults cover discipline ${d}`);
+});
+test("codex & components: every fault has a deep codex entry; components map 1:1 to faults (C: 圖鑑/多重根因)", () => {
+  const faultIds = Object.keys(flt.FAULTS);
+  // 每個故障都有完整的圖鑑解說(五欄 + 雙語)
+  for (const id of faultIds) {
+    const c = flt.CODEX[id];
+    ok(c, `fault ${id} has a CODEX entry`);
+    for (const k of ["mechanism", "symptom", "differential", "consequence", "tip"]) {
+      ok(c[k] && c[k].zh && c[k].en, `codex ${id}.${k} bilingual present`);
+    }
+  }
+  // 元件分組:每個 faultId 都存在、無重複、且涵蓋全部故障
+  const inComponents = flt.COMPONENTS.flatMap((c) => c.faultIds);
+  eq(inComponents.length, new Set(inComponents).size, "no fault appears in two components");
+  for (const id of inComponents) ok(flt.FAULTS[id], `component faultId '${id}' must exist in FAULTS`);
+  for (const id of faultIds) ok(inComponents.includes(id), `fault '${id}' must belong to a component`);
+  // 多重根因元件:確實 ≥2 個根因,用於鑑別診斷題組
+  ok(flt.MULTI_CAUSE_COMPONENTS.length >= 4, `>=4 multi-cause components (got ${flt.MULTI_CAUSE_COMPONENTS.length})`);
+  for (const c of flt.MULTI_CAUSE_COMPONENTS) ok(c.faultIds.length >= 2, `component ${c.id} is multi-cause`);
+  // 同元件內症狀不應重複(鑑別診斷題組才有意義)
+  for (const c of flt.MULTI_CAUSE_COMPONENTS) {
+    const symptoms = c.faultIds.map((id) => flt.CODEX[id].symptom.zh);
+    eq(symptoms.length, new Set(symptoms).size, `component ${c.id} symptoms are distinct`);
+  }
 });
 test("OPS_DISPATCH consumes the part; blocked when out of stock", () => {
   const { state, turbine } = withFault("gearbox", "mechanical"); // stocks gearbox_oil:9

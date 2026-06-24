@@ -1,13 +1,14 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { C, FONT_SERIF, primaryBg, panel } from "./tokens";
 import { t } from "../game/systems/i18n";
 import { useLang } from "./useLang";
 import { useGame } from "../state/GameContext";
 import { toWan, computeScore, VESSEL_SERVICE_COST, fatigueOf, FATIGUE_LIMIT, engineerBusy, type Discipline, type Engineer } from "../state/game";
 import { FARMS } from "../state/farms";
+import { PARTS } from "./data";
 import { Sfx } from "../audio/sfx";
 import { FallbackImg } from "./SceneVideo";
-import { FAULTS } from "./faults";
+import { FAULTS, CODEX, COMPONENTS, MULTI_CAUSE_COMPONENTS, LOCATION_LABEL, locationOf, isMajorFault, type ComponentGroup } from "./faults";
 import { DISC } from "./disc";
 import type { I18n } from "../game/systems/types";
 import { getProfile } from "../state/profile";
@@ -158,24 +159,7 @@ export default function FacilityModal({ kind, onClose }: { kind: Facility | null
   }
 
   if (kind === "codex") {
-    return shell(`📖 ${t({ zh: "故障圖鑑", en: "Fault Codex" })}`, onClose, (
-      <div>
-        <div style={{ fontSize: 12, color: C.mist, marginBottom: 10 }}>{t({ zh: "完成維修後解鎖該故障的排查知識。", en: "Complete a repair to unlock that fault's knowledge." })}</div>
-        {Object.values(FAULTS).map((f) => {
-          const seen = data.seenFaults.includes(f.id);
-          return (
-            <div key={f.id} style={{ padding: "9px 10px", borderRadius: 5, background: "rgba(255,255,255,.04)", border: `1px solid ${seen ? "rgba(127,206,142,.4)" : "rgba(214,167,84,.2)"}`, marginBottom: 8 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <span style={{ color: seen ? C.green : C.mist }}>{seen ? "✓" : "🔒"}</span>
-                <span style={{ color: C.cream, fontSize: 14, fontWeight: 700, fontFamily: FONT_SERIF }}>{t(f.name)}</span>
-                <span style={{ marginLeft: "auto", fontSize: 10, color: C.mist }}>{t(DISC[f.discipline])}</span>
-              </div>
-              {seen && <div style={{ fontSize: 12, color: C.mist, marginTop: 5, lineHeight: 1.5 }}>{t(f.quiz.ok)}</div>}
-            </div>
-          );
-        })}
-      </div>
-    ), 560);
+    return shell(`📖 ${t({ zh: "故障圖鑑", en: "Fault Codex" })}`, onClose, <CodexBody seen={data.seenFaults} />, 600);
   }
 
   // 風場拓展（#34）
@@ -257,4 +241,171 @@ export default function FacilityModal({ kind, onClose }: { kind: Facility | null
       )}
     </div>
   ));
+}
+
+// ───────── 故障圖鑑（圖鑑解說擴充 + 多重根因鑑別診斷練習）─────────
+const partName = (id: string): I18n => PARTS.find((p) => p.id === id)?.n ?? { zh: id, en: id };
+
+function CodexBody({ seen }: { seen: string[] }) {
+  const [tab, setTab] = useState<"codex" | "diff">("codex");
+  const totalSeen = COMPONENTS.flatMap((c) => c.faultIds).filter((id) => seen.includes(id)).length;
+  const total = Object.keys(FAULTS).length;
+  return (
+    <div>
+      {/* 分頁：圖鑑 / 鑑別診斷練習 */}
+      <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+        {([["codex", { zh: "📖 圖鑑解說", en: "📖 Codex" }], ["diff", { zh: "🔍 鑑別診斷練習", en: "🔍 Differential Quiz" }]] as [("codex" | "diff"), I18n][]).map(([k, label]) => (
+          <button key={k} onClick={() => { Sfx.click(); setTab(k); }} style={{ flex: 1, padding: "8px 0", borderRadius: 5, border: `1px solid ${tab === k ? "rgba(255,236,196,.6)" : "rgba(214,167,84,.25)"}`, background: tab === k ? primaryBg() : "rgba(255,255,255,.04)", color: tab === k ? C.ink : C.cream, fontFamily: FONT_SERIF, fontWeight: 900, fontSize: 13, cursor: "pointer" }}>{t(label)}</button>
+        ))}
+      </div>
+
+      {tab === "codex" ? (
+        <div>
+          <div style={{ display: "flex", alignItems: "center", marginBottom: 10 }}>
+            <span style={{ fontSize: 12, color: C.mist }}>{t({ zh: "依元件分組；完成維修後解鎖深度排查知識。", en: "Grouped by component; complete a repair to unlock deep knowledge." })}</span>
+            <span style={{ marginLeft: "auto", fontSize: 12, color: C.goldText, fontWeight: 700 }}>{t({ zh: "已解鎖", en: "Unlocked" })} {totalSeen}/{total}</span>
+          </div>
+          {COMPONENTS.map((c) => <CodexGroup key={c.id} group={c} seen={seen} />)}
+        </div>
+      ) : (
+        <DiffQuiz seen={seen} />
+      )}
+    </div>
+  );
+}
+
+function CodexGroup({ group, seen }: { group: ComponentGroup; seen: string[] }) {
+  const multi = group.faultIds.length >= 2;
+  const unlocked = group.faultIds.filter((id) => seen.includes(id)).length;
+  return (
+    <div style={{ marginBottom: 14 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 6 }}>
+        <span style={{ fontSize: 15 }}>{group.icon}</span>
+        <span style={{ color: C.gold, fontSize: 13.5, fontWeight: 900, fontFamily: FONT_SERIF, letterSpacing: ".04em" }}>{t(group.name)}</span>
+        {multi && <span style={{ fontSize: 10, color: C.amber2, padding: "1px 6px", borderRadius: 10, border: "1px solid rgba(227,173,66,.4)", background: "rgba(227,173,66,.1)" }}>{t({ zh: `多重根因 ×${group.faultIds.length}`, en: `${group.faultIds.length} root causes` })}</span>}
+        <span style={{ marginLeft: "auto", fontSize: 10.5, color: C.mist }}>{unlocked}/{group.faultIds.length}</span>
+      </div>
+      {group.faultIds.map((id) => <CodexCard key={id} faultId={id} seen={seen.includes(id)} />)}
+    </div>
+  );
+}
+
+function CodexCard({ faultId, seen }: { faultId: string; seen: boolean }) {
+  const [open, setOpen] = useState(false);
+  const f = FAULTS[faultId];
+  const cx = CODEX[faultId];
+  if (!f) return null;
+  const major = isMajorFault(faultId);
+  return (
+    <div style={{ borderRadius: 5, background: "rgba(255,255,255,.04)", border: `1px solid ${seen ? "rgba(127,206,142,.4)" : "rgba(214,167,84,.2)"}`, marginBottom: 7, overflow: "hidden" }}>
+      <div onClick={() => { if (seen) { Sfx.click(); setOpen((v) => !v); } }} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", cursor: seen ? "pointer" : "default" }}>
+        <span style={{ color: seen ? C.green : C.mist }}>{seen ? "✓" : "🔒"}</span>
+        <span style={{ color: seen ? C.cream : C.mist2, fontSize: 13.5, fontWeight: 700, fontFamily: FONT_SERIF }}>{t(f.name)}</span>
+        {major && <span style={{ fontSize: 9.5, color: C.redText, padding: "1px 5px", borderRadius: 9, border: "1px solid rgba(220,100,80,.4)", background: "rgba(220,100,80,.12)" }}>{t({ zh: "重大", en: "Major" })}</span>}
+        <span style={{ marginLeft: "auto", fontSize: 10, color: C.mist }}>{t(DISC[f.discipline])} · {t(LOCATION_LABEL[locationOf(faultId)])}</span>
+        {seen && <span style={{ color: C.mist2, fontSize: 12, marginLeft: 6 }}>{open ? "▾" : "▸"}</span>}
+      </div>
+      {seen && open && cx && (
+        <div style={{ padding: "2px 12px 11px", borderTop: "1px solid rgba(255,255,255,.07)" }}>
+          {([
+            [{ zh: "成因機制", en: "Mechanism" }, cx.mechanism, C.mist],
+            [{ zh: "典型症狀", en: "Symptoms" }, cx.symptom, C.mist],
+            [{ zh: "鑑別重點", en: "Differential" }, cx.differential, C.amber2],
+            [{ zh: "後果", en: "If ignored" }, cx.consequence, C.redText],
+            [{ zh: "處置提示", en: "Action tip" }, cx.tip, C.greenLight],
+          ] as [I18n, I18n, string][]).map(([label, body, col], i) => (
+            <div key={i} style={{ marginTop: 7 }}>
+              <div style={{ fontSize: 10.5, color: C.gold, fontWeight: 700, letterSpacing: ".06em" }}>{t(label)}</div>
+              <div style={{ fontSize: 12.5, color: col, lineHeight: 1.55, marginTop: 1 }}>{t(body)}</div>
+            </div>
+          ))}
+          <div style={{ marginTop: 8, fontSize: 11.5, color: C.mist }}>{t({ zh: "必備備品", en: "Required part" })}：<span style={{ color: C.goldText, fontWeight: 700 }}>{t(partName(f.part))}</span></div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// 多重根因鑑別診斷練習：給症狀 → 在同元件的多種根因中選出正確的一個
+function DiffQuiz({ seen }: { seen: string[] }) {
+  // 只練習「已解鎖 ≥2 個故障」的元件，確保玩家已學過
+  const pools = MULTI_CAUSE_COMPONENTS.filter((c) => c.faultIds.filter((id) => seen.includes(id)).length >= 2);
+  const [round, setRound] = useState(0); // 重新抽題用
+  const [pick, setPick] = useState<string | null>(null);
+  const [score, setScore] = useState({ ok: 0, total: 0 });
+
+  const q = useMemo(() => {
+    if (pools.length === 0) return null;
+    const comp = pools[Math.floor(Math.random() * pools.length)];
+    const opts = comp.faultIds.filter((id) => seen.includes(id));
+    const answer = opts[Math.floor(Math.random() * opts.length)];
+    return { comp, opts, answer };
+    // round 變動即重抽
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [round, pools.length]);
+
+  if (pools.length === 0) {
+    return (
+      <div style={{ padding: "18px 6px", textAlign: "center", color: C.mist, fontSize: 13, lineHeight: 1.7 }}>
+        🔒 {t({ zh: "鑑別診斷練習需先在同一元件解鎖至少 2 種根因故障。", en: "Differential practice needs ≥2 unlocked root-cause faults on the same component." })}
+        <div style={{ fontSize: 12, color: C.mist2, marginTop: 8 }}>{t({ zh: "（先去完成幾筆維修，解鎖圖鑑後再回來練習！）", en: "(Complete a few repairs to unlock the codex, then come back to practise!)" })}</div>
+      </div>
+    );
+  }
+  if (!q) return null;
+
+  const cx = CODEX[q.answer];
+  const answered = pick !== null;
+  const correct = pick === q.answer;
+
+  const choose = (id: string) => {
+    if (answered) return;
+    (id === q.answer ? Sfx.success : Sfx.error)();
+    setPick(id);
+    setScore((s) => ({ ok: s.ok + (id === q.answer ? 1 : 0), total: s.total + 1 }));
+  };
+  const next = () => { Sfx.click(); setPick(null); setRound((r) => r + 1); };
+
+  return (
+    <div>
+      <div style={{ display: "flex", alignItems: "center", marginBottom: 10 }}>
+        <span style={{ fontSize: 12, color: C.mist }}>{t({ zh: "同一元件、不同根因——依症狀判斷是哪一種。", en: "Same component, different causes — name it from the symptoms." })}</span>
+        <span style={{ marginLeft: "auto", fontSize: 12, color: C.goldText, fontWeight: 700 }}>{t({ zh: "得分", en: "Score" })} {score.ok}/{score.total}</span>
+      </div>
+
+      <div style={{ padding: "10px 12px", borderRadius: 6, background: "rgba(95,168,217,.08)", border: "1px solid rgba(95,168,217,.3)", marginBottom: 12 }}>
+        <div style={{ fontSize: 12, color: C.gold, fontWeight: 700 }}>{q.comp.icon} {t(q.comp.name)}</div>
+        <div style={{ fontSize: 13.5, color: C.cream, lineHeight: 1.55, marginTop: 5 }}>
+          {t({ zh: "現場/SCADA 觀察到：", en: "Observed on site / SCADA:" })}<br />
+          <b style={{ color: "#dfeef4" }}>{t(CODEX[q.answer].symptom)}</b>
+        </div>
+        <div style={{ fontSize: 12, color: C.mist, marginTop: 5 }}>{t({ zh: "最可能的根因是？", en: "The most likely root cause is?" })}</div>
+      </div>
+
+      {q.opts.map((id) => {
+        let bd = "rgba(214,167,84,.3)", bg = "rgba(255,255,255,.04)", col = "#e4eef0";
+        if (answered && id === q.answer) { bd = C.green; bg = "rgba(127,206,142,.16)"; col = "#cdeccf"; }
+        else if (answered && id === pick) { bd = C.red; bg = "rgba(220,100,80,.16)"; col = C.redText; }
+        return (
+          <div key={id} onClick={() => choose(id)} style={{ padding: "10px 12px", marginBottom: 8, borderRadius: 4, border: `1px solid ${bd}`, background: bg, color: col, fontSize: 13.5, fontWeight: 600, cursor: answered ? "default" : "pointer" }}>
+            {t(FAULTS[id].name)}
+          </div>
+        );
+      })}
+
+      {answered && (
+        <div style={{ marginTop: 4, padding: "10px 12px", borderRadius: 5, background: correct ? "rgba(127,206,142,.1)" : "rgba(227,173,66,.1)", border: `1px solid ${correct ? "rgba(127,206,142,.3)" : "rgba(227,173,66,.34)"}` }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: correct ? C.green : C.amber2 }}>
+            {correct ? t({ zh: "✓ 正確！", en: "✓ Correct!" }) : `${t({ zh: "✗ 正解：", en: "✗ Answer: " })}${t(FAULTS[q.answer].name)}`}
+          </div>
+          <div style={{ fontSize: 12, color: C.mist, lineHeight: 1.55, marginTop: 5 }}>
+            <span style={{ color: C.gold, fontWeight: 700 }}>{t({ zh: "鑑別重點", en: "Differential" })}：</span>{t(cx.differential)}
+          </div>
+          <button onClick={next} style={{ width: "100%", marginTop: 10, padding: "9px 0", borderRadius: 5, border: "1px solid rgba(255,236,196,.6)", background: primaryBg(), color: C.ink, fontFamily: FONT_SERIF, fontWeight: 900, fontSize: 13, cursor: "pointer" }}>
+            {t({ zh: "下一題 →", en: "Next →" })}
+          </button>
+        </div>
+      )}
+    </div>
+  );
 }

@@ -22,6 +22,19 @@ export const INCIDENTS: IncidentType[] = [
   { id: "bearing", name: { zh: "主軸承振動", en: "Main-bearing vibration" }, discipline: "mechanical", repairDays: 3, part: "pitch_bearing", weight: 2 },
   { id: "cable", name: { zh: "海纜絕緣告警", en: "Cable insulation alarm" }, discipline: "electrical", repairDays: 2, part: "cable_joint", weight: 2 },
   { id: "blade", name: { zh: "葉片損傷", en: "Blade damage" }, discipline: "structural", repairDays: 2, part: "gfrp_blade", weight: 1 },
+  // ── 擴充故障池（對應更多元的備品/科別；維持「耗材常見、大型罕見」的真實分布）──
+  { id: "yaw_gear", name: { zh: "偏航齒盤磨損", en: "Yaw gear wear" }, discipline: "mechanical", repairDays: 2, part: "yaw_gear", weight: 3 },
+  { id: "pitch_hyd", name: { zh: "變槳液壓洩漏", en: "Pitch hydraulic leak" }, discipline: "mechanical", repairDays: 2, part: "hydraulic_valve", weight: 3 },
+  { id: "anemometer", name: { zh: "風速計故障", en: "Anemometer fault" }, discipline: "control", repairDays: 1, resettable: true, part: "anemometer", weight: 4 },
+  { id: "controller", name: { zh: "控制器通訊中斷", en: "Controller comms loss" }, discipline: "control", repairDays: 1, resettable: true, part: "main_controller", weight: 2 },
+  { id: "gen_overtemp", name: { zh: "發電機過溫", en: "Generator overtemp" }, discipline: "electrical", repairDays: 1, resettable: true, part: "coolant", weight: 3 },
+  { id: "brush", name: { zh: "碳刷/集電環異常", en: "Brush / slip-ring fault" }, discipline: "electrical", repairDays: 1, part: "gen_brush", weight: 4 },
+  { id: "igbt", name: { zh: "IGBT 模組故障", en: "IGBT module fault" }, discipline: "electrical", repairDays: 2, part: "igbt_module", weight: 2 },
+  { id: "transformer", name: { zh: "變壓器過溫", en: "Transformer overtemp" }, discipline: "electrical", repairDays: 2, part: "transformer_oil", weight: 2 },
+  { id: "blade_erosion", name: { zh: "葉片前緣侵蝕", en: "Blade leading-edge erosion" }, discipline: "structural", repairDays: 1, part: "leading_edge_tape", weight: 3 },
+  { id: "tower_bolt", name: { zh: "塔基螺栓鬆動", en: "Tower bolt loosening" }, discipline: "structural", repairDays: 2, part: "bolt_m36", weight: 2 },
+  { id: "lift", name: { zh: "升降機/安全系統", en: "Service lift fault" }, discipline: "hse", repairDays: 1, part: "lift_part", weight: 2 },
+  { id: "main_bearing", name: { zh: "主軸承磨耗", en: "Main-bearing wear" }, discipline: "mechanical", repairDays: 3, part: "main_bearing", weight: 1 },
 ];
 
 const TOTAL_WEIGHT = INCIDENTS.reduce((a, x) => a + x.weight, 0);
