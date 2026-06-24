@@ -161,6 +161,17 @@ export interface GameData {
   fleetResolved: number; // 累積在戰情室修復的機組數（績效加分）
   inspectBuffDays: number; // 預防性定檢生效剩餘天數（Phase C2，降低故障率）
   lastLedger: Ledger | null; // 最近一次推進的每日收支明細（莉莉財報）
+  repair: RepairState | null; // 進行中的維修作業進度（存進 state → 切換畫面不丟失、作業窗不被免費重置）
+}
+
+// 維修作業進度（#33）：原本只存在 RepairScreen 的 local state，切到別的畫面就重置（丟進度＋免費重置作業窗）。
+// 改存進 game state，以 key 綁定當前工單；接新單／完工／撤離時清空。
+export interface RepairState {
+  key: string; // 工單識別（campaignIndex/customQuest + quest.id），切單即失效
+  boarded: boolean; // 是否已登塔開工
+  pick: number | null; // 診斷題目前選擇（null = 未作答）
+  steps: boolean[]; // SOP 各步驟完成狀態
+  win: number; // 剩餘作業窗時段
 }
 
 // 多回合大修（#4）：重大組件更換需多個「可作業天氣窗」工日才完成。
@@ -297,6 +308,7 @@ export const INITIAL: GameData = {
   fleetResolved: 0,
   inspectBuffDays: 0,
   lastLedger: null,
+  repair: null,
 };
 
 const clampN = (n: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, n));
@@ -361,6 +373,7 @@ function advance(s: GameData, days = 1): Partial<GameData> {
     patch = { ...patch, ...evPatch, lastEvent: { id: ev.id, name: ev.name, desc: ev.desc, good: !!ev.good, day } };
   }
   // 活體戰情層（Phase C）：每日推進並行工單、隨機新增故障、累計停機發電損失
+  let slaUptime: number | null = null; // 本次推進每日平均妥善率（fleet 推進後填入，供 SLA 取真實值）
   if (s.fleet.length) {
     let fleet = s.fleet.map((tt) => ({ ...tt }));
     let jobs = s.opsJobs.map((j) => ({ ...j }));
@@ -369,6 +382,7 @@ function advance(s: GameData, days = 1): Partial<GameData> {
     let fixPay = 0;
     let buffDays = s.inspectBuffDays; // 預防性定檢生效天數（Phase C2）
     let healthBoost = 0;
+    let producedAcc = 0, lostAcc = 0, uptimeAcc = 0; // 逐日累計（#4 多日推進精算，不再以最終機隊×天數近似）
     for (let dd = 0; dd < days; dd++) {
       // 並行工單推進；完工 → 維修(機組復歸+報酬) 或 定檢(啟動降故障 buff)；派工(非遠端)累積疲勞
       jobs = jobs.map((j) => ({ ...j, daysLeft: j.daysLeft - 1 }));
@@ -396,12 +410,17 @@ function advance(s: GameData, days = 1): Partial<GameData> {
         fleet[fi] = { ...fleet[fi], status: "fault", faultId: randomIncidentId() };
       }
       if (buffDays > 0) buffDays -= 1;
+      // 當日結算（在當日修復/新故障處理後，以當日機隊狀態計）→ 多日推進更精確
+      producedAcc += fleet.reduce((a, t) => a + (t.status === "ok" ? t.gen : 0), 0);
+      lostAcc += fleet.reduce((a, t) => a + (t.status !== "ok" ? t.gen : 0), 0);
+      uptimeAcc += fleet.length ? (fleet.filter((t) => t.status === "ok").length / fleet.length) * 100 : 100;
     }
     patch.inspectBuffDays = buffDays;
     if (healthBoost) patch.fleetHealth = clampN((patch.fleetHealth ?? s.fleetHealth) + healthBoost, 0, 100);
-    // 實際運轉發電（售電收入主體）與停機損失（KPI）：以推進後的機組狀態 × 天數估算
-    const produced = Math.round(fleet.filter((t) => t.status === "ok").reduce((a, t) => a + t.gen, 0) * days);
-    const lost = Math.round(fleet.filter((t) => t.status !== "ok").reduce((a, t) => a + t.gen, 0) * days);
+    // 實際運轉發電（售電收入主體）與停機損失（KPI）：逐日累計（#4）
+    const produced = Math.round(producedAcc);
+    const lost = Math.round(lostAcc);
+    slaUptime = uptimeAcc / days; // 本次推進每日平均妥善率（供 SLA 取真實值，多日推進更精確）
     patch.fleet = fleet;
     patch.opsJobs = jobs;
     patch.fleetResolved = resolved;
@@ -425,7 +444,7 @@ function advance(s: GameData, days = 1): Partial<GameData> {
   // 合約 SLA（#3）：每日累計「實際可用率」，跨季結算；平均低於底線 → 扣違約金。
   // 實際可用率以戰情室機隊運轉比例為準（與售電收入同一真實來源）；無機組模型時退回 availability 純量。
   const finalFleet = patch.fleet ?? s.fleet;
-  const avail = finalFleet.length ? fleetUptime(finalFleet) : (patch.availability ?? s.availability);
+  const avail = slaUptime ?? (finalFleet.length ? fleetUptime(finalFleet) : (patch.availability ?? s.availability));
   let qStart = s.quarterStartDay;
   let quarter = s.quarter;
   let sum = s.slaAvailSum + avail * days;
@@ -488,6 +507,7 @@ export type Action =
   | { type: "RESOLVE_TASK"; dAvail: number; dBudget: number; dSafety: number; dGen: number; dHealth: number; xp: number } // 自由營運沙盒任務結算
   | { type: "LOAD_STATE"; state: Partial<GameData> } // 雲端存檔載入（#31）
   | { type: "GRANT_FUNDS"; amount: number } // 測試加值：直接注資（沙盒/測試用，便於試玩各項採購）
+  | { type: "SET_REPAIR"; repair: RepairState | null } // 更新/清空進行中的維修進度（#33 持久化）
   | { type: "RESET" };
 
 export const TEST_GRANT = 50_000_000; // 一次測試加值金額 ◎（測試/沙盒用）
@@ -532,7 +552,9 @@ function advanceWeather(today: SeaState, forecast: SeaState[], days: number): { 
 export function reducer(s: GameData, a: Action): GameData {
   switch (a.type) {
     case "ACCEPT_QUEST":
-      return { ...s, questStage: "active", repairDone: false, jobPhase: "office" };
+      return { ...s, questStage: "active", repairDone: false, jobPhase: "office", repair: null };
+    case "SET_REPAIR":
+      return { ...s, repair: a.repair };
     case "HIRE": {
       if (a.cost > s.budget) return s;
       const adv = advance(s, 1); // 招募/上工訓練耗時 1 天（Phase B 統一時間成本）
@@ -571,7 +593,7 @@ export function reducer(s: GameData, a: Action): GameData {
     case "FAIL_REPAIR": {
       // 撤離/返航改期 = 安全近失事件（#34）+ 空耗 1 天（Phase B）
       const adv = advance(s, 1);
-      return { ...s, ...adv, jobPhase: "office", availability: Math.max(0, (adv.availability ?? s.availability) - 4), safetyIncidents: s.safetyIncidents + 1 };
+      return { ...s, ...adv, jobPhase: "office", availability: Math.max(0, (adv.availability ?? s.availability) - 4), safetyIncidents: s.safetyIncidents + 1, repair: null };
     }
     case "REST": {
       const adv = advance(s, 1);
@@ -650,7 +672,7 @@ export function reducer(s: GameData, a: Action): GameData {
       }
       const seen = s.seenFaults.includes(a.quest.targetFault) ? s.seenFaults : [...s.seenFaults, a.quest.targetFault];
       const engs = a.discipline ? deployFatigue(adv.engineers ?? s.engineers, a.discipline) : (adv.engineers ?? s.engineers); // 出勤技師累積疲勞（#7）
-      return { ...s, ...adv, repairDone: true, questStage: "done", jobPhase: "office", budget: (adv.budget ?? s.budget) + a.quest.rewardBudget, xp: s.xp + a.quest.rewardXp, availability: Math.min(100, (adv.availability ?? s.availability) + 8 + s.techLevel * 2), fleetHealth: clampN((adv.fleetHealth ?? s.fleetHealth) + 8, 0, 100), inventory: inv, cargoUsed: cargo, seenFaults: seen, missionsDone: s.missionsDone + 1, engineers: engs };
+      return { ...s, ...adv, repairDone: true, questStage: "done", jobPhase: "office", repair: null, budget: (adv.budget ?? s.budget) + a.quest.rewardBudget, xp: s.xp + a.quest.rewardXp, availability: Math.min(100, (adv.availability ?? s.availability) + 8 + s.techLevel * 2), fleetHealth: clampN((adv.fleetHealth ?? s.fleetHealth) + 8, 0, 100), inventory: inv, cargoUsed: cargo, seenFaults: seen, missionsDone: s.missionsDone + 1, engineers: engs };
     }
     case "START_OVERHAUL": {
       if (s.questStage !== "active" || s.overhaul) return s;
@@ -663,6 +685,7 @@ export function reducer(s: GameData, a: Action): GameData {
       return {
         ...s,
         jobPhase: "office",
+        repair: null,
         inventory: inv,
         cargoUsed: cargo,
         overhaul: { questId: a.quest.id, unit: a.quest.unit, fault: a.quest.targetFault, discipline: a.discipline ?? "mechanical", progress: 0, need: OVERHAUL_NEED, demurrageDays: 0, rewardBudget: a.quest.rewardBudget, rewardXp: a.quest.rewardXp },
@@ -714,12 +737,12 @@ export function reducer(s: GameData, a: Action): GameData {
       if (s.questStage !== "done") return s;
       const last = a.poolSize - 1;
       if (s.campaignIndex >= last) return { ...s, campaignDone: true, customQuest: null };
-      return { ...s, ...advance(s, 1), customQuest: null, campaignIndex: s.campaignIndex + 1, questStage: "available", repairDone: false, jobPhase: "office" };
+      return { ...s, ...advance(s, 1), customQuest: null, campaignIndex: s.campaignIndex + 1, questStage: "available", repairDone: false, jobPhase: "office", repair: null };
     }
     case "RESTART_CAMPAIGN":
-      return { ...s, campaignIndex: 0, campaignDone: false, customQuest: null, questStage: "available", repairDone: false, jobPhase: "office" };
+      return { ...s, campaignIndex: 0, campaignDone: false, customQuest: null, questStage: "available", repairDone: false, jobPhase: "office", repair: null };
     case "ASSIGN_QUEST":
-      return { ...s, customQuest: a.quest, questStage: "available", repairDone: false, jobPhase: "office" };
+      return { ...s, customQuest: a.quest, questStage: "available", repairDone: false, jobPhase: "office", repair: null };
     case "RESOLVE_TASK": {
       // 自由營運沙盒：推進一天（含突發事件）後套用選擇效果，計入績效（沙盒，衝排行）
       const adv = advance(s, 1);

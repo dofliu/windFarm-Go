@@ -1,4 +1,4 @@
-import { useState, type CSSProperties } from "react";
+import { type CSSProperties } from "react";
 import { C, FONT_SERIF, primaryBg, panel, panelHeader, panelTitle } from "../tokens";
 import { t } from "../../game/systems/i18n";
 import { useLang } from "../useLang";
@@ -10,7 +10,7 @@ import { Sfx } from "../../audio/sfx";
 import { exprUrl } from "../characters";
 import { FAULTS, LOCATION_LABEL, locationOf, isMajorFault } from "../faults";
 import RepairScene from "../RepairScene";
-import { vesselWindowPenalty } from "../../state/game";
+import { vesselWindowPenalty, type RepairState } from "../../state/game";
 import { PARTS } from "../data";
 import { missionInstance } from "../campaign";
 import type { Screen } from "../../App";
@@ -23,17 +23,23 @@ export default function RepairScreen({ setScreen, mode = "sim" }: { setScreen: (
   const fault = FAULTS[quest.targetFault] ?? FAULTS.gearbox_overheat;
   const q = fault.quiz;
 
-  const [pick, setPick] = useState<number | null>(null);
-  // 前兩步預設完成；步驟 3~5 可點擊完成
-  const [steps, setSteps] = useState<boolean[]>(fault.sop.map((_, i) => i < 2));
   // 作業窗（#17）：海象越差，可用時段越少；船隊升級加窗；船舶磨耗扣窗（#7）
   const windowMax = Math.max(4, (data.seaState === "closed" ? 6 : data.seaState === "caution" ? 8 : 10) + data.vesselLevel * 2 - vesselWindowPenalty(data.vesselWear));
-  const [win, setWin] = useState(windowMax);
+
+  // 維修進度持久化（#33）：存進 game state（以工單 key 綁定），切換畫面不丟失、作業窗不被免費重置。
+  const repairKey = `${data.customQuest ? "c" : data.campaignIndex}:${quest.id}`;
+  const rp = data.repair && data.repair.key === repairKey ? data.repair : null;
+  const boarded = rp?.boarded ?? false;
+  const pick = rp?.pick ?? null;
+  const steps = rp?.steps ?? fault.sop.map((_, i) => i < 2); // 前兩步預設完成；步驟 3~5 可點擊完成
+  const win = rp?.win ?? windowMax;
+  // 寫回進度（合併補丁）；未登塔前以目前 windowMax 為基準
+  const saveRepair = (patch: Partial<Omit<RepairState, "key">>) =>
+    dispatch({ type: "SET_REPAIR", repair: { key: repairKey, boarded, pick, steps, win, ...patch } });
 
   // #33 登船事件 + 作業地點
   const location = locationOf(fault.id);
   const roughBoarding = data.seaState !== "workable"; // 浪高 → 登船延誤
-  const [boarded, setBoarded] = useState(false);
 
   const need = fault.part; // 必備備品
   const needPart = PARTS.find((p) => p.id === need);
@@ -45,12 +51,10 @@ export default function RepairScreen({ setScreen, mode = "sim" }: { setScreen: (
   const failed = win <= 0 && !complete; // 窗內未完成 → 撤離
   const ready = complete && hasPart && data.questStage === "active" && !data.repairDone && !failed;
 
-  const spend = (c: number) => setWin((w) => Math.max(0, w - c));
-
   const completeStep = (i: number) => {
     if (i < 2 || steps[i] || failed) return; // 前兩步固定、已完成、已撤離不可再動
-    setSteps((s) => s.map((v, idx) => (idx === i ? true : v)));
-    spend(Math.max(1, 2 - data.toolLevel)); // 工坊升級降低每步耗時
+    // 工坊升級降低每步耗時
+    saveRepair({ steps: steps.map((v, idx) => (idx === i ? true : v)), win: Math.max(0, win - Math.max(1, 2 - data.toolLevel)) });
   };
 
   const retreat = () => {
@@ -63,8 +67,8 @@ export default function RepairScreen({ setScreen, mode = "sim" }: { setScreen: (
   // #33 登船 / 返航改期
   const board = () => {
     Sfx.click();
-    if (roughBoarding) setWin((w) => Math.max(3, w - 3)); // 登船延誤：耗去部分作業窗
-    setBoarded(true);
+    // 登船延誤（浪高）耗去部分作業窗；登塔後固定剩餘作業窗（之後切畫面不再重置）
+    saveRepair({ boarded: true, win: roughBoarding ? Math.max(3, windowMax - 3) : windowMax });
   };
   const abortBoarding = () => {
     Sfx.error();
@@ -268,8 +272,8 @@ export default function RepairScreen({ setScreen, mode = "sim" }: { setScreen: (
                   onClick={() => {
                     if (failed || quizCorrect || i === pick) return; // 已答對/已撤離不可再動；點同一選項不重複扣窗
                     (i === q.correct ? Sfx.success : Sfx.error)();
-                    spend(i === q.correct ? 1 : 3); // 答錯多耗作業窗（可重新作答，但每次扣時段）
-                    setPick(i);
+                    // 答錯多耗作業窗（可重新作答，但每次扣時段）
+                    saveRepair({ pick: i, win: Math.max(0, win - (i === q.correct ? 1 : 3)) });
                   }}
                   style={s}
                 >
