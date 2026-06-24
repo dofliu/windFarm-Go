@@ -916,53 +916,56 @@ test("buildGrade: best run is S, worst is D", () => {
   ok(cons.buildGrade(-99).en.startsWith("D"), "very negative → D grade");
 });
 
-// ───────────────────────── 登入 / 帳號 / PIN（階段 1） ─────────────────────────
-test("profile: pin hash deterministic & verify; format guard", () => {
-  const id = prof.idOf({ nickname: "Ming", classCode: "A1" });
+// ───────────────────────── 登入 / 帳號 / 通關碼（階段 1，學號為帳號） ─────────────────────────
+test("profile: passcode hash deterministic & verify; format guard", () => {
+  const id = prof.idOf({ studentId: "S01", classCode: "A1" });
   const h = prof.hashPin("1234", id);
   eq(h, prof.hashPin("1234", id), "hash is deterministic");
-  ok(h !== prof.hashPin("1234", prof.idOf({ nickname: "Ming", classCode: "A2" })), "hash salted by identity");
-  ok(prof.verifyPin({ nickname: "Ming", classCode: "A1", pinHash: h }, "1234"), "correct PIN verifies");
-  ok(!prof.verifyPin({ nickname: "Ming", classCode: "A1", pinHash: h }, "0000"), "wrong PIN rejected");
+  ok(h !== prof.hashPin("1234", prof.idOf({ studentId: "S01", classCode: "A2" })), "hash salted by identity");
+  ok(prof.verifyPin({ studentId: "S01", classCode: "A1", pinHash: h }, "1234"), "correct passcode verifies");
+  ok(!prof.verifyPin({ studentId: "S01", classCode: "A1", pinHash: h }, "0000"), "wrong passcode rejected");
   ok(prof.validPinFormat("1234") && prof.validPinFormat("123456"), "4-6 digits ok");
   ok(!prof.validPinFormat("123") && !prof.validPinFormat("12a4") && !prof.validPinFormat("1234567"), "bad formats rejected");
 });
-test("profile: normalisation & identity & save/record keys", () => {
+test("profile: normalisation, identity, displayName & save/record keys", () => {
   eq(prof.normClass(" a1 "), "A1", "class upper-trimmed");
+  eq(prof.normId(" s01 "), "S01", "student id upper-trimmed");
   eq(prof.normNick("  Ming "), "Ming", "nick trimmed");
-  eq(prof.idOf({ nickname: "Ming", classCode: "A1" }), "A1/Ming");
-  eq(prof.saveKeyFor({ nickname: "Ming", classCode: "A1" }), "windfarm-go-save::A1/Ming", "save key keeps existing scheme");
-  eq(prof.recordKeyFor({ nickname: "Ming", classCode: "A1" }), "wfg-record::A1/Ming");
+  eq(prof.idOf({ studentId: "S01", classCode: "A1" }), "A1/S01", "id = class/student");
+  eq(prof.displayName({ nickname: "Ming", studentId: "S01" }), "Ming", "nickname preferred");
+  eq(prof.displayName({ nickname: "", studentId: "S01" }), "S01", "falls back to student id");
+  eq(prof.saveKeyFor({ studentId: "S01", classCode: "A1" }), "windfarm-go-save::A1/S01", "save key by class/student");
+  eq(prof.recordKeyFor({ studentId: "S01", classCode: "A1" }), "wfg-record::A1/S01");
   eq(prof.saveKeyFor(null), "windfarm-go-save::guest");
 });
 test("profile: account registry upsert dedups by identity, newest first", () => {
-  const a1 = { nickname: "Ming", classCode: "A1", pinHash: "x", createdAt: 1, lastSeen: 1 };
-  const a2 = { nickname: "Hua", classCode: "A1", pinHash: "y", createdAt: 2, lastSeen: 2 };
+  const a1 = { studentId: "S01", classCode: "A1", nickname: "Ming", pinHash: "x", createdAt: 1, lastSeen: 1 };
+  const a2 = { studentId: "S02", classCode: "A1", nickname: "Hua", pinHash: "y", createdAt: 2, lastSeen: 2 };
   let list = prof.upsertAccountIn([], a1);
   list = prof.upsertAccountIn(list, a2);
   eq(list.length, 2, "two distinct accounts");
-  // 同身分再 upsert → 取代、不重複，更新 lastSeen 排序到最前
+  // 同學號再 upsert → 取代、不重複，更新 lastSeen 排序到最前
   list = prof.upsertAccountIn(list, { ...a1, pinHash: "z", lastSeen: 9 });
   eq(list.length, 2, "same identity dedups");
-  eq(list[0].nickname, "Ming", "most-recent first");
-  eq(prof.idOf(list[0]) === prof.idOf(a1) ? list[0].pinHash : "", "z", "pinHash updated on re-upsert");
+  eq(list[0].studentId, "S01", "most-recent first");
+  eq(list[0].pinHash, "z", "pinHash updated on re-upsert");
 });
-test("profile: isAuthed requires pin or guest", () => {
+test("profile: isAuthed requires passcode+studentId or guest", () => {
   ok(!prof.isAuthed(null), "no profile");
-  ok(!prof.isAuthed({ nickname: "x", classCode: "A1", pinHash: "" }), "legacy no-pin profile not authed");
-  ok(prof.isAuthed({ nickname: "x", classCode: "A1", pinHash: "h" }), "pin profile authed");
-  ok(prof.isAuthed({ nickname: "訪客", classCode: "", pinHash: "", guest: true }), "guest authed");
+  ok(!prof.isAuthed({ studentId: "S01", classCode: "A1", nickname: "x", pinHash: "" }), "legacy no-pin profile not authed");
+  ok(prof.isAuthed({ studentId: "S01", classCode: "A1", nickname: "x", pinHash: "h" }), "passcode profile authed");
+  ok(prof.isAuthed({ studentId: "GUEST", classCode: "", nickname: "訪客", pinHash: "", guest: true }), "guest authed");
 });
 test("profile: localStorage-backed registry round-trips & remove works", () => {
   localStorage.clear();
   const now = 100;
-  prof.upsertAccount({ nickname: "Ming", classCode: "A1", pinHash: "h1", createdAt: now, lastSeen: now });
-  prof.upsertAccount({ nickname: "Hua", classCode: "A1", pinHash: "h2", createdAt: now, lastSeen: now + 1 });
+  prof.upsertAccount({ studentId: "S01", classCode: "A1", nickname: "Ming", pinHash: "h1", createdAt: now, lastSeen: now });
+  prof.upsertAccount({ studentId: "S02", classCode: "A1", nickname: "Hua", pinHash: "h2", createdAt: now, lastSeen: now + 1 });
   eq(prof.listAccounts().length, 2, "two accounts stored");
-  ok(prof.findAccount("A1/Ming"), "find by id");
-  prof.removeAccount("A1/Ming");
+  ok(prof.findAccount("A1/S01"), "find by id");
+  prof.removeAccount("A1/S01");
   eq(prof.listAccounts().length, 1, "removed one");
-  ok(!prof.findAccount("A1/Ming"), "gone after remove");
+  ok(!prof.findAccount("A1/S01"), "gone after remove");
   localStorage.clear();
 });
 
