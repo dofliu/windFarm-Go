@@ -11,6 +11,7 @@ import { Sfx } from "../../audio/sfx";
 import { exprUrl } from "../characters";
 import { FAULTS, LOCATION_LABEL, locationOf, isMajorFault } from "../faults";
 import RepairScene from "../RepairScene";
+import { FallbackImg } from "../SceneVideo";
 import { vesselWindowPenalty, type RepairState } from "../../state/game";
 import { PARTS } from "../data";
 import { missionInstance } from "../campaign";
@@ -195,8 +196,12 @@ export default function RepairScreen({ setScreen, mode = "sim" }: { setScreen: (
         <span style={{ color: C.gold }}>📍</span> {t({ zh: "作業地點", en: "Work area" })}：{t(LOCATION_LABEL[location])} · {quest.unit}
       </div>
 
-      {/* 依作業地點變化的場景（#5）：機艙內/塔架內/輪轂/甲板（僅模擬模式） */}
+      {/* 依作業地點變化的場景（#5）：機艙內/塔架內/輪轂/甲板（僅模擬模式，作為情境圖載入失敗時的底層） */}
       {mode === "sim" && <RepairScene location={location} alarm={fault.name} />}
+
+      {/* 作業地點實景／情境圖（覆蓋 CSS 場景；漫畫模式用漫畫版；載入失敗自動隱藏回退） */}
+      <FallbackImg file={`${mode === "comic" ? "comic_" : ""}repair_${location}.jpg`} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />
+      <div style={{ position: "absolute", inset: 0, background: "radial-gradient(circle at 38% 42%, rgba(6,16,22,0) 46%, rgba(6,16,22,.5) 100%)", pointerEvents: "none" }} />
 
       {/* left bottom cards */}
       <div style={{ position: "absolute", left: 40, bottom: 28, width: 300, display: "flex", gap: 12 }}>

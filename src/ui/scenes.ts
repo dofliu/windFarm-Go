@@ -78,6 +78,7 @@ export const REALISTIC: SceneImg[] = [
   { file: "real_jackup.jpg", name: { zh: "安裝作業", en: "Installation" } },
   { file: "real_boarding.jpg", name: { zh: "登塔作業", en: "Boarding" } },
   { file: "real_storm.jpg", name: { zh: "風暴海象", en: "Storm" } },
+  { file: "harbor.jpg", name: { zh: "母港清晨", en: "Home port" } },
 ];
 export const COMIC: SceneImg[] = [
   { file: "comic_sunset.jpg", name: { zh: "夕陽帆船", en: "Sunset galleon" } },
@@ -85,6 +86,7 @@ export const COMIC: SceneImg[] = [
   { file: "comic_storm.jpg", name: { zh: "風暴搶修", en: "Storm repair" } },
   { file: "comic_platform.jpg", name: { zh: "雨中平台", en: "Rainy platform" } },
   { file: "comic_starry.jpg", name: { zh: "銀河風場", en: "Galaxy farm" } },
+  { file: "comic_harbor.jpg", name: { zh: "母港清晨", en: "Home port" } },
 ];
 
 export type SceneMode = "sim" | "real" | "comic";
