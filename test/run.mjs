@@ -421,6 +421,30 @@ test("advance records daily ledger (Lili's books)", () => {
   eq(l.net, sum);
   eq(l.net, after.budget - I.budget);
 });
+test("advance: budget floors once; ledger sums to net when solvent (no debt forgiveness)", () => {
+  seed(2);
+  const after = R(I, { type: "OPS_ADVANCE" });
+  const l = after.lastLedger;
+  const sum = l.revenue + l.fixPay + l.payroll + l.storage + l.downtime + l.demurrage + l.slaPenalty + l.event;
+  eq(l.net, sum, "solvent day: components add up to net");
+  eq(after.budget, I.budget + l.net);
+  // 破產日：支出不再被逐步赦免；預算夾在 0、且淨額 = 0 − 起始預算（不會出現先赦免再補回）
+  const broke = { ...I, budget: 0, engineers: [{ id: "e", name: "e", discipline: "mechanical", level: 5, fatigue: 0 }] };
+  seed(2); const b = R(broke, { type: "OPS_ADVANCE" });
+  ok(b.budget >= 0, "budget never negative");
+  eq(b.lastLedger.net, b.budget - 0, "net = actual clamped change");
+});
+test("SLA settlement uses actual fleet uptime, not the legacy availability scalar", () => {
+  // 季末結算以機隊實際運轉比例為準：大量停機 → 違約；全機運轉 → 達標（即使 availability 純量都=95）。
+  const nearEnd = { ...I, day: I.quarterStartDay + 89, slaSamples: 0, slaAvailSum: 0, availability: 95 };
+  const downFleet = { ...nearEnd, fleet: I.fleet.map((t, i) => (i < 18 ? { ...t, status: "fault", faultId: "gearbox" } : { ...t, status: "ok", faultId: undefined })) };
+  const upFleet = { ...nearEnd, fleet: I.fleet.map((t) => ({ ...t, status: "ok", faultId: undefined })) };
+  seed(5); const b = R(downFleet, { type: "OPS_ADVANCE" });
+  seed(5); const u = R(upFleet, { type: "OPS_ADVANCE" });
+  ok(b.lastSla && b.lastSla.day === b.day, "quarter settled this step");
+  ok(b.lastSla.breached, "low fleet uptime breaches SLA despite availability 95");
+  ok(u.lastSla && !u.lastSla.breached, "full fleet uptime meets SLA");
+});
 test("dailyRevenue scales with running turbines; no-fleet fallback uses availability", () => {
   // 機組越多運轉 → 收入越高
   const few = { ...I, fleet: I.fleet.map((t, i) => (i < 20 ? { ...t, status: "fault", faultId: "gearbox" } : t)) };
