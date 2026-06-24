@@ -6,6 +6,7 @@ import { AdvisorPopup } from "../Portrait";
 import { exprUrl, NARRATOR_EXPR } from "../characters";
 import { useGame } from "../../state/GameContext";
 import { useDialogue } from "../../state/DialogueContext";
+import { useCoachTarget } from "../../state/TutorialContext";
 import { S } from "../../i18n/strings";
 import { Sfx } from "../../audio/sfx";
 import { toast } from "../toast";
@@ -33,9 +34,9 @@ const STAGE_LINE: Record<QuestStage, I18n> = {
 const STAGE_EXPR: Record<QuestStage, number> = { available: 0, active: 1, done: 5 };
 
 // 左側設施列
-function FacRow({ char, label, stat, onClick }: { char: string; label: I18n; stat?: I18n; onClick: () => void }) {
+function FacRow({ char, label, stat, onClick, targetRef }: { char: string; label: I18n; stat?: I18n; onClick: () => void; targetRef?: (el: HTMLElement | null) => void }) {
   return (
-    <div onClick={onClick} style={{ display: "flex", alignItems: "center", gap: 11, padding: "6px 10px", borderRadius: 5, background: "rgba(255,255,255,.04)", marginBottom: 5, cursor: "pointer", border: "1px solid rgba(214,167,84,.14)" }}>
+    <div ref={targetRef} onClick={onClick} style={{ display: "flex", alignItems: "center", gap: 11, padding: "6px 10px", borderRadius: 5, background: "rgba(255,255,255,.04)", marginBottom: 5, cursor: "pointer", border: "1px solid rgba(214,167,84,.14)" }}>
       <div style={{ width: 32, height: 32, flex: "none", borderRadius: "50%", background: "radial-gradient(circle at 50% 35%, #20586a, #0f3140)", border: "2px solid rgba(214,167,84,.7)", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: FONT_SERIF, fontWeight: 900, color: C.goldText, fontSize: 15 }}>{char}</div>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ color: C.cream, fontSize: 14, fontWeight: 700 }}>{t(label)}</div>
@@ -70,6 +71,10 @@ export default function HubScreen({ setScreen, accent, onDispatch, onFacility, s
   const [ei, setEi] = useState<number | null>(null); // null = 跟隨階段表情
   const exprIdx = ei ?? STAGE_EXPR[stage];
   const [opsOpen, setOpsOpen] = useState(true); // #6 抽屜預設展開
+  // 新手教學高亮目標
+  const acceptRef = useCoachTarget("accept");
+  const marketRef = useCoachTarget("market");
+  const setSailRef = useCoachTarget("setsail");
 
   // #5 班級動態：讀排行榜，輪播其他使用者進度
   const [feed, setFeed] = useState<Row[]>([]);
@@ -152,7 +157,7 @@ export default function HubScreen({ setScreen, accent, onDispatch, onFacility, s
           <FacRow char="戰" label={{ zh: "風場戰情室", en: "Fleet Ops" }} stat={{ zh: `機組妥善 ${fleetUptime(data.fleet)}% · 待修 ${data.fleet.filter((tt) => tt.status === "fault").length}`, en: `Uptime ${fleetUptime(data.fleet)}% · ${data.fleet.filter((tt) => tt.status === "fault").length} faults` }} onClick={() => { Sfx.click(); onFleet?.(); }} />
           <FacRow char="師" label={{ zh: "技師公會", en: "Tech Guild" }} stat={{ zh: `技師 ${data.engineers.length} 名 · 在勤 ${data.techAvail}/${data.techTotal}`, en: `${data.engineers.length} engineers · ${data.techAvail}/${data.techTotal} on duty` }} onClick={() => { Sfx.click(); onFacility?.("tech"); }} />
           <FacRow char="工" label={{ zh: "機具工坊", en: "Workshop" }} stat={{ zh: `工具 Lv.${data.toolLevel}`, en: `Tools Lv.${data.toolLevel}` }} onClick={() => { Sfx.click(); onFacility?.("tool"); }} />
-          <FacRow char="備" label={{ zh: "備品交易所", en: "Parts Market" }} stat={{ zh: `庫存 ${invItems.length} 類`, en: `${invItems.length} part types in stock` }} onClick={() => { Sfx.click(); setScreen("market"); }} />
+          <FacRow char="備" label={{ zh: "備品交易所", en: "Parts Market" }} stat={{ zh: `庫存 ${invItems.length} 類`, en: `${invItems.length} part types in stock` }} onClick={() => { Sfx.click(); setScreen("market"); }} targetRef={marketRef} />
           <FacRow char="船" label={{ zh: "CTV 整備廠", en: "CTV Yard" }} stat={{ zh: `${data.ownsSOV ? "SOV" : "CTV"} · Lv.${data.vesselLevel}`, en: `${data.ownsSOV ? "SOV" : "CTV"} · Lv.${data.vesselLevel}` }} onClick={() => { Sfx.click(); onFacility?.("vessel"); }} />
           <FacRow char="場" label={{ zh: "風場拓展", en: "Expand Farms" }} stat={{ zh: `營運 ${data.farmsOwned}/${FARMS.length} 座風場`, en: `${data.farmsOwned}/${FARMS.length} farms operating` }} onClick={() => { Sfx.click(); onFacility?.("farms"); }} />
           <div style={{ display: "flex", gap: 6 }}>
@@ -290,7 +295,7 @@ export default function HubScreen({ setScreen, accent, onDispatch, onFacility, s
                     })()}
                     {/* 接單 / 下一關 動作 */}
                     {stage === "available" && (
-                      <button onClick={() => { Sfx.click(); dispatch({ type: "ACCEPT_QUEST" }); if (data.customQuest) say({ speaker: "narrator_girl", expr: "happy", line: { zh: `工單已接下！前往 ${quest.unit}，從中央「出海航行」出發！`, en: `Accepted! Head to ${quest.unit} via Set Sail.` } }); else say(mission.intro); }} style={{ width: "100%", marginTop: 8, padding: "7px 0", borderRadius: 4, border: "1px solid rgba(255,236,196,.6)", background: primaryBg(accent), color: C.ink, fontFamily: FONT_SERIF, fontWeight: 900, fontSize: 13, cursor: "pointer" }}>{t(S.btn.accept)}</button>
+                      <button ref={acceptRef} onClick={() => { Sfx.click(); dispatch({ type: "ACCEPT_QUEST" }); if (data.customQuest) say({ speaker: "narrator_girl", expr: "happy", line: { zh: `工單已接下！前往 ${quest.unit}，從中央「出海航行」出發！`, en: `Accepted! Head to ${quest.unit} via Set Sail.` } }); else say(mission.intro); }} style={{ width: "100%", marginTop: 8, padding: "7px 0", borderRadius: 4, border: "1px solid rgba(255,236,196,.6)", background: primaryBg(accent), color: C.ink, fontFamily: FONT_SERIF, fontWeight: 900, fontSize: 13, cursor: "pointer" }}>{t(S.btn.accept)}</button>
                     )}
                     {stage === "done" && (data.campaignDone ? (
                       <button onClick={() => { Sfx.success(); dispatch({ type: "RESTART_CAMPAIGN" }); }} style={{ width: "100%", marginTop: 8, padding: "7px 0", borderRadius: 4, border: "1px solid rgba(255,236,196,.6)", background: primaryBg(accent), color: C.ink, fontFamily: FONT_SERIF, fontWeight: 900, fontSize: 13, cursor: "pointer" }}>🎉 {t({ zh: "戰役完成 · 重玩", en: "Clear · Replay" })}</button>
@@ -391,7 +396,7 @@ export default function HubScreen({ setScreen, accent, onDispatch, onFacility, s
       {/* ───── 中央底部：主要動作 ───── */}
       <div style={{ position: "absolute", left: "50%", bottom: 36, transform: "translateX(-50%)", display: "flex", gap: 16, alignItems: "center" }}>
         <SecBtn icon="🛰" label={t({ zh: "遠端巡檢", en: "Remote Check" })} onClick={() => { Sfx.click(); dispatch({ type: "REMOTE_CHECK" }); say({ speaker: "scada_eng", expr: "neutral", line: { zh: "遠端 SCADA 巡檢完成：早期徵兆已記錄，今天就這樣（+經驗）。", en: "Remote SCADA sweep done — early signs logged. A day well spent (+XP)." } }); }} />
-        <div onClick={() => { Sfx.click(); goSail(); }} style={{ padding: "16px 46px", borderRadius: 6, background: primaryBg(accent), border: "1px solid rgba(255,236,196,.6)", color: C.ink, fontFamily: FONT_SERIF, fontSize: 21, fontWeight: 900, letterSpacing: ".1em", whiteSpace: "nowrap", cursor: "pointer", boxShadow: "0 8px 22px rgba(217,164,65,.35), inset 0 1px 0 rgba(255,255,255,.4)" }}>
+        <div ref={setSailRef} onClick={() => { Sfx.click(); goSail(); }} style={{ padding: "16px 46px", borderRadius: 6, background: primaryBg(accent), border: "1px solid rgba(255,236,196,.6)", color: C.ink, fontFamily: FONT_SERIF, fontSize: 21, fontWeight: 900, letterSpacing: ".1em", whiteSpace: "nowrap", cursor: "pointer", boxShadow: "0 8px 22px rgba(217,164,65,.35), inset 0 1px 0 rgba(255,255,255,.4)" }}>
           {t(S.btn.setSail)}
         </div>
         <SecBtn icon="⚓" label={t(S.btn.restPort)} onClick={() => { Sfx.click(); dispatch({ type: "REST" }); say({ speaker: "narrator_girl", expr: "smile", line: { zh: "靠港休整一天，重新評估海象～", en: "Rested a day in port — sea state re-assessed." } }); }} />

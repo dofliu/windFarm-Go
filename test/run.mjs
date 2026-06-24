@@ -37,6 +37,8 @@ const inc = await load("src/state/incidents.ts");
 const camp = await load("src/ui/campaign.ts");
 const course = await load("src/state/course.ts");
 const data = await load("src/ui/data.ts");
+const flt = await load("src/ui/faults.ts");
+const tut = await load("src/ui/tutorialSteps.ts");
 const R = g.reducer, I = g.INITIAL;
 
 // ───────────────────────── INITIAL 不變量 ─────────────────────────
@@ -348,6 +350,42 @@ test("fleet downtime reduces cash income AND net generation (not just score)", (
   // dailyRevenue 也反映停機
   ok(g.dailyRevenue(faulted) < g.dailyRevenue(healthy), "displayed revenue/day drops with faults");
 });
+// ───────────────────────── 新手教學流程閘門 ─────────────────────────
+test("tutorial gates are all satisfiable by walking the real work-order flow", () => {
+  const STEPS = tut.TUTORIAL_STEPS;
+  const gateOf = (id) => { const s = STEPS.find((x) => x.id === id); return s && s.gate; };
+  const correct = flt.FAULTS.gearbox_overheat.quiz.correct; // 第一關診斷正解
+  const sopLen = flt.FAULTS.gearbox_overheat.sop.length;
+  seed(1);
+  let s = I;
+  // 0) 教學開場會贈料（gearbox_oil），這裡比照
+  s = R(s, { type: "BUY", partId: "gearbox_oil", qty: 1, cost: 0, leadDays: 0 });
+  ok((s.inventory["gearbox_oil"] ?? 0) >= 1, "tutorial grants the required part");
+  // 1) 接單 → questStage active
+  s = R(s, { type: "ACCEPT_QUEST" });
+  ok(gateOf("accept")(s, "hub"), "accept gate satisfied after ACCEPT_QUEST");
+  // 出海/抵達畫面閘門（以畫面字串判定）
+  ok(gateOf("setsail")(s, "sail") && !gateOf("setsail")(s, "hub"), "setsail gate keys on screen===sail");
+  // 2) 出航 → jobPhase 離開 office
+  s = R(s, { type: "DEPART" });
+  ok(gateOf("depart")(s, "hub"), "depart gate satisfied after DEPART");
+  s = R(s, { type: "ARRIVE" });
+  ok(gateOf("startrepair")(s, "repair") && !gateOf("startrepair")(s, "sail"), "startrepair gate keys on screen===repair");
+  // 3) 登塔 → repair.boarded
+  const key = `${s.campaignIndex}:m1`;
+  s = R(s, { type: "SET_REPAIR", repair: { key, boarded: true, pick: null, steps: Array.from({ length: sopLen }, (_, i) => i < 2), win: 10 } });
+  ok(gateOf("board")(s, "repair"), "board gate satisfied after boarding");
+  // 4) 診斷答對
+  s = R(s, { type: "SET_REPAIR", repair: { key, boarded: true, pick: correct, steps: Array.from({ length: sopLen }, (_, i) => i < 2), win: 9 } });
+  ok(gateOf("quiz")(s, "repair"), "quiz gate satisfied when pick === correct");
+  // 5) SOP 全完成
+  s = R(s, { type: "SET_REPAIR", repair: { key, boarded: true, pick: correct, steps: Array.from({ length: sopLen }, () => true), win: 6 } });
+  ok(gateOf("sop")(s, "repair"), "sop gate satisfied when all steps done");
+  // 6) 完工 → questStage done
+  s = R(s, { type: "FINISH_REPAIR", quest: camp.missionInstance(0), part: "gearbox_oil", discipline: "mechanical" });
+  ok(gateOf("finish")(s, "repair"), "finish gate satisfied after FINISH_REPAIR");
+});
+
 test("guards: can't act beyond budget", () => {
   const broke = { ...I, budget: 0 };
   const s = R(broke, { type: "HIRE", engineer: { id: "z", name: "z", discipline: "hse", level: 1, fatigue: 0 }, cost: 1000000 });

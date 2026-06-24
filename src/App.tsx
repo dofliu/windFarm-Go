@@ -7,7 +7,7 @@ import MarketScreen from "./ui/screens/MarketScreen";
 import SailScreen from "./ui/screens/SailScreen";
 import RepairScreen from "./ui/screens/RepairScreen";
 import DialogueLayer from "./ui/DialogueLayer";
-import IntroRunner from "./ui/IntroRunner";
+import TutorialOverlay from "./ui/TutorialOverlay";
 import CourseModal from "./ui/CourseModal";
 import DispatchModal from "./ui/DispatchModal";
 import OpsCenterModal from "./ui/OpsCenterModal";
@@ -20,6 +20,7 @@ import ScoreSync from "./ui/ScoreSync";
 import WelcomeOnLogin from "./ui/WelcomeOnLogin";
 import { GameProvider } from "./state/GameContext";
 import { DialogueProvider } from "./state/DialogueContext";
+import { TutorialProvider } from "./state/TutorialContext";
 import { Bgm } from "./audio/bgm";
 import { getProfile, clearProfile } from "./state/profile";
 import { SCENES, getSceneId, setSceneId as persistSceneId, getMode, setMode as persistMode, getImgIdx, setImgIdx as persistImgIdx, imagesFor, type SceneMode } from "./ui/scenes";
@@ -89,6 +90,7 @@ export default function App() {
   return (
     <GameProvider>
       <DialogueProvider>
+      <TutorialProvider setScreen={setScreen}>
       <div
         style={{
           position: "fixed",
@@ -102,6 +104,7 @@ export default function App() {
         }}
       >
         <div
+          id="wfg-stage"
           style={{
             position: "relative",
             width: 1600,
@@ -123,7 +126,7 @@ export default function App() {
 
           <TopBar screen={screen} setScreen={setScreen} accent={accent} onGear={() => setShowCourse(true)} onLogout={logout} />
           <DialogueLayer />
-          <IntroRunner />
+          <TutorialOverlay screen={screen} />
           <CourseModal open={showCourse} onClose={() => setShowCourse(false)} week={week} onSetWeek={changeWeek} />
           <DispatchModal open={showDispatch} onClose={() => setShowDispatch(false)} />
           <OpsCenterModal open={showOps} onClose={() => setShowOps(false)} />
@@ -135,6 +138,7 @@ export default function App() {
           <Toaster />
         </div>
       </div>
+      </TutorialProvider>
       </DialogueProvider>
     </GameProvider>
   );
