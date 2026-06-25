@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "name": "週五實作・搶修日",
+  "author": "NCUT 教師",
+  "tasks": [
+    {
+      "id": "fri_overtemp",
+      "cat": "A",
+      "title": { "zh": "高溫跳機搶修", "en": "Over-temp trip recovery" },
+      "scenario": { "zh": "機艙溫度過高觸發保護跳機,機組停轉。", "en": "Nacelle over-temperature tripped the unit offline." },
+      "xp": 60,
+      "choices": [
+        { "label": { "zh": "派員登塔檢查冷卻、找根因再復歸", "en": "Send crew to check cooling, fix root cause, then reset" }, "feedback": { "zh": "✓ 正解:先排除過熱根因再復歸,避免反覆跳機。", "en": "✓ Find the root cause before reset to avoid repeat trips." }, "good": true, "eff": { "a": 6, "b": -300000 } },
+        { "label": { "zh": "遠端強制復歸、繼續運轉", "en": "Remote force-reset and keep running" }, "feedback": { "zh": "✗ 未排除根因強制復歸,恐再跳機甚至損壞。", "en": "✗ Forcing reset without fixing the cause risks damage." }, "good": false, "eff": { "a": -4, "s": 1 } }
+      ]
+    },
+    {
+      "id": "fri_cms_trend",
+      "cat": "B",
+      "title": { "zh": "齒輪箱溫度緩升判讀", "en": "Gearbox temp creep" },
+      "scenario": { "zh": "SCADA 顯示齒輪箱油溫近兩週緩升,尚未告警。", "en": "SCADA shows gearbox oil temp slowly rising over two weeks, no alarm yet." },
+      "xp": 80,
+      "chart": "trend",
+      "choices": [
+        { "label": { "zh": "提前安排換油與濾芯檢查", "en": "Schedule oil change & filter check early" }, "feedback": { "zh": "✓ 預知保養:趨勢即介入,避免演變成停機。", "en": "✓ Predictive: act on the trend before it becomes downtime." }, "good": true, "eff": { "a": 3, "b": -200000 } },
+        { "label": { "zh": "忽略,還沒告警", "en": "Ignore — no alarm yet" }, "feedback": { "zh": "✗ 錯失預兆,後續恐釀大修。", "en": "✗ Missing the precursor can lead to a major overhaul." }, "good": false, "eff": { "a": -5, "s": 1 } }
+      ]
+    }
+  ]
+}

@@ -1,4 +1,5 @@
 import type { I18n } from "../game/systems/types";
+import { getImportedTasks } from "./scenarioPack";
 
 // ───────── 自由營運層：無限任務模板引擎（沙盒，衝排行績效分）─────────
 // 七大類，多為「判斷型」任務（教決策，不只診斷）。少量模板 × 隨機機組/參數 → 上百種狀況。
@@ -762,10 +763,17 @@ export interface TaskInstance {
   unit: string; // 隨機機組編號
 }
 
+// 內建 + 匯入情境包(#80)的完整任務池。無匯入時 === TASKS（行為與測試不變）。
+export function allTasks(): TaskTemplate[] {
+  const imported = getImportedTasks();
+  return imported.length ? TASKS.concat(imported) : TASKS;
+}
+
 // 產生一筆任務（隨機模板 + 機組編號）。可傳入 seed 索引以利重現。
 export function generateTask(seed?: number): TaskInstance {
-  const idx = seed === undefined ? Math.floor(Math.random() * TASKS.length) : seed % TASKS.length;
+  const pool = allTasks();
+  const idx = seed === undefined ? Math.floor(Math.random() * pool.length) : seed % pool.length;
   const n = 1 + Math.floor(Math.random() * 40);
   const unit = "CH-" + String(n).padStart(2, "0");
-  return { template: TASKS[idx], unit };
+  return { template: pool[idx], unit };
 }

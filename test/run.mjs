@@ -52,6 +52,7 @@ const api = await load("src/cloud/api.ts");
 const recs = await load("src/state/records.ts");
 const daily = await load("src/state/dailyTasks.ts");
 const weekly = await load("src/state/weeklyChallenges.ts");
+const pack = await load("src/state/scenarioPack.ts");
 const R = g.reducer, I = g.INITIAL;
 
 // ───────────────────────── INITIAL 不變量 ─────────────────────────
@@ -1183,6 +1184,48 @@ test("weekly: storm theme raises fault pressure vs calm (faultMult wired into ad
   const runFaults = (mult) => { seed(99); let s = { ...I, weekly: mkWeekly(mult > 1 ? "storm" : "calm", mult) }; for (let i = 0; i < 25; i++) s = R(s, { type: "OPS_ADVANCE" }); return s.fleetLostMWh; };
   const storm = runFaults(1.4), calm = runFaults(0.7);
   ok(storm >= calm, `storm downtime (${storm}) >= calm downtime (${calm})`);
+});
+
+// ───────────────────────── 情境包匯入（#80） ─────────────────────────
+const VALID_PACK = JSON.stringify({
+  name: "TestPack", author: "QA",
+  tasks: [
+    { id: "t1", cat: "A", title: { zh: "高溫跳機", en: "Over-temp trip" }, scenario: { zh: "機艙過熱跳機。", en: "Nacelle over-temp trip." }, xp: 60, chart: "trend",
+      choices: [ { label: { zh: "派員檢查", en: "Send crew" }, feedback: { zh: "✓ 找根因", en: "✓ root cause" }, good: true, eff: { a: 6, b: -300000 } },
+                 { label: { zh: "忽略", en: "Ignore" }, feedback: { zh: "✗ 拖延", en: "✗ delay" }, good: false, eff: { a: -4, s: 1 } } ] },
+  ],
+});
+test("scenario pack: parse validates a good pack & namespaces ids (#80)", () => {
+  const r = pack.parseScenarioPack(VALID_PACK);
+  ok(r.ok, "valid pack accepted: " + (r.error || ""));
+  eq(r.pack.tasks.length, 1);
+  ok(r.pack.tasks[0].id.startsWith("pack:TestPack:"), "id namespaced");
+  eq(r.pack.tasks[0].cat, "A");
+});
+test("scenario pack: rejects malformed packs with clear errors (#80)", () => {
+  ok(!pack.parseScenarioPack("not json").ok, "bad json rejected");
+  ok(!pack.parseScenarioPack(JSON.stringify({ tasks: [] })).ok, "missing name rejected");
+  ok(!pack.parseScenarioPack(JSON.stringify({ name: "x", tasks: [] })).ok, "empty tasks rejected");
+  ok(!pack.parseScenarioPack(JSON.stringify({ name: "x", tasks: [{ cat: "Z", title: { zh: "a", en: "a" }, scenario: { zh: "b", en: "b" }, xp: 1, choices: [{ label: { zh: "a", en: "a" }, feedback: { zh: "f", en: "f" }, good: true, eff: {} }, { label: { zh: "b", en: "b" }, feedback: { zh: "f", en: "f" }, good: false, eff: {} }] }] })).ok, "bad cat rejected");
+  ok(!pack.parseScenarioPack(JSON.stringify({ name: "x", tasks: [{ cat: "A", title: "nope", scenario: { zh: "b", en: "b" }, xp: 1, choices: [{ label: { zh: "a", en: "a" }, feedback: { zh: "f", en: "f" }, good: true, eff: {} }, { label: { zh: "b", en: "b" }, feedback: { zh: "f", en: "f" }, good: false, eff: {} }] }] })).ok, "non-i18n title rejected");
+  ok(!pack.parseScenarioPack(JSON.stringify({ name: "x", tasks: [{ cat: "A", title: { zh: "a", en: "a" }, scenario: { zh: "b", en: "b" }, xp: 1, choices: [{ label: { zh: "a", en: "a" }, feedback: { zh: "f", en: "f" }, good: false, eff: {} }, { label: { zh: "b", en: "b" }, feedback: { zh: "f", en: "f" }, good: false, eff: {} }] }] })).ok, "no good choice rejected");
+  ok(!pack.parseScenarioPack(JSON.stringify({ name: "x", tasks: [{ cat: "A", title: { zh: "a", en: "a" }, scenario: { zh: "b", en: "b" }, xp: 1, choices: [{ label: { zh: "a", en: "a" }, feedback: { zh: "f", en: "f" }, good: true, eff: { z: 1 } }, { label: { zh: "b", en: "b" }, feedback: { zh: "f", en: "f" }, good: false, eff: {} }] }] })).ok, "bad eff key rejected");
+});
+test("scenario pack: registry register/remove via getImportedTasks (#80)", () => {
+  // 註：測試執行器將各模組獨立打包,故 tasks 與 scenarioPack 不共用單例;
+  // 此處在 scenarioPack 模組「同一實例」內驗證註冊表,allTasks() 串接於正式 Vite 單一打包中生效。
+  eq(pack.getImportedTasks().length, 0, "no pack → empty registry");
+  const r = pack.parseScenarioPack(VALID_PACK);
+  pack.setActivePack(r.pack);
+  eq(pack.getImportedTasks().length, 1, "imported task registered");
+  ok(pack.getImportedTasks().some((t) => t.id === "pack:TestPack:t1"), "imported task present");
+  eq(pack.getActivePack().name, "TestPack", "active pack meta available");
+  pack.setActivePack(null);
+  eq(pack.getImportedTasks().length, 0, "remove pack → registry cleared");
+});
+test("scenario pack: allTasks() baseline equals built-in TASKS when no pack (#80)", () => {
+  eq(tasks.allTasks().length, tasks.TASKS.length, "no pack → allTasks == TASKS");
+  eq(tasks.generateTask(5).template.id, tasks.TASKS[5].id, "base seed maps to built-in");
 });
 
 console.log(`\n${pass} passed, ${fail} failed (${pass + fail} total)`);
