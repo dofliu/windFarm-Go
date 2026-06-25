@@ -23,6 +23,7 @@ export const PARTS: Part[] = [
   // ── 中型組件（數十～數百萬）──
   { id: "main_controller", n: { zh: "主控制器 PLC", en: "Main Controller (PLC)" }, stars: 3, idx: 99, qty: 28, price: "900,000", minTier: 2 },
   { id: "cable_joint", n: { zh: "海纜接頭", en: "Subsea Cable Joint" }, stars: 2, idx: 105, qty: 243, price: "900,000", minTier: 3 },
+  { id: "transformer_bushing", n: { zh: "變壓器套管", en: "Transformer Bushing" }, stars: 2, idx: 97, qty: 26, price: "350,000", minTier: 3 },
   { id: "yaw_motor", n: { zh: "偏航電機", en: "Yaw Motor" }, stars: 2, idx: 70, qty: 0, price: "700,000", minTier: 1 },
   { id: "yaw_gear", n: { zh: "偏航齒輪組", en: "Yaw Gear Set" }, stars: 2, idx: 92, qty: 18, price: "600,000", minTier: 2 },
   { id: "pitch_controller", n: { zh: "變槳控制器", en: "Pitch Controller" }, stars: 2, idx: 101, qty: 30, price: "500,000", minTier: 2 },
@@ -39,6 +40,7 @@ export const PARTS: Part[] = [
   { id: "anemometer", n: { zh: "風速計", en: "Anemometer" }, stars: 1, idx: 90, qty: 75, price: "60,000", minTier: 1 },
   { id: "hydraulic_oil", n: { zh: "液壓油", en: "Hydraulic Oil" }, stars: 2, idx: 107, qty: 195, price: "60,000", minTier: 2 },
   { id: "bolt_m36", n: { zh: "螺栓組 M36", en: "Bolt Set M36" }, stars: 1, idx: 103, qty: 73, price: "50,000", minTier: 2 },
+  { id: "corrosion_anode", n: { zh: "犧牲陽極(防蝕)", en: "Sacrificial Anode" }, stars: 1, idx: 100, qty: 90, price: "55,000", minTier: 2 },
   { id: "seal_kit", n: { zh: "油封組", en: "Seal Kit" }, stars: 1, idx: 99, qty: 160, price: "45,000", minTier: 1 },
   { id: "gen_brush", n: { zh: "發電機碳刷", en: "Generator Brush" }, stars: 1, idx: 81, qty: 0, price: "40,000", minTier: 1 },
   { id: "leading_edge_tape", n: { zh: "葉片前緣保護帶", en: "Leading-edge Tape" }, stars: 1, idx: 100, qty: 210, price: "35,000", minTier: 2 },

@@ -606,6 +606,101 @@ export const FAULTS: Record<string, Fault> = {
     part: "lift_part",
     discipline: "hse",
   },
+
+  // ───────── #82 分層擴充:結構防蝕、變壓器套管、海纜接頭過熱（皆有完整測驗+SOP+圖鑑）─────────
+  tower_corrosion: {
+    id: "tower_corrosion",
+    name: { zh: "基礎/塔基防蝕劣化", en: "Foundation corrosion" },
+    severityTemp: { zh: "犧牲陽極耗盡、鏽蝕擴展", en: "Sacrificial anode depleted, rust spreading" },
+    warns: [
+      { zh: "警戒 · 陽極電位異常", en: "Warn · Anode potential" },
+      { zh: "警戒 · 塗層剝離", en: "Warn · Coating loss" },
+    ],
+    quiz: {
+      question: { zh: "飛濺區出現鏽蝕擴展、陰極保護電位不足,最該優先處理?", en: "Rust spreading in the splash zone with low cathodic-protection potential — address first?" },
+      options: [
+        { zh: "A. 鎖緊塔基螺栓", en: "A. Re-torque tower bolts" },
+        { zh: "B. 更換犧牲陽極並補修防蝕塗層", en: "B. Replace sacrificial anodes & repair coating" },
+        { zh: "C. 更換變壓器油", en: "C. Change transformer oil" },
+        { zh: "D. 校正偏航", en: "D. Re-align yaw" },
+      ],
+      correct: 1,
+      ok: { zh: "✓ 正確!陽極耗盡使陰極保護失效,須補陽極+修塗層,阻止鏽蝕擴展。", en: "✓ Correct! Depleted anodes lose cathodic protection — replace anodes & repair coating to stop corrosion." },
+      no: { zh: "✗ 飛濺區鏽蝕屬防蝕系統(陽極/塗層)問題,與螺栓預拉力不同。", en: "✗ Splash-zone rust is a corrosion-protection (anode/coating) issue, not bolt preload." },
+    },
+    sop: [
+      { zh: "確認天氣作業窗", en: "Confirm weather window" },
+      { zh: "登塔前 LOTO 能量隔離上鎖", en: "LOTO energy isolation before climb" },
+      { zh: "量測陰極保護電位、檢查鏽蝕範圍", en: "Measure CP potential & survey corrosion" },
+      { zh: "更換犧牲陽極並補修防蝕塗層", en: "Replace sacrificial anodes & repair coating" },
+      { zh: "複測電位並回報 SCADA", en: "Re-measure potential & report to SCADA" },
+    ],
+    knowledge_point: "foundation_corrosion",
+    part: "corrosion_anode",
+    discipline: "structural",
+  },
+  transformer_bushing: {
+    id: "transformer_bushing",
+    name: { zh: "變壓器套管絕緣劣化", en: "Transformer bushing degradation" },
+    severityTemp: { zh: "套管局部放電、介損上升", en: "Bushing partial discharge, tan-δ rising" },
+    warns: [
+      { zh: "警戒 · 介質損耗 tanδ 高", en: "Warn · High tan-δ" },
+      { zh: "警戒 · 套管局放", en: "Warn · Bushing PD" },
+    ],
+    quiz: {
+      question: { zh: "變壓器油溫正常,但套管介損 tanδ 上升並偵測到局部放電,根因?", en: "Transformer oil temp normal, but bushing tan-δ rises with partial discharge — root cause?" },
+      options: [
+        { zh: "A. 散熱風道阻塞", en: "A. Blocked cooling ducts" },
+        { zh: "B. 油位過低", en: "B. Low oil level" },
+        { zh: "C. 套管絕緣劣化(需更換套管)", en: "C. Bushing insulation degradation (replace bushing)" },
+        { zh: "D. 偏航誤動作", en: "D. Yaw hunting" },
+      ],
+      correct: 2,
+      ok: { zh: "✓ 正確!油溫正常排除散熱/油位;tanδ+局放指向套管絕緣劣化,須更換套管。", en: "✓ Correct! Normal temp rules out cooling/oil; tan-δ + PD point to bushing insulation — replace the bushing." },
+      no: { zh: "✗ 這是變壓器的『套管』根因(絕緣),與『過溫』(油/散熱)不同。", en: "✗ This is the bushing (insulation) cause, distinct from the overtemp (oil/cooling) case." },
+    },
+    sop: [
+      { zh: "確認天氣作業窗", en: "Confirm weather window" },
+      { zh: "登塔前 LOTO 能量隔離上鎖", en: "LOTO energy isolation before climb" },
+      { zh: "量測 tanδ/局放定位劣化套管", en: "Measure tan-δ/PD to locate the bushing" },
+      { zh: "更換套管並做端接與耐壓測試", en: "Replace bushing, re-terminate & hi-pot test" },
+      { zh: "送電測試並回報 SCADA", en: "Energize-test & report to SCADA" },
+    ],
+    knowledge_point: "transformer_bushing",
+    part: "transformer_bushing",
+    discipline: "electrical",
+  },
+  cable_joint_heat: {
+    id: "cable_joint_heat",
+    name: { zh: "海纜接頭過熱", en: "Cable joint overheat" },
+    severityTemp: { zh: "接頭接觸電阻過高、局部過熱", en: "Joint contact resistance high, local hotspot" },
+    warns: [
+      { zh: "警戒 · 接頭溫升", en: "Warn · Joint temp rise" },
+      { zh: "警戒 · 接觸電阻高", en: "Warn · High contact resistance" },
+    ],
+    quiz: {
+      question: { zh: "海纜接頭出現局部過熱、接觸電阻升高,但對地絕緣電阻正常,根因?", en: "Cable joint shows a hotspot with rising contact resistance, but insulation resistance is normal — cause?" },
+      options: [
+        { zh: "A. 接頭壓接不良/接觸電阻過高", en: "A. Poor crimp / high contact resistance" },
+        { zh: "B. 絕緣劣化局部放電", en: "B. Insulation degradation / PD" },
+        { zh: "C. 變流器過溫", en: "C. Converter overtemp" },
+        { zh: "D. 葉片不平衡", en: "D. Blade imbalance" },
+      ],
+      correct: 0,
+      ok: { zh: "✓ 正確!絕緣正常卻過熱→接觸電阻問題(壓接不良),須重做端接降低電阻。", en: "✓ Correct! Normal insulation but overheating → a contact-resistance (crimp) problem; re-terminate to cut resistance." },
+      no: { zh: "✗ 絕緣正常排除『絕緣劣化』;過熱+接觸電阻指向接頭壓接,屬不同根因。", en: "✗ Normal insulation rules out degradation; heat + contact resistance points to the crimp — a distinct cause." },
+    },
+    sop: [
+      { zh: "確認天氣作業窗", en: "Confirm weather window" },
+      { zh: "登塔前 LOTO 能量隔離上鎖", en: "LOTO energy isolation before climb" },
+      { zh: "熱影像/接觸電阻量測定位過熱接頭", en: "Thermal-image / measure resistance to locate the joint" },
+      { zh: "重做接頭端接、更換接頭", en: "Re-terminate / replace the joint" },
+      { zh: "通電溫升測試並回報 SCADA", en: "Load-heat test & report to SCADA" },
+    ],
+    knowledge_point: "cable_joint_thermal",
+    part: "cable_joint",
+    discipline: "electrical",
+  },
 };
 
 // ───────── 知識圖鑑解說（圖鑑擴充）：每個故障的深度排查知識 ─────────
@@ -752,6 +847,27 @@ export const CODEX: Record<string, CodexEntry> = {
     consequence: { zh: "若帶病載人，制動失效將造成人員墜落的重大工安事故。", en: "Carrying crew on a faulty lift risks a brake failure and a fatal fall — a major HSE incident." },
     tip: { zh: "停用升降機上鎖（LOTO）、改爬梯，先修復制動/限位再載重測試復用。", en: "Lock out the lift (LOTO), use the ladder, fix brake/limit, then load-test before reuse." },
   },
+  tower_corrosion: {
+    mechanism: { zh: "海上鹽霧/飛濺區腐蝕,犧牲陽極耗盡後陰極保護失效,鋼結構鏽蝕擴展。", en: "Marine salt-spray/splash-zone corrosion: once sacrificial anodes deplete, cathodic protection fails and steel rust spreads." },
+    symptom: { zh: "陰極保護電位不足、塗層剝離、飛濺區鏽蝕擴展,而螺栓預拉力正常。", en: "Low cathodic-protection potential, coating loss and spreading splash-zone rust, while bolt preload is fine." },
+    differential: { zh: "鏽蝕/陽極電位指向『防蝕系統』;與『螺栓鬆動』(低頻振動+法蘭位移)截然不同。", en: "Rust / anode potential points to the corrosion-protection system — quite distinct from bolt loosening (LF vibration + flange movement)." },
+    consequence: { zh: "鏽蝕持續會減薄壁厚、危及基礎/塔架結構壽命與安全。", en: "Ongoing corrosion thins the wall and threatens foundation/tower life and safety." },
+    tip: { zh: "量測陰極保護電位,更換犧牲陽極並補修防蝕塗層後複測。", en: "Measure CP potential, replace sacrificial anodes, repair coating, then re-measure." },
+  },
+  transformer_bushing: {
+    mechanism: { zh: "變壓器套管絕緣老化,介質損耗 tanδ 上升並出現局部放電,趨向絕緣擊穿。", en: "Transformer bushing insulation ages: tan-δ rises with partial discharge, heading toward breakdown." },
+    symptom: { zh: "套管 tanδ 上升、局部放電,而變壓器油溫與油位正常。", en: "Rising bushing tan-δ and partial discharge, while transformer oil temp and level are normal." },
+    differential: { zh: "油溫/油位正常排除『過溫』(散熱);tanδ+局放專指套管絕緣劣化。", en: "Normal temp/level rules out the overtemp (cooling) case; tan-δ + PD specifically indicate bushing insulation." },
+    consequence: { zh: "套管擊穿會造成變壓器故障停電,甚至引發火災。", en: "Bushing breakdown causes a transformer outage and can trigger a fire." },
+    tip: { zh: "以 tanδ/局放定位劣化套管,更換並做端接與耐壓測試。", en: "Locate the bad bushing via tan-δ/PD, replace it, re-terminate and hi-pot test." },
+  },
+  cable_joint_heat: {
+    mechanism: { zh: "海纜接頭壓接不良使接觸電阻升高,負載電流下局部過熱形成熱點。", en: "A poor cable-joint crimp raises contact resistance, creating a local hotspot under load current." },
+    symptom: { zh: "接頭溫升、接觸電阻升高,而對地絕緣電阻正常。", en: "Joint temperature rise and rising contact resistance, while insulation resistance is normal." },
+    differential: { zh: "絕緣電阻正常是關鍵:排除『絕緣劣化(局放)』,指向接頭接觸電阻(壓接)。", en: "Normal insulation resistance is key: it rules out insulation degradation (PD) and points to contact resistance (crimp)." },
+    consequence: { zh: "持續過熱會燒損接頭、最終演變成接地故障停電。", en: "Sustained overheating burns the joint and eventually escalates to a ground-fault outage." },
+    tip: { zh: "以熱影像/接觸電阻定位過熱接頭,重做端接或更換後做溫升測試。", en: "Use thermal imaging / resistance to locate the hot joint, re-terminate or replace, then load-heat test." },
+  },
 };
 
 // ───────── 元件分組（多重根因題組）：同一元件可由多種根因造成不同故障 ─────────
@@ -769,9 +885,9 @@ export const COMPONENTS: ComponentGroup[] = [
   { id: "pitch", name: { zh: "變槳系統", en: "Pitch System" }, icon: "🌀", faultIds: ["pitch_fault", "pitch_hydraulic_leak"] },
   { id: "converter", name: { zh: "變流器 / 電力電子", en: "Converter / Power Electronics" }, icon: "⚡", faultIds: ["converter_fault", "converter_igbt"] },
   { id: "blade", name: { zh: "葉片", en: "Blade" }, icon: "🛩️", faultIds: ["blade_crack", "blade_erosion"] },
-  { id: "cable", name: { zh: "海纜 / 電氣連接", en: "Cable / Electrical" }, icon: "🪢", faultIds: ["cable_insulation"] },
-  { id: "tower", name: { zh: "塔架 / 結構", en: "Tower / Structure" }, icon: "🏗️", faultIds: ["tower_bolt_loose"] },
-  { id: "transformer", name: { zh: "機組變壓器", en: "Turbine Transformer" }, icon: "🔋", faultIds: ["transformer_overtemp"] },
+  { id: "cable", name: { zh: "海纜 / 電氣連接", en: "Cable / Electrical" }, icon: "🪢", faultIds: ["cable_insulation", "cable_joint_heat"] },
+  { id: "tower", name: { zh: "塔架 / 結構", en: "Tower / Structure" }, icon: "🏗️", faultIds: ["tower_bolt_loose", "tower_corrosion"] },
+  { id: "transformer", name: { zh: "機組變壓器", en: "Turbine Transformer" }, icon: "🔋", faultIds: ["transformer_overtemp", "transformer_bushing"] },
   { id: "sensor", name: { zh: "量測 / 控制", en: "Sensors / Control" }, icon: "📡", faultIds: ["anemometer_fault", "controller_comm"] },
   { id: "lift", name: { zh: "升降機 / 工安", en: "Service Lift / HSE" }, icon: "🚧", faultIds: ["lift_fault"] },
 ];
@@ -808,6 +924,9 @@ export const FAULT_LOCATION: Record<string, RepairLocation> = {
   controller_comm: "nacelle",
   transformer_overtemp: "tower",
   lift_fault: "tower",
+  tower_corrosion: "deck",
+  transformer_bushing: "tower",
+  cable_joint_heat: "deck",
 };
 export const locationOf = (faultId: string): RepairLocation => FAULT_LOCATION[faultId] ?? "nacelle";
 
@@ -824,8 +943,10 @@ export const FAULT_TIER: Record<string, number> = {
   pitch_fault: 2, yaw_gear_wear: 2, pitch_hydraulic_leak: 2, converter_fault: 2,
   blade_erosion: 2, tower_bolt_loose: 2, controller_comm: 2, transformer_overtemp: 2,
   lift_fault: 2, gen_overtemp: 2,
+  // Tier 2：結構防蝕
+  tower_corrosion: 2,
   // Tier 3：較大組件
-  gen_vibration: 3, converter_igbt: 3, cable_insulation: 3,
+  gen_vibration: 3, converter_igbt: 3, cable_insulation: 3, transformer_bushing: 3, cable_joint_heat: 3,
   // Tier 4：最大組件更換（重吊/安裝船）
   gearbox_bearing_wear: 4, blade_crack: 4,
 };
