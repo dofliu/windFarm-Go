@@ -1228,6 +1228,42 @@ test("scenario pack: allTasks() baseline equals built-in TASKS when no pack (#80
   eq(tasks.generateTask(5).template.id, tasks.TASKS[5].id, "base seed maps to built-in");
 });
 
+// ───────────────────────── 真實度深化：jack-up 動員 + 計畫保養（#81） ─────────────────────────
+test("overhaul: jack-up mobilization charges fee, delays work, no standby fee en route (#81)", () => {
+  const q = { id: "q3", title: { zh: "", en: "" }, brief: { zh: "", en: "" }, unit: "CH-09", targetFault: "gen_vibration", rewardBudget: 200000, rewardXp: 140 };
+  let s = R(I, { type: "ACCEPT_QUEST" });
+  const b0 = s.budget;
+  s = R(s, { type: "START_OVERHAUL", quest: q, discipline: "mechanical" });
+  ok(s.overhaul, "overhaul started");
+  eq(s.overhaul.mobilizeLeft, g.JACKUP_MOBILIZE_DAYS, "mobilization countdown set");
+  eq(b0 - s.budget, g.JACKUP_MOBILIZE_COST, "one-time mobilization fee charged at start");
+  // 動員期間:工日不前進、不收待命費
+  seed(7);
+  const s2 = R(s, { type: "ADVANCE_OVERHAUL" });
+  eq(s2.overhaul.progress, 0, "no work progress during mobilization");
+  eq(s2.overhaul.mobilizeLeft, g.JACKUP_MOBILIZE_DAYS - 1, "mobilization counts down");
+  eq(s2.lastLedger.demurrage, 0, "no standby fee while en route");
+  // 動員結束 → mobilizeLeft 歸 0,之後才推進工日
+  let s3 = s; for (let i = 0; i < g.JACKUP_MOBILIZE_DAYS; i++) s3 = R(s3, { type: "ADVANCE_OVERHAUL" });
+  eq(s3.overhaul.mobilizeLeft, 0, "mobilization finished after JACKUP_MOBILIZE_DAYS");
+  eq(s3.overhaul.progress, 0, "still no progress until on-site work begins");
+});
+test("scheduled service: due gating + fault-rate buff + health + clock reset (#81)", () => {
+  ok(!g.serviceDue(I), "not due at start");
+  ok(g.serviceDue({ ...I, lastServiceDay: I.day - g.SERVICE_INTERVAL_DAYS }), "due after interval");
+  // 未到期 → no-op(回原狀態)
+  eq(R(I, { type: "SCHEDULED_SERVICE" }), I, "no-op when not due");
+  // 到期 → 執行:扣時間、設降故障率 buff、回健康度、重置保養時鐘
+  const dueState = { ...I, lastServiceDay: I.day - g.SERVICE_INTERVAL_DAYS, fleetHealth: 50, budget: 50_000_000 };
+  seed(3);
+  const s = R(dueState, { type: "SCHEDULED_SERVICE" });
+  eq(s.day, dueState.day + g.SCHEDULED_SERVICE_DAYS, "service consumes days");
+  eq(s.inspectBuffDays, g.SCHEDULED_SERVICE_BUFF_DAYS, "fault-rate buff window set");
+  ok(s.fleetHealth > dueState.fleetHealth, "health restored by service");
+  eq(s.lastServiceDay, dueState.day + g.SCHEDULED_SERVICE_DAYS, "service clock reset");
+  ok(!g.serviceDue(s), "not due again right after service");
+});
+
 console.log(`\n${pass} passed, ${fail} failed (${pass + fail} total)`);
 if (fail) { console.log("\nFailures:"); for (const f of fails) console.log("  ✗ " + f); process.exit(1); }
 console.log("✓ all green");

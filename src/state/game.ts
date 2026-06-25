@@ -236,6 +236,7 @@ export interface GameData {
   repair: RepairState | null; // 進行中的維修作業進度（存進 state → 切換畫面不丟失、作業窗不被免費重置）
   daily: DailyState | null; // 每日任務（#78）：綁遊戲內日，達成自動發獎；null = 尚未產生(掛載時 roll)
   weekly: WeeklyState | null; // 每週主題挑戰（#79）：綁遊戲內週，主題影響故障率 + 較大獎勵；null = 掛載時 roll
+  lastServiceDay: number; // 上次計畫性定期保養的日（#81）：到期(間隔 SERVICE_INTERVAL_DAYS)才可再做
 }
 
 // 每日任務狀態（#78）：綁遊戲內日；baseline 記錄當日起始累積值，達成以增量/當前狀態判定。
@@ -278,6 +279,7 @@ export interface Overhaul {
   demurrageDays: number; // 因惡劣海象停滯（已付待命費）的天數
   rewardBudget: number; // 完成時發放
   rewardXp: number;
+  mobilizeLeft?: number; // 安裝船(jack-up)動員/航行剩餘天數（#81）：>0 期間尚未到場、不推進工日、不收待命費
 }
 
 // 季度 SLA 結算結果（#3）
@@ -307,6 +309,17 @@ export interface Ledger {
 
 export const OVERHAUL_NEED = 3; // 大修所需的可作業工日（#4）
 export const DEMURRAGE_PER_DAY = 400_000; // 大修因惡劣海象停滯的船舶待命費／日（#4）
+// 安裝船(jack-up)動員（#81 真實度深化）：大型組件更換需提前數日動員/航行 + 高額動員費，
+// 讓「現在換大組件 vs 接受停機損失」成為真實取捨。動員期間僅推進日期，不收待命費、不推進工日。
+export const JACKUP_MOBILIZE_DAYS = 5; // 動員/航行前置期（天）
+export const JACKUP_MOBILIZE_COST = 8_000_000; // 一次性動員費 ◎
+// 計畫性定期保養（#81 scheduled service）：每隔固定天數可做一次定期保養 → 一段時間內降低故障率 + 回復健康度，
+// 補齊維護三分類(計畫性 / 狀態式 CBM / 故障矯正)。為教學可達性,週期採壓縮的「定期」而非字面 365 天。
+export const SERVICE_INTERVAL_DAYS = 90; // 兩次計畫保養的間隔（到期才可做）
+export const SCHEDULED_SERVICE_COST = 1_500_000; // 計畫保養費用 ◎
+export const SCHEDULED_SERVICE_DAYS = 2; // 計畫保養工期（天）
+export const SCHEDULED_SERVICE_BUFF_DAYS = 30; // 保養後降低故障率的持續天數（沿用 inspectBuffDays 機制）
+export const SCHEDULED_SERVICE_HEALTH = 15; // 保養後回復的機組健康度
 export const QUARTER_DAYS = 90; // 一季天數（#3）
 export const SLA_FLOOR = 90; // 季度可用率底線 %（#3）
 export const SLA_PENALTY = 5_000_000; // 違約金 ◎（#3）
@@ -432,7 +445,12 @@ export const INITIAL: GameData = {
   repair: null,
   daily: null,
   weekly: null,
+  lastServiceDay: 21, // = INITIAL.day（首次保養於 21 + 間隔 後到期）
 };
+
+// 計畫性定期保養是否到期（#81）：距上次保養 ≥ 間隔天數
+export const serviceDue = (d: Pick<GameData, "day" | "lastServiceDay">): boolean => d.day - (d.lastServiceDay ?? 0) >= SERVICE_INTERVAL_DAYS;
+export const serviceDueInDays = (d: Pick<GameData, "day" | "lastServiceDay">): number => Math.max(0, SERVICE_INTERVAL_DAYS - (d.day - (d.lastServiceDay ?? 0)));
 
 const clampN = (n: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, n));
 
@@ -486,7 +504,8 @@ function advance(s: GameData, days = 1): Partial<GameData> {
   patch.seaState = w.seaState;
   patch.forecast = w.forecast;
   // 大修進行中：安裝船每日待命費（demurrage，#4）。惡劣海象拉長工期 → 待命天數變多 → 總成本上升。
-  if (s.overhaul) { const dem = DEMURRAGE_PER_DAY * days; cash -= dem; ledger.demurrage = -dem; }
+  // 動員/航行期間（mobilizeLeft>0）安裝船尚未到場,不收待命費（#81）。
+  if (s.overhaul && (s.overhaul.mobilizeLeft ?? 0) <= 0) { const dem = DEMURRAGE_PER_DAY * days; cash -= dem; ledger.demurrage = -dem; }
   // 健康度越低 → 突發事件機率越高、且偏向壞事件（連鎖故障）
   const riskBoost = ((100 - health) / 100) * 0.4;
   let startFleet = s.fleet; // 本次推進的起始機隊（事件的故障/修復先套用於此，再進入每日推進）
@@ -618,6 +637,7 @@ export type Action =
   | { type: "START_OVERHAUL"; quest: Quest; part?: string; discipline?: Discipline } // 重大故障：拆檢完成後啟動多回合大修（#4）
   | { type: "ADVANCE_OVERHAUL" } // 推進大修一天（#4）：可作業窗 → 進度+1；惡劣海象 → 停滯+待命費
   | { type: "SERVICE_VESSEL"; cost: number } // 船舶進廠保養：歸零磨耗（#7）
+  | { type: "SCHEDULED_SERVICE" } // 計畫性定期保養（#81）：到期可做 → 降故障率一段時間 + 回復健康度
   | { type: "BUY_DIAGNOSTICS"; cost: number } // 解鎖進階檢測（#scada）
   | { type: "DO_ROUTINE"; budget: number; xp: number } // 調度中心例行小任務（#21）
   | { type: "UPGRADE"; kind: "vessel" | "tech" | "tool"; cost: number } // 設施升級（A）
@@ -736,6 +756,19 @@ export function reducer(s: GameData, a: Action): GameData {
       const adv = advance(s, 1); // 進廠保養耗時 1 天
       return { ...s, ...adv, budget: Math.max(0, (adv.budget ?? s.budget) - a.cost), vesselWear: 0 };
     }
+    case "SCHEDULED_SERVICE": {
+      // 計畫性定期保養（#81）：到期才可做;費用 + 工期,換取一段時間降低故障率 + 健康度回復。
+      if (!serviceDue(s) || SCHEDULED_SERVICE_COST > s.budget) return s;
+      const adv = advance(s, SCHEDULED_SERVICE_DAYS);
+      return {
+        ...s,
+        ...adv,
+        budget: Math.max(0, (adv.budget ?? s.budget) - SCHEDULED_SERVICE_COST),
+        inspectBuffDays: Math.max(adv.inspectBuffDays ?? s.inspectBuffDays, SCHEDULED_SERVICE_BUFF_DAYS),
+        fleetHealth: clampN((adv.fleetHealth ?? s.fleetHealth) + SCHEDULED_SERVICE_HEALTH, 0, 100),
+        lastServiceDay: s.day + SCHEDULED_SERVICE_DAYS,
+      };
+    }
     case "BUY_DIAGNOSTICS": {
       if (a.cost > s.budget || s.diagLevel > 0) return s;
       const adv = advance(s, 1); // 進階檢測建置耗時 1 天
@@ -837,20 +870,27 @@ export function reducer(s: GameData, a: Action): GameData {
         inv[a.part] = (inv[a.part] ?? 0) - 1; // 拆檢即消耗必備備品（大組件）
         cargo = Math.max(0, cargo - 1);
       }
+      // 安裝船(jack-up)動員（#81）：拆檢確認需大組件更換 → 預收一次性動員費,並進入數日動員/航行前置期。
       return {
         ...s,
         jobPhase: "office",
         repair: null,
         inventory: inv,
         cargoUsed: cargo,
-        overhaul: { questId: a.quest.id, unit: a.quest.unit, fault: a.quest.targetFault, discipline: a.discipline ?? "mechanical", progress: 0, need: OVERHAUL_NEED, demurrageDays: 0, rewardBudget: a.quest.rewardBudget, rewardXp: a.quest.rewardXp },
+        budget: Math.max(0, s.budget - JACKUP_MOBILIZE_COST),
+        overhaul: { questId: a.quest.id, unit: a.quest.unit, fault: a.quest.targetFault, discipline: a.discipline ?? "mechanical", progress: 0, need: OVERHAUL_NEED, demurrageDays: 0, rewardBudget: a.quest.rewardBudget, rewardXp: a.quest.rewardXp, mobilizeLeft: JACKUP_MOBILIZE_DAYS },
       };
     }
     case "ADVANCE_OVERHAUL": {
       if (!s.overhaul) return s;
+      const oh = s.overhaul;
+      // 動員/航行期間：安裝船尚未到場 → 僅推進日期(不收待命費、不推進工日)，倒數動員天數。
+      if ((oh.mobilizeLeft ?? 0) > 0) {
+        const adv = advance(s, 1);
+        return { ...s, ...adv, overhaul: { ...oh, mobilizeLeft: (oh.mobilizeLeft ?? 0) - 1 } };
+      }
       const adv = advance(s, 1); // 天氣/天數推進、停機成本、健康度、SLA 累計
       const sea = (adv.seaState ?? s.seaState) as SeaState;
-      const oh = s.overhaul;
       if (sea === "workable") {
         const workedEngs = deployFatigue(adv.engineers ?? s.engineers, oh.discipline); // 大修工日累積疲勞（#7）
         const progress = oh.progress + 1;
