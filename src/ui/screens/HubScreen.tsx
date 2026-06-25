@@ -14,7 +14,7 @@ import { CAMPAIGN, missionInstance } from "../campaign";
 import { FAULTS } from "../faults";
 import { PARTS } from "../data";
 import { DISC } from "../disc";
-import { toWan, computeScore, QUARTER_DAYS, SLA_FLOOR, DEMURRAGE_PER_DAY, dailyStorageCost, FATIGUE_LIMIT, fatigueOf, fleetUptime, dailyRevenue, dailyPayroll, TEST_GRANT, activeVesselSpec, seaTolOf } from "../../state/game";
+import { toWan, computeScore, QUARTER_DAYS, SLA_FLOOR, DEMURRAGE_PER_DAY, dailyStorageCost, FATIGUE_LIMIT, fatigueOf, fleetUptime, dailyRevenue, dailyPayroll, TEST_GRANT, activeVesselSpec, seaTolOf, tierOf, TIER_LABEL, TIER_COUNT } from "../../state/game";
 import { FARMS } from "../../state/farms";
 import { BUILD_STAGE_COUNT } from "../../state/construction";
 import { fetchLeaderboard, type Row } from "../../cloud/sheet";
@@ -73,6 +73,7 @@ export default function HubScreen({ setScreen, accent, onDispatch, onFacility, s
   const quest = data.customQuest ?? mission;
   const fault = FAULTS[quest.targetFault];
   const vSpec = activeVesselSpec(data);
+  const tier = tierOf(data); // 運維層級（#76/#77）：UI 漸進揭露 + 升級提示
   const goSail = () => setScreen("sail");
   const [opsOpen, setOpsOpen] = useState(true); // #6 抽屜預設展開
   const [facOpen, setFacOpen] = useState(true); // 左側「設施」可獨立收合
@@ -142,6 +143,19 @@ export default function HubScreen({ setScreen, accent, onDispatch, onFacility, s
     prevOverhaul.current = has;
   }, [data.overhaul, data.questStage]);
 
+  // 運維層級升級提示（#77）：tier 上升時通知並解釋解鎖內容。首次掛載不提示（僅記錄當前層級）。
+  const prevTier = useRef<number | null>(null);
+  useEffect(() => {
+    if (prevTier.current !== null && tier > prevTier.current) {
+      Sfx.success();
+      toast({
+        zh: `🎖 升級為「${TIER_LABEL[tier as 1].zh}」（運維層級 ${tier}/${TIER_COUNT}）！解鎖更多故障型錄與備品，難度與經濟壓力提升。`,
+        en: `🎖 Promoted to "${TIER_LABEL[tier as 1].en}" (Tier ${tier}/${TIER_COUNT})! More faults & parts unlocked; difficulty and economic pressure rise.`,
+      });
+    }
+    prevTier.current = tier;
+  }, [tier]);
+
   const me = getProfile();
   // #3 每週開放：下一關屬下週時鎖定（沙盒不受限；課程臨時任務不鎖）
   const nextLocked = !data.customQuest && !data.campaignDone && missionWeek(data.campaignIndex + 1) > week;
@@ -181,13 +195,34 @@ export default function HubScreen({ setScreen, accent, onDispatch, onFacility, s
         <PanelHead title={{ zh: "風場動態", en: "Farm Status" }} open={farmOpen} onToggle={() => setFarmOpen((v) => !v)} />
         {farmOpen && (
         <div style={{ padding: "10px 12px" }}>
+          {/* 運維層級徽章（#77）：顯示目前 tier 與循序漸進說明 */}
+          <div style={{ marginBottom: 9, padding: "7px 9px", borderRadius: 4, background: "rgba(214,167,84,.1)", border: "1px solid rgba(214,167,84,.32)" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span style={{ color: C.gold, fontWeight: 700, fontSize: 11.5, letterSpacing: ".06em" }}>🎖 {t({ zh: "運維層級", en: "Ops Tier" })}</span>
+              <span style={{ color: C.goldText, fontWeight: 900, fontSize: 12.5 }}>{t(TIER_LABEL[tier as 1])} · {tier}/{TIER_COUNT}</span>
+            </div>
+            <div style={{ display: "flex", gap: 3, marginTop: 5 }}>
+              {Array.from({ length: TIER_COUNT }, (_, i) => (
+                <div key={i} style={{ flex: 1, height: 4, borderRadius: 2, background: i < tier ? primaryBg(accent) : "rgba(255,255,255,.12)" }} />
+              ))}
+            </div>
+            <div style={{ fontSize: 10.5, color: C.mist2, marginTop: 4 }}>
+              {tier < TIER_COUNT
+                ? t({ zh: "規模擴大(發電/風場/任務)將解鎖更多故障與備品，難度漸增。", en: "Scaling up (generation/farms/missions) unlocks more faults & parts; difficulty rises." })
+                : t({ zh: "已達最高層級：全部故障型錄與經濟壓力開放。", en: "Top tier reached: full fault catalog & economic pressure unlocked." })}
+            </div>
+          </div>
           <div style={kvRow}><span style={{ color: C.mist }}>{t({ zh: "海象（今日）", en: "Sea (today)" })}</span><span style={{ color: seaColor, fontWeight: 700 }}>{t(seaLabel)}</span></div>
           {/* 微觀天氣預報（#2）：未來三日 + 風暴警示 */}
           <div style={{ fontSize: 11, color: C.mist2, margin: "4px 0 4px" }}>{t({ zh: "三日預報", en: "3-Day Forecast" })}</div>
           <ForecastStrip forecast={data.forecast} />
           <StormWarning forecast={data.forecast} />
-          {/* 合約 SLA（#3）：季度可用率底線 + 違約金 */}
-          {(() => {
+          {/* 合約 SLA（#3）：季度可用率底線 + 違約金。Tier 1 入門隱藏(漸進揭露 #77)，Tier 2 起顯示。 */}
+          {tier < 2 ? (
+            <div style={{ marginTop: 10, padding: "7px 9px", borderRadius: 4, background: "rgba(95,168,217,.08)", border: "1px dashed rgba(95,168,217,.28)", fontSize: 10.5, color: C.mist2 }}>
+              🔒 {t({ zh: "合約 SLA、季度結算等進階指標將於運維層級 2 解鎖。先把基本維修循環練熟！", en: "Contract SLA & quarterly settlement unlock at Ops Tier 2. Master the basic repair loop first!" })}
+            </div>
+          ) : (() => {
             const daysLeft = Math.max(0, QUARTER_DAYS - (data.day - data.quarterStartDay));
             const avg = data.slaSamples > 0 ? data.slaAvailSum / data.slaSamples : data.availability;
             const atRisk = avg < SLA_FLOOR;
