@@ -8,6 +8,7 @@ import { Sfx } from "../audio/sfx";
 import { COURSE_WEEKS } from "./courseMap";
 import { FAULTS } from "./faults";
 import { WEEKS_TOTAL, MISSIONS_PER_WEEK } from "../state/course";
+import { parseScenarioPack, setActivePack, getActivePack } from "../state/scenarioPack";
 import type { Quest } from "../state/game";
 import type { I18n } from "../game/systems/types";
 
@@ -24,7 +25,24 @@ export default function CourseModal({ open, onClose, week = 1, onSetWeek, onTeac
   const { start: startTutorial } = useTutorial();
   const [text, setText] = useState("");
   const [err, setErr] = useState("");
+  // 情境包匯入（#80）
+  const [packText, setPackText] = useState("");
+  const [packErr, setPackErr] = useState("");
+  const [packTick, setPackTick] = useState(0); // 觸發重讀目前情境包
   if (!open) return null;
+
+  const activePack = getActivePack();
+  void packTick; // 依賴以在匯入/移除後刷新顯示
+  const importPack = () => {
+    const r = parseScenarioPack(packText);
+    if (!r.ok || !r.pack) { setPackErr(r.error || "匯入失敗 / import failed"); Sfx.error(); return; }
+    setActivePack(r.pack);
+    setPackErr("");
+    setPackText("");
+    setPackTick((n) => n + 1);
+    Sfx.success();
+  };
+  const clearPack = () => { setActivePack(null); setPackTick((n) => n + 1); Sfx.click(); };
 
   const assignWeek = (faultId: string, title: I18n) => {
     Sfx.click();
@@ -142,6 +160,33 @@ export default function CourseModal({ open, onClose, week = 1, onSetWeek, onTeac
           <button onClick={importJson} style={{ marginTop: 8, width: "100%", padding: "10px 0", borderRadius: 5, border: "1px solid rgba(214,167,84,.5)", background: "rgba(15,40,50,.82)", color: C.cream, fontFamily: FONT_SERIF, fontWeight: 700, fontSize: 14, cursor: "pointer" }}>
             {t({ zh: "匯入並指派", en: "Import & Assign" })}
           </button>
+
+          {/* 情境包匯入（#80）：一次匯入一組自由營運中心的判斷型任務 */}
+          <div style={{ marginTop: 18, paddingTop: 14, borderTop: "1px solid rgba(214,167,84,.25)" }}>
+            <div style={{ color: C.goldText, fontWeight: 900, fontFamily: FONT_SERIF, fontSize: 14, marginBottom: 4 }}>📦 {t({ zh: "情境包匯入（活動／題組）", en: "Scenario Pack (activity / task set)" })}</div>
+            <div style={{ fontSize: 12, color: C.mist, marginBottom: 6 }}>
+              {t({ zh: "匯入一組自訂判斷型任務到『自由營運中心』，與內建內容並存、可隨時移除。", en: "Import a set of custom judgment tasks into the Ops Center; coexists with built-ins and is removable." })}
+              <span style={{ color: C.mist3 }}> {'{ name, author?, tasks:[{ id, cat:A–G, title{zh,en}, scenario{zh,en}, xp, chart?, choices:[{label,feedback,good,eff}] }] }'}</span>
+            </div>
+            {activePack && (
+              <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "7px 9px", borderRadius: 5, background: "rgba(127,206,142,.1)", border: "1px solid rgba(127,206,142,.3)", marginBottom: 8 }}>
+                <span style={{ fontSize: 12, color: C.green, flex: 1 }}>
+                  ✔ {t({ zh: "已匯入", en: "Imported" })}：<b>{activePack.name}</b>{activePack.author ? ` · ${activePack.author}` : ""} · {t({ zh: `${activePack.tasks.length} 題`, en: `${activePack.tasks.length} tasks` })}
+                </span>
+                <button onClick={clearPack} style={{ padding: "4px 10px", borderRadius: 4, border: "1px solid rgba(220,100,80,.5)", background: "rgba(220,100,80,.12)", color: C.redText, fontSize: 11.5, fontWeight: 700, cursor: "pointer" }}>{t({ zh: "移除", en: "Remove" })}</button>
+              </div>
+            )}
+            <textarea
+              value={packText}
+              onChange={(e) => { setPackText(e.target.value); setPackErr(""); }}
+              placeholder={'{ "name": "週五實作包", "tasks": [ { "cat": "A", "title": {"zh":"高溫跳機","en":"Over-temp trip"}, "scenario": {"zh":"…","en":"…"}, "xp": 60, "choices": [ {"label":{"zh":"派員檢查","en":"Send crew"},"feedback":{"zh":"✓ …","en":"✓ …"},"good":true,"eff":{"a":6}}, {"label":{"zh":"忽略","en":"Ignore"},"feedback":{"zh":"✗ …","en":"✗ …"},"good":false,"eff":{"a":-4}} ] } ] }'}
+              style={{ width: "100%", height: 96, resize: "vertical", borderRadius: 5, border: "1px solid rgba(214,167,84,.35)", background: "rgba(0,0,0,.3)", color: C.cream, fontFamily: "monospace", fontSize: 11.5, padding: 8 }}
+            />
+            {packErr && <div style={{ color: C.red, fontSize: 12, marginTop: 6 }}>{packErr}</div>}
+            <button onClick={importPack} style={{ marginTop: 8, width: "100%", padding: "10px 0", borderRadius: 5, border: "1px solid rgba(214,167,84,.5)", background: primaryBg(), color: C.ink, fontFamily: FONT_SERIF, fontWeight: 900, fontSize: 14, cursor: "pointer" }}>
+              {t({ zh: "匯入情境包", en: "Import Scenario Pack" })}
+            </button>
+          </div>
         </div>
       </div>
     </div>
