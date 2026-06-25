@@ -19,6 +19,7 @@ import { LedgerToaster } from "./ui/Ledger";
 import LoginScreen from "./ui/LoginScreen";
 import ScoreSync from "./ui/ScoreSync";
 import RecordsTracker from "./ui/RecordsTracker";
+import DailyTracker from "./ui/DailyTracker";
 import ProfileModal from "./ui/ProfileModal";
 import TeacherModal from "./ui/TeacherModal";
 import WelcomeOnLogin from "./ui/WelcomeOnLogin";
@@ -144,6 +145,7 @@ export default function App() {
           <TeacherModal open={showTeacher} onClose={() => setShowTeacher(false)} />
           <ScoreSync />
           <RecordsTracker />
+          <DailyTracker />
           <WelcomeOnLogin />
           <LedgerToaster />
           <Toaster />

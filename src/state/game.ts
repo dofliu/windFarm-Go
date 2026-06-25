@@ -234,6 +234,16 @@ export interface GameData {
   inspectBuffDays: number; // 預防性定檢生效剩餘天數（Phase C2，降低故障率）
   lastLedger: Ledger | null; // 最近一次推進的每日收支明細（莉莉財報）
   repair: RepairState | null; // 進行中的維修作業進度（存進 state → 切換畫面不丟失、作業窗不被免費重置）
+  daily: DailyState | null; // 每日任務（#78）：綁遊戲內日，達成自動發獎；null = 尚未產生(掛載時 roll)
+}
+
+// 每日任務狀態（#78）：綁遊戲內日；baseline 記錄當日起始累積值，達成以增量/當前狀態判定。
+export interface DailyState {
+  day: number; // 對應的遊戲內日
+  ids: string[]; // 今日開放的小目標 id（見 dailyTasks.ts）
+  base: { resolved: number; missions: number; gen: number; safety: number }; // 當日起始累積值
+  claimed: string[]; // 已發獎的小目標 id
+  streak: number; // 連續「全部完成」天數
 }
 
 // 維修作業進度（#33）：原本只存在 RepairScreen 的 local state，切到別的畫面就重置（丟進度＋免費重置作業窗）。
@@ -409,6 +419,7 @@ export const INITIAL: GameData = {
   inspectBuffDays: 0,
   lastLedger: null,
   repair: null,
+  daily: null,
 };
 
 const clampN = (n: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, n));
@@ -621,6 +632,8 @@ export type Action =
   | { type: "LOAD_STATE"; state: Partial<GameData> } // 雲端存檔載入（#31）
   | { type: "GRANT_FUNDS"; amount: number } // 測試加值：直接注資（沙盒/測試用，便於試玩各項採購）
   | { type: "SET_REPAIR"; repair: RepairState | null } // 更新/清空進行中的維修進度（#33 持久化）
+  | { type: "ROLL_DAILY"; daily: DailyState } // 產生當日每日任務（#78，由 DailyTracker 於日推進時派發）
+  | { type: "CLAIM_DAILY"; id: string; xp: number; cash: number } // 發放某每日任務獎勵（#78）
   | { type: "RESET" };
 
 export const TEST_GRANT = 50_000_000; // 一次測試加值金額 ◎（測試/沙盒用）
@@ -905,6 +918,17 @@ export function reducer(s: GameData, a: Action): GameData {
         xp: s.xp + a.xp,
         missionsDone: s.missionsDone + 1,
       };
+    }
+    case "ROLL_DAILY":
+      return { ...s, daily: a.daily };
+    case "CLAIM_DAILY": {
+      const dl = s.daily;
+      if (!dl || dl.claimed.includes(a.id) || !dl.ids.includes(a.id)) return s; // 無效/重複發獎 → 忽略(冪等)
+      const claimed = [...dl.claimed, a.id];
+      const wasFull = dl.claimed.length >= dl.ids.length;
+      const nowFull = claimed.length >= dl.ids.length;
+      const streak = nowFull && !wasFull ? dl.streak + 1 : dl.streak; // 全部完成 → 連勝 +1
+      return { ...s, budget: s.budget + Math.max(0, a.cash), xp: s.xp + Math.max(0, a.xp), daily: { ...dl, claimed, streak } };
     }
     case "GRANT_FUNDS":
       return { ...s, budget: s.budget + Math.max(0, a.amount) };
