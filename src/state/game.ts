@@ -2,6 +2,7 @@ import type { I18n } from "../game/systems/types";
 import { FARMS } from "./farms";
 import { rollEvent, type EventStamp } from "./events";
 import { incidentAt, randomIncidentId } from "./incidents";
+import { rollCaseStudy } from "./caseStudies";
 import { BUILD_STAGES, BUILD_STAGE_COUNT, BUILD_REWARD_BASE, BUILD_REWARD_PER_SCORE, BUILD_REWARD_XP } from "./construction";
 import { VESSELS, vesselSpec, type VesselClass } from "./vessels";
 
@@ -237,6 +238,8 @@ export interface GameData {
   daily: DailyState | null; // 每日任務（#78）：綁遊戲內日，達成自動發獎；null = 尚未產生(掛載時 roll)
   weekly: WeeklyState | null; // 每週主題挑戰（#79）：綁遊戲內週，主題影響故障率 + 較大獎勵；null = 掛載時 roll
   lastServiceDay: number; // 上次計畫性定期保養的日（#81）：到期(間隔 SERVICE_INTERVAL_DAYS)才可再做
+  seenCases: string[]; // 已解鎖/看過的真實案例研究 id（永久收錄於圖鑑案例檔）
+  lastCase: { id: string; day: number } | null; // 最近偶發的案例快報（Hub 提示用）
 }
 
 // 每日任務狀態（#78）：綁遊戲內日；baseline 記錄當日起始累積值，達成以增量/當前狀態判定。
@@ -446,6 +449,8 @@ export const INITIAL: GameData = {
   daily: null,
   weekly: null,
   lastServiceDay: 21, // = INITIAL.day（首次保養於 21 + 間隔 後到期）
+  seenCases: [],
+  lastCase: null,
 };
 
 // 計畫性定期保養是否到期（#81）：距上次保養 ≥ 間隔天數
@@ -518,6 +523,13 @@ function advance(s: GameData, days = 1): Partial<GameData> {
     if (ev.fault) startFleet = faultTurbines(startFleet, ev.fault, tier);
     if (ev.restore) startFleet = restoreTurbines(startFleet, ev.restore);
     patch = { ...patch, ...evPatch, lastEvent: { id: ev.id, name: ev.name, desc: ev.desc, good: !!ev.good, day } };
+  }
+  // 真實案例研究偶發快報（case studies）：極低機率抽一則「當前 tier 內、本局未看過」的案例，
+  // 永久收錄進圖鑑案例檔（不改變主存檔數值；選擇/效果只在案例檔作教學標示）。
+  const rolledCase = rollCaseStudy(tier, s.seenCases);
+  if (rolledCase) {
+    patch.seenCases = [...s.seenCases, rolledCase.id];
+    patch.lastCase = { id: rolledCase.id, day };
   }
   // 活體戰情層（Phase C）：每日推進並行工單、隨機新增故障、累計停機發電損失
   let slaUptime: number | null = null; // 本次推進每日平均妥善率（fleet 推進後填入，供 SLA 取真實值）

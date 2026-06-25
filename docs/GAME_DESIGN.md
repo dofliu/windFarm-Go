@@ -218,4 +218,5 @@ scores(user_id, score, availability, generation_mwh, missions_done, day, updated
 - **真實度深化（#81）**：大型組件大修加 **jack-up 安裝船動員前置期**(`mobilizeLeft`)+一次性動員費(`JACKUP_MOBILIZE_COST`),動員期間不收待命費(demurrage 改為到場後才收)→「現在換大組件 vs 接受停機」更具重量;**計畫性定期保養**(`SCHEDULED_SERVICE`,到期可做)降故障率一段時間+回健康度,補齊維護三分類(計畫性/狀態式CBM/故障矯正)。
 - **故障/備品分層擴充（#82）**：在 Tier 框架下新增防蝕(結構/T2)、變壓器套管(電氣/T3)、海纜接頭過熱(電氣/T3)等完整故障(診斷+SOP+圖鑑),使海纜/塔架/變壓器成為多重根因;計數 22 故障/23 戰情室故障/30 備品。
 - **併發壓力測試**：`npm run stress`(`test/stress.mjs`)忠實重現雲端後端契約(djb2 簽章/clampInt/8 秒節流/排行彙整/同時執行上限)做併發負載,證實多人同時送分可負荷——併發有界不丟請求、節流去重削減約 7 成寫入、簽章在併發下仍正確,延遲僅優雅升高。詳見 [STRESS_TEST.md](STRESS_TEST.md)。
+- **真實案例研究事件（case studies）**：`src/state/caseStudies.ts` 收錄經多來源研究 + 雙重(事實/敏感度)查核的真實風場事故(灌漿連接滑移、Robin Rigg 規範錯誤、沖刷、軸承 WEC/電蝕、葉片膠合品質逃逸、CPS 磨損、機艙火災、jack-up 穿刺…)。由 `advance()` 以極低機率(`rollCaseStudy`)依 Tier 偶發快報,永久收錄母港「📁 案例檔」(`CaseFileModal`)。**具名+附出處**(系統性/公開紀錄)與**去識別技術重現**(敏感個案)兩類分流;不改主存檔數值、`relatesTo` 連回既有故障。規則與守則見 [CASE_STUDIES.md](CASE_STUDIES.md)。
 
