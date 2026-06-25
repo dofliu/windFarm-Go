@@ -53,6 +53,7 @@ const recs = await load("src/state/records.ts");
 const daily = await load("src/state/dailyTasks.ts");
 const weekly = await load("src/state/weeklyChallenges.ts");
 const pack = await load("src/state/scenarioPack.ts");
+const cs = await load("src/state/caseStudies.ts");
 const R = g.reducer, I = g.INITIAL;
 
 // ───────────────────────── INITIAL 不變量 ─────────────────────────
@@ -1291,6 +1292,87 @@ test("content expansion: new tier-gated faults/incidents/parts slot in cleanly (
   ok(Object.keys(flt.FAULTS).length >= 22, `faults >= 22 (got ${Object.keys(flt.FAULTS).length})`);
   ok(inc.INCIDENTS.length >= 23, `incidents >= 23 (got ${inc.INCIDENTS.length})`);
   ok(data.PARTS.length >= 30, `parts >= 30 (got ${data.PARTS.length})`);
+});
+
+// ───────────────────────── 真實案例研究事件（case studies） ─────────────────────────
+test("case studies: catalog complete & well-formed", () => {
+  const C = cs.CASE_STUDIES;
+  ok(C.length >= 9, `>=9 cases (got ${C.length})`);
+  const ids = C.map((c) => c.id);
+  eq(ids.length, new Set(ids).size, "case ids unique");
+  const cats = new Set(["foundation", "gearbox_bearing", "blade", "cable", "electrical_fire", "vessel", "bolt", "ice"]);
+  const discs = new Set(["mechanical", "electrical", "control", "structural", "hse"]);
+  const effKeys = new Set(["a", "b", "s", "g"]);
+  for (const c of C) {
+    ok(c.id.startsWith("cs_"), `case ${c.id} id prefixed`);
+    ok(cats.has(c.category), `case ${c.id} valid category`);
+    ok(discs.has(c.discipline), `case ${c.id} valid discipline`);
+    ok(c.minTier >= 1 && c.minTier <= 4, `case ${c.id} tier in 1..4`);
+    ok(c.weight > 0, `case ${c.id} weight>0`);
+    for (const k of ["title", "scenario", "lesson"]) ok(c[k] && c[k].zh && c[k].en, `case ${c.id}.${k} bilingual`);
+    ok(Array.isArray(c.choices) && c.choices.length >= 2, `case ${c.id} >=2 choices`);
+    ok(c.choices.some((x) => x.good), `case ${c.id} has a good choice`);
+    for (const ch of c.choices) {
+      ok(ch.label?.zh && ch.label?.en && ch.feedback?.zh && ch.feedback?.en, `case ${c.id} choice bilingual`);
+      for (const k of Object.keys(ch.eff ?? {})) { ok(effKeys.has(k), `case ${c.id} eff key '${k}'`); ok(Number.isFinite(ch.eff[k]), `case ${c.id} eff numeric`); }
+    }
+  }
+});
+test("case studies: Tier-gated & monotonic (T1 none, T4 all)", () => {
+  eq(cs.casesForTier(1).length, 0, "Tier 1 surfaces no cases (entry stays simple)");
+  eq(cs.casesForTier(4).length, cs.CASE_STUDIES.length, "Tier 4 unlocks all");
+  let prev = -1;
+  for (const t of [1, 2, 3, 4]) { const n = cs.casesForTier(t).length; ok(n >= prev, "casesForTier monotonic"); prev = n; }
+});
+test("case studies: named cases cite sources; anonymized hide named sources", () => {
+  for (const c of cs.CASE_STUDIES) {
+    if (c.framing === "named-with-sources") {
+      ok(c.sources.length >= 1, `named case ${c.id} has sources`);
+      for (const u of cs.visibleSources(c)) ok(/^https?:\/\//.test(u), `named case ${c.id} source is a URL`);
+    } else {
+      eq(cs.visibleSources(c).length, 0, `anonymized case ${c.id} hides named sources`);
+    }
+  }
+});
+test("case studies: anonymized cases never leak real names in visible text (guardrail)", () => {
+  const BLACKLIST = /Vineyard|Dogger|Borssele|Ørsted|Orsted|SeaMade|Njord|Apollo|Greater Gabbard|GE Vernova|Haliade/i;
+  for (const c of cs.CASE_STUDIES.filter((x) => x.framing === "anonymized-technical")) {
+    const visible = `${c.title.zh}${c.title.en}${c.scenario.zh}${c.scenario.en}${c.lesson.zh}${c.lesson.en}${c.choices.map((ch) => ch.label.zh + ch.label.en + ch.feedback.zh + ch.feedback.en).join("")}`;
+    ok(!BLACKLIST.test(visible), `anonymized case ${c.id} must not show a real named entity in visible text`);
+  }
+});
+test("case studies: relatesTo links resolve to existing faults/incidents", () => {
+  for (const c of cs.CASE_STUDIES) {
+    if (c.relatesTo?.faultId) ok(flt.FAULTS[c.relatesTo.faultId], `case ${c.id} relatesTo.faultId '${c.relatesTo.faultId}' exists`);
+    if (c.relatesTo?.incidentId) ok(inc.INCIDENTS.find((x) => x.id === c.relatesTo.incidentId), `case ${c.id} relatesTo.incidentId '${c.relatesTo.incidentId}' exists`);
+  }
+});
+test("case studies: rollCaseStudy respects Tier gate & seen-set", () => {
+  // Tier 1 → 永遠 null（無案例）
+  for (let i = 0; i < 300; i++) eq(cs.rollCaseStudy(1, []), null, "T1 never rolls a case");
+  // 全部已看過 → null（pool 空）
+  const allT4 = cs.casesForTier(4).map((c) => c.id);
+  for (let i = 0; i < 300; i++) eq(cs.rollCaseStudy(4, allT4), null, "all-seen → null");
+  // T4 未看過 → 偶發回傳「在 tier 池內」的案例（機率約 5%，多次抽樣應有命中且皆合法）
+  const t4 = new Set(allT4);
+  let hits = 0;
+  for (let i = 0; i < 1000; i++) { const r = cs.rollCaseStudy(4, []); if (r) { hits++; ok(t4.has(r.id), "rolled case within tier pool"); } }
+  ok(hits > 0, "rollCaseStudy occasionally returns a case at high tier");
+});
+test("case studies: advance() records a case into seenCases/lastCase when it rolls", () => {
+  // 找到一個會觸發案例的種子：在 OPS_ADVANCE 後 seenCases 變長
+  let triggered = false;
+  for (let sd = 1; sd <= 60 && !triggered; sd++) {
+    seed(sd);
+    const hi = { ...I, generationMWh: 20000, missionsDone: 40, farmsOwned: 3 }; // 推到 Tier 4
+    const s = R(hi, { type: "OPS_ADVANCE" });
+    if ((s.seenCases?.length ?? 0) > 0) {
+      triggered = true;
+      ok(s.lastCase && cs.caseAt(s.lastCase.id), "lastCase points to a real case");
+      ok(s.seenCases.includes(s.lastCase.id), "seenCases includes the rolled case");
+    }
+  }
+  ok(triggered, "some seed triggers a case study within 60 tries");
 });
 
 console.log(`\n${pass} passed, ${fail} failed (${pass + fail} total)`);

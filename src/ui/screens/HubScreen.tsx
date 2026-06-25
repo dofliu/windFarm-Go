@@ -27,6 +27,7 @@ import { LedgerView } from "../Ledger";
 import { missionWeek } from "../../state/course";
 import { dailyDef } from "../../state/dailyTasks";
 import { themeById } from "../../state/weeklyChallenges";
+import { caseAt } from "../../state/caseStudies";
 import type { I18n } from "../../game/systems/types";
 import type { Screen } from "../../App";
 
@@ -66,7 +67,7 @@ function PanelHead({ title, open, onToggle }: { title: I18n; open: boolean; onTo
   );
 }
 
-export default function HubScreen({ setScreen, accent, onDispatch, onFacility, sceneName, onCycleScene, aerial, onToggleView, mode = "sim", onCycleMode, onOps, onFleet, onBuild, week = 1 }: { setScreen: (s: Screen) => void; accent: string; onDispatch?: () => void; onFacility?: (k: "vessel" | "tech" | "tool" | "codex" | "ranking" | "farms") => void; sceneName?: I18n; onCycleScene?: () => void; aerial?: boolean; onToggleView?: () => void; mode?: SceneMode; onCycleMode?: () => void; onOps?: () => void; onFleet?: () => void; onBuild?: () => void; week?: number }) {
+export default function HubScreen({ setScreen, accent, onDispatch, onFacility, sceneName, onCycleScene, aerial, onToggleView, mode = "sim", onCycleMode, onOps, onFleet, onBuild, onCaseFile, week = 1 }: { setScreen: (s: Screen) => void; accent: string; onDispatch?: () => void; onFacility?: (k: "vessel" | "tech" | "tool" | "codex" | "ranking" | "farms") => void; sceneName?: I18n; onCycleScene?: () => void; aerial?: boolean; onToggleView?: () => void; mode?: SceneMode; onCycleMode?: () => void; onOps?: () => void; onFleet?: () => void; onBuild?: () => void; onCaseFile?: () => void; week?: number }) {
   useLang();
   const { data, dispatch } = useGame();
   const { say } = useDialogue();
@@ -158,6 +159,20 @@ export default function HubScreen({ setScreen, accent, onDispatch, onFacility, s
     prevTier.current = tier;
   }, [tier]);
 
+  // 真實案例快報（case studies）：lastCase 變動時跳通知,引導玩家到案例檔查看
+  const lastCaseDay = useRef(-1);
+  useEffect(() => {
+    const lc = data.lastCase;
+    if (lc && lc.day !== lastCaseDay.current) {
+      lastCaseDay.current = lc.day;
+      const c = caseAt(lc.id);
+      if (c) {
+        Sfx.success();
+        toast({ zh: `📁 案例快報:「${c.title.zh}」已收錄案例檔(可在母港「案例檔」查看)`, en: `📁 Case file: "${c.title.en}" added — view it in the Hub's Case Files` });
+      }
+    }
+  }, [data.lastCase]);
+
   const me = getProfile();
   // #3 每週開放：下一關屬下週時鎖定（沙盒不受限；課程臨時任務不鎖）
   const nextLocked = !data.customQuest && !data.campaignDone && missionWeek(data.campaignIndex + 1) > week;
@@ -187,6 +202,7 @@ export default function HubScreen({ setScreen, accent, onDispatch, onFacility, s
           <div style={{ display: "flex", gap: 6 }}>
             <FacRowMini icon={<FacGlyph name="codex" />} label={{ zh: "圖鑑", en: "Codex" }} onClick={() => { Sfx.click(); onFacility?.("codex"); }} />
             <FacRowMini icon={<FacGlyph name="ranking" />} label={{ zh: "排行", en: "Ranking" }} onClick={() => { Sfx.click(); onFacility?.("ranking"); }} />
+            <FacRowMini icon={<span style={{ fontSize: 15 }}>📁</span>} label={{ zh: "案例檔", en: "Cases" }} onClick={() => { Sfx.click(); onCaseFile?.(); }} />
           </div>
         </div>
         )}
