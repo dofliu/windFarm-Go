@@ -1264,6 +1264,35 @@ test("scheduled service: due gating + fault-rate buff + health + clock reset (#8
   ok(!g.serviceDue(s), "not due again right after service");
 });
 
+// ───────────────────────── 故障/備品分層擴充（#82） ─────────────────────────
+test("content expansion: new tier-gated faults/incidents/parts slot in cleanly (#82)", () => {
+  // 新故障存在且具完整結構(catalog 測試已逐項驗證);此處確認 tier 分層與多重根因成長
+  for (const id of ["tower_corrosion", "transformer_bushing", "cable_joint_heat"]) {
+    ok(flt.FAULTS[id], `fault ${id} exists`);
+    ok(flt.CODEX[id], `fault ${id} has codex`);
+    ok(flt.faultTier(id) >= 2, `fault ${id} is tier 2+ (not dumped on beginners)`);
+  }
+  // 新備品存在且分層
+  ok(data.PARTS.find((p) => p.id === "corrosion_anode")?.minTier === 2, "corrosion_anode is T2");
+  ok(data.PARTS.find((p) => p.id === "transformer_bushing")?.minTier === 3, "bushing is T3");
+  // 新戰情室故障:tier 分層 + 不出現在入門池
+  const t1 = new Set(inc.incidentsForTier(1).map((x) => x.id));
+  for (const id of ["corrosion", "bushing", "cable_joint_heat"]) {
+    ok(inc.INCIDENTS.find((x) => x.id === id), `incident ${id} exists`);
+    ok(!t1.has(id), `incident ${id} not in Tier-1 entry pool`);
+  }
+  ok(inc.incidentsForTier(3).some((x) => x.id === "bushing"), "bushing unlocks by T3");
+  // cable/tower/transformer 元件因擴充成為多重根因(可做鑑別診斷)
+  for (const cid of ["cable", "tower", "transformer"]) {
+    const c = flt.COMPONENTS.find((x) => x.id === cid);
+    ok(c && c.faultIds.length >= 2, `component ${cid} is now multi-cause`);
+  }
+  // 規模成長:總量上升(分層後不會一次塞給新手)
+  ok(Object.keys(flt.FAULTS).length >= 22, `faults >= 22 (got ${Object.keys(flt.FAULTS).length})`);
+  ok(inc.INCIDENTS.length >= 23, `incidents >= 23 (got ${inc.INCIDENTS.length})`);
+  ok(data.PARTS.length >= 30, `parts >= 30 (got ${data.PARTS.length})`);
+});
+
 console.log(`\n${pass} passed, ${fail} failed (${pass + fail} total)`);
 if (fail) { console.log("\nFailures:"); for (const f of fails) console.log("  ✗ " + f); process.exit(1); }
 console.log("✓ all green");

@@ -41,6 +41,10 @@ export const INCIDENTS: IncidentType[] = [
   { id: "tower_bolt", name: { zh: "塔基螺栓鬆動", en: "Tower bolt loosening" }, discipline: "structural", repairDays: 2, part: "bolt_m36", weight: 2, minTier: 2 },
   { id: "lift", name: { zh: "升降機/安全系統", en: "Service lift fault" }, discipline: "hse", repairDays: 1, part: "lift_part", weight: 2, minTier: 2 },
   { id: "main_bearing", name: { zh: "主軸承磨耗", en: "Main-bearing wear" }, discipline: "mechanical", repairDays: 3, part: "main_bearing", weight: 1, minTier: 4 },
+  // ── #82 分層擴充:基礎防蝕(結構/Tier2)、變壓器套管(電氣/Tier3)、海纜接頭過熱(電氣/Tier3) ──
+  { id: "corrosion", name: { zh: "基礎/塔基防蝕劣化", en: "Foundation corrosion" }, discipline: "structural", repairDays: 2, part: "corrosion_anode", weight: 2, minTier: 2 },
+  { id: "bushing", name: { zh: "變壓器套管劣化", en: "Transformer bushing fault" }, discipline: "electrical", repairDays: 2, part: "transformer_bushing", weight: 1, minTier: 3 },
+  { id: "cable_joint_heat", name: { zh: "海纜接頭過熱", en: "Cable joint overheat" }, discipline: "electrical", repairDays: 2, part: "cable_joint", weight: 1, minTier: 3 },
 ];
 
 export const incidentAt = (id: string | undefined): IncidentType | undefined => INCIDENTS.find((x) => x.id === id);
