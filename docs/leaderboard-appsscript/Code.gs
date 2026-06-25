@@ -1,5 +1,7 @@
 /**
- * 風場運維・雲端後端 v2 — Google Apps Script Web App
+ * 風場運維・雲端後端 v2.1 — Google Apps Script Web App
+ * v2.1 變更:所有寫入(register/save/record/排行送分)以 LockService 序列化,杜絕多人同時
+ *   寫入時的競態覆蓋/重複建號;findRow 改為只讀 key 欄以降低資料量(改檔後務必「新版本」重部署)。
  * 帳號(學號)＋通關碼登入、雲端存檔、學習紀錄、教師檢視、班級排行。前端在 GitHub Pages。
  *
  * 部署：擴充功能 → Apps Script → 貼上本檔 → 部署 → 新增部署作業 → 類型「網頁應用程式」
@@ -30,11 +32,23 @@ function normId(s) { return String(s || '').trim().toUpperCase().slice(0, 20); }
 function normCls(s) { return String(s || '').trim().toUpperCase().slice(0, 12); }
 function keyOf(cls, sid) { return cls + '/' + sid; }
 
-// 尋找列：回 1-based 列號，找不到回 -1
+// 尋找列：回 1-based 列號，找不到回 -1。
+// 只讀第 1 欄(key)而非整表 getDataRange → 大幅降低每次寫入的讀取量(資料越多越有感)。
 function findRow(sh, key) {
-  var data = sh.getDataRange().getValues();
-  for (var r = 0; r < data.length; r++) if (String(data[r][0]) === key) return r + 1;
+  var last = sh.getLastRow();
+  if (last < 1) return -1;
+  var keys = sh.getRange(1, 1, last, 1).getValues();
+  for (var r = 0; r < keys.length; r++) if (String(keys[r][0]) === key) return r + 1;
   return -1;
+}
+
+// 併發寫入鎖(v2.1)：Apps Script 對共用試算表無列級鎖,多人同時 read-modify-write 會互相覆蓋/重複建號。
+// 以 ScriptLock 序列化所有「寫入」критич區段;讀取(load/teacher/排行)不加鎖以保持快速。
+// 取鎖逾時 → 回 busy,讓客戶端(no-cors 射後不理 + 本機快取)稍後自動續傳,不影響遊玩。
+function withLock(fn) {
+  var lock = LockService.getScriptLock();
+  try { lock.waitLock(10000); } catch (e) { return json({ ok: false, err: 'busy' }); }
+  try { return fn(); } finally { lock.releaseLock(); }
 }
 function getAccount(cls, sid) {
   var sh = sheet('accounts');
@@ -58,10 +72,13 @@ function doGet(e) {
   if (op === 'register') {
     var cls = normCls(q.classCode), sid = normId(q.studentId);
     if (!sid || !cls) return json({ ok: false, err: 'bad-input' });
-    if (getAccount(cls, sid)) return json({ ok: false, err: 'exists' });
     var nick = String(q.nickname || '').trim().slice(0, 16);
-    sheet('accounts').appendRow([keyOf(cls, sid), sid, cls, nick, String(q.pinHash || ''), new Date()]);
-    return json({ ok: true, nickname: nick });
+    // 取鎖後再「檢查存在 → 建號」,避免兩人同時註冊同學號造成重複列(TOCTOU)。
+    return withLock(function () {
+      if (getAccount(cls, sid)) return json({ ok: false, err: 'exists' });
+      sheet('accounts').appendRow([keyOf(cls, sid), sid, cls, nick, String(q.pinHash || ''), new Date()]);
+      return json({ ok: true, nickname: nick });
+    });
   }
 
   if (op === 'login') {
@@ -137,28 +154,32 @@ function doPost(e) {
     if (p.kind === 'save') {
       var cls = normCls(p.classCode), sid = normId(p.studentId);
       if (!authed(cls, sid, p.pinHash)) return json({ ok: false, err: 'bad-pin' });
-      var sh = sheet('saves');
-      var key = keyOf(cls, sid);
-      var nick = (getAccount(cls, sid) || {}).nickname || '';
-      var state = String(p.state || '').slice(0, 90000);
-      var rowVals = [key, Number(p.savedAt) || (new Date()).getTime(), state,
-        clampInt(p.score, 0, 9e8), clampInt(p.day, 0, 3650), clampInt(p.availability, 0, 100), clampInt(p.generation, 0, 9e8), nick];
-      var row = findRow(sh, key);
-      if (row > 0) sh.getRange(row, 1, 1, 8).setValues([rowVals]);
-      else sh.appendRow(rowVals);
-      return json({ ok: true });
+      return withLock(function () {
+        var sh = sheet('saves');
+        var key = keyOf(cls, sid);
+        var nick = (getAccount(cls, sid) || {}).nickname || '';
+        var state = String(p.state || '').slice(0, 90000);
+        var rowVals = [key, Number(p.savedAt) || (new Date()).getTime(), state,
+          clampInt(p.score, 0, 9e8), clampInt(p.day, 0, 3650), clampInt(p.availability, 0, 100), clampInt(p.generation, 0, 9e8), nick];
+        var row = findRow(sh, key);
+        if (row > 0) sh.getRange(row, 1, 1, 8).setValues([rowVals]);
+        else sh.appendRow(rowVals);
+        return json({ ok: true });
+      });
     }
 
     if (p.kind === 'record') {
       var c2 = normCls(p.classCode), s2 = normId(p.studentId);
       if (!authed(c2, s2, p.pinHash)) return json({ ok: false, err: 'bad-pin' });
-      var rsh = sheet('records');
-      var k2 = keyOf(c2, s2);
-      var rec = String(p.record || '').slice(0, 90000);
-      var rr = findRow(rsh, k2);
-      if (rr > 0) rsh.getRange(rr, 1, 1, 3).setValues([[k2, (new Date()).getTime(), rec]]);
-      else rsh.appendRow([k2, (new Date()).getTime(), rec]);
-      return json({ ok: true });
+      return withLock(function () {
+        var rsh = sheet('records');
+        var k2 = keyOf(c2, s2);
+        var rec = String(p.record || '').slice(0, 90000);
+        var rr = findRow(rsh, k2);
+        if (rr > 0) rsh.getRange(rr, 1, 1, 3).setValues([[k2, (new Date()).getTime(), rec]]);
+        else rsh.appendRow([k2, (new Date()).getTime(), rec]);
+        return json({ ok: true });
+      });
     }
 
     // 沿用：排行送分（簽章驗證 + 節流）
@@ -176,9 +197,11 @@ function doPost(e) {
     var rlk = 'rl_' + classCode + '/' + nickname;
     if (cache.get(rlk)) return json({ ok: false, err: 'throttled' });
     cache.put(rlk, '1', 8);
-    SpreadsheetApp.getActiveSpreadsheet().getSheets()[0]
-      .appendRow([new Date(), nickname, classCode, score, availability, generation, day, studentId]);
-    return json({ ok: true });
+    return withLock(function () {
+      SpreadsheetApp.getActiveSpreadsheet().getSheets()[0]
+        .appendRow([new Date(), nickname, classCode, score, availability, generation, day, studentId]);
+      return json({ ok: true });
+    });
   } catch (err) {
     return json({ ok: false, err: String(err) });
   }

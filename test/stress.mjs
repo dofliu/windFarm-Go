@@ -168,6 +168,45 @@ async function run() {
   console.log("─".repeat(52));
   const verdict = badsig === 0 && maxInFlight <= SERVER_CONCURRENCY && other === 0;
   console.log(verdict ? "✓ Contract held under load: signatures valid, throttle dedup worked, concurrency bounded (excess requests queued, none dropped)." : "✗ Check above — invariant breached.");
+
+  await raceDemo();
   if (!verdict) process.exit(1);
 }
+
+// ───────── 加鎖前後競態示範(對應 Code.gs v2.1 LockService) ─────────
+// 模型:N 個併發 upsert 同一 key(read → 讓步 → write),正確結果應為 N。
+// 無鎖:多人同時讀到舊值再各自 +1 → lost updates(< N);有鎖:序列化 → 剛好 N。
+async function raceDemo() {
+  const N = 200;
+  async function upsert(store, lock) {
+    if (lock) await lock.acquire();
+    try {
+      const v = store.get("K") ?? 0;
+      await new Promise((r) => setTimeout(r, 0)); // 模擬 read-modify-write 之間的 I/O 讓步
+      store.set("K", v + 1);
+    } finally { if (lock) lock.release(); }
+  }
+  function makeLock() {
+    let held = false; const q = [];
+    return {
+      acquire() { return new Promise((res) => { if (!held) { held = true; res(); } else q.push(res); }); },
+      release() { const n = q.shift(); if (n) n(); else held = false; },
+    };
+  }
+  const noLock = new Map([["K", 0]]);
+  await Promise.all(Array.from({ length: N }, () => upsert(noLock, null)));
+  const locked = new Map([["K", 0]]);
+  const lk = makeLock();
+  await Promise.all(Array.from({ length: N }, () => upsert(locked, lk)));
+
+  console.log("\nConcurrency race demo (read-modify-write upsert on one shared row)");
+  console.log("─".repeat(52));
+  console.log(`expected final count       : ${N}`);
+  console.log(`WITHOUT lock (current Sheets risk): ${noLock.get("K")}  ← lost updates! 多人覆蓋彼此`);
+  console.log(`WITH LockService (Code.gs v2.1)   : ${locked.get("K")}  ← 序列化 → 無遺失`);
+  console.log("─".repeat(52));
+  const ok = locked.get("K") === N && noLock.get("K") < N;
+  console.log(ok ? "✓ Lock eliminates lost updates that the lock-free path suffers." : "△ Demo inconclusive on this run (timing).");
+}
+
 run();
