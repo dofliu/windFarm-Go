@@ -60,6 +60,19 @@ export interface OpsJob {
   remote?: boolean; // 遠端重啟工單（免技師、不累積疲勞）
   kind?: OpsJobKind; // 預設 repair；inspect = 預防性定檢
 }
+// ───────── 運維層級 Tier（#76）：難度/複雜度隨規模循序漸進 ─────────
+// 依「進度自動推進」(已與設計者確認)：由主線進度、累積發電、營運風場數、完成任務數推導，
+// 不需玩家手動選。tier 越高 → 解鎖更多故障型錄/備品、故障率與經濟壓力上升。
+export type Tier = 1 | 2 | 3 | 4;
+export const TIER_COUNT = 4;
+export const TIER_LABEL: Record<Tier, I18n> = {
+  1: { zh: "見習運維員", en: "Trainee" },
+  2: { zh: "運維技師", en: "Technician" },
+  3: { zh: "運維主任", en: "Supervisor" },
+  4: { zh: "區域運維經理", en: "Regional Manager" },
+};
+// 各 tier 的故障率倍率（入門較緩、規模大才吃滿）：index 1..4
+export const TIER_FAULT_MULT: Record<Tier, number> = { 1: 0.6, 2: 0.85, 3: 1.0, 4: 1.1 };
 export const FAULT_RATE_BASE = 0.09; // 每日新增故障的基礎機率（隨健康度上升、隨運轉比例縮放）
 export const FLEET_INIT_FAULTS = 3; // 開局即有的故障數（給玩家可立即處理的事件）
 export const REMOTE_RESET_DAYS = 1; // 遠端重啟工期（免技師、較短）
@@ -101,13 +114,13 @@ export function buildFleetForFarm(f: number): Turbine[] {
   const share = Math.round((farm.genPerDay / farm.units) * 10) / 10;
   return Array.from({ length: farm.units }, (_, i) => ({ id: `${farm.code}${String(i + 1).padStart(2, "0")}`, farm: f, status: "ok" as TurbineStatus, gen: share }));
 }
-export function buildFleet(farmsOwned: number): Turbine[] {
+export function buildFleet(farmsOwned: number, tier = 1): Turbine[] {
   let out: Turbine[] = [];
   for (let f = 0; f < Math.min(farmsOwned, FARMS.length); f++) out = out.concat(buildFleetForFarm(f));
-  // 開局植入數台故障，讓戰情室一開始就有事件可處理
+  // 開局植入數台故障，讓戰情室一開始就有事件可處理（限縮在當前 tier 的入門故障池，#76）
   for (let k = 0; k < FLEET_INIT_FAULTS && k < out.length; k++) {
     const i = Math.floor((out.length / FLEET_INIT_FAULTS) * k) + k;
-    if (out[i]) out[i] = { ...out[i], status: "fault", faultId: randomIncidentId() };
+    if (out[i]) out[i] = { ...out[i], status: "fault", faultId: randomIncidentId(tier) };
   }
   return out;
 }
@@ -117,13 +130,13 @@ export const engineerBusy = (jobs: OpsJob[], id: string): boolean => jobs.some((
 // 妥善率單一真實來源（#3）：可用率 = 機隊運轉比例（fleetUptime）。任何「拉高/拉低可用率」的效果
 // （突發事件、任務選擇…）都改以「使機組故障/修復」實作,讓變化真實反映在發電、SLA、績效,
 // 不再維護一個會與機隊漂移的獨立純量。
-export function faultTurbines(fleet: Turbine[], n: number): Turbine[] {
+export function faultTurbines(fleet: Turbine[], n: number, tier = 99): Turbine[] {
   const out = fleet.map((t) => ({ ...t }));
   const oks = out.filter((t) => t.status === "ok");
   for (let k = 0; k < n && oks.length; k++) {
     const pick = oks.splice(Math.floor(Math.random() * oks.length), 1)[0];
     const i = out.findIndex((t) => t.id === pick.id);
-    out[i] = { ...out[i], status: "fault", faultId: randomIncidentId() };
+    out[i] = { ...out[i], status: "fault", faultId: randomIncidentId(tier) };
   }
   return out;
 }
@@ -314,6 +327,21 @@ export function computeScore(d: GameData): number {
   );
 }
 
+// 運維層級推導（#76，依進度自動推進）：由多個單調成長的進度訊號取最高達成層級。
+// 任一訊號跨過門檻即升級（OR 條件、門檻遞增 → tier 單調不減）。新帳號（發電 0、單一風場）= Tier 1。
+// 訊號：累積發電量 generationMWh、完成任務 missionsDone、營運風場數 farmsOwned、主線關卡 campaignIndex。
+export function tierOf(d: Pick<GameData, "generationMWh" | "missionsDone" | "farmsOwned" | "campaignIndex">): Tier {
+  const gen = d.generationMWh ?? 0;
+  const missions = d.missionsDone ?? 0;
+  const farms = d.farmsOwned ?? 1;
+  const camp = d.campaignIndex ?? 0;
+  let t: Tier = 1;
+  if (gen >= 1500 || missions >= 6 || camp >= 2) t = 2;
+  if (gen >= 6000 || missions >= 16 || farms >= 2 || camp >= 4) t = 3;
+  if (gen >= 15000 || missions >= 30 || farms >= 3 || camp >= 6) t = 4;
+  return t;
+}
+
 // 每日實際發電量（MWh）：以「運轉中的機組」為單一真實來源 —— 故障/維修中的機組不發電。
 // 不再用「可用率上限再扣停機」的減法（會與機組停機重複計，造成明明有機組運轉、收入卻歸零）。
 export function dailyProduction(d: GameData): number {
@@ -388,6 +416,7 @@ const clampN = (n: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, 
 // 推進 N 天：交付到貨備品 + 扣停機成本 + 多風場發電 + 人力回復 + 突發事件（C / #34）
 function advance(s: GameData, days = 1): Partial<GameData> {
   const day = s.day + days;
+  const tier = tierOf(s); // 運維層級（#76）：限縮隨機故障池並縮放故障率
   let inv = s.inventory;
   let cargo = s.cargoUsed;
   const pend: GameData["pendingOrders"] = [];
@@ -444,7 +473,7 @@ function advance(s: GameData, days = 1): Partial<GameData> {
     const evPatch = ev.apply({ ...s, ...patch, budget: s.budget } as GameData);
     if (evPatch.budget !== undefined) { ledger.event = evPatch.budget - s.budget; cash += ledger.event; delete evPatch.budget; }
     // 機隊效果（#3）：事件對可用率的影響改以真實機組故障/修復實作 → 同步反映在發電、SLA、績效。
-    if (ev.fault) startFleet = faultTurbines(startFleet, ev.fault);
+    if (ev.fault) startFleet = faultTurbines(startFleet, ev.fault, tier);
     if (ev.restore) startFleet = restoreTurbines(startFleet, ev.restore);
     patch = { ...patch, ...evPatch, lastEvent: { id: ev.id, name: ev.name, desc: ev.desc, good: !!ev.good, day } };
   }
@@ -479,11 +508,12 @@ function advance(s: GameData, days = 1): Partial<GameData> {
       // 只有「運轉中」的機組會新故障 → 機率隨運轉比例縮放，形成穩定平衡而非死亡螺旋（不會全場掛掉）。
       const oks = fleet.filter((t) => t.status === "ok");
       const okFrac = fleet.length ? oks.length / fleet.length : 1;
-      const faultProb = Math.min(0.4, FAULT_RATE_BASE + ((100 - health) / 100) * 0.15) * (buffDays > 0 ? INSPECT_FAULT_MULT : 1) * okFrac;
+      // 故障率再依運維層級縮放（#76）：入門較緩、規模大才吃滿
+      const faultProb = Math.min(0.4, FAULT_RATE_BASE + ((100 - health) / 100) * 0.15) * (buffDays > 0 ? INSPECT_FAULT_MULT : 1) * okFrac * TIER_FAULT_MULT[tier];
       if (oks.length && Math.random() < faultProb) {
         const pick = oks[Math.floor(Math.random() * oks.length)];
         const fi = fleet.findIndex((t) => t.id === pick.id);
-        fleet[fi] = { ...fleet[fi], status: "fault", faultId: randomIncidentId() };
+        fleet[fi] = { ...fleet[fi], status: "fault", faultId: randomIncidentId(tier) };
       }
       if (buffDays > 0) buffDays -= 1;
       // 當日結算（在當日修復/新故障處理後，以當日機隊狀態計）→ 多日推進更精確

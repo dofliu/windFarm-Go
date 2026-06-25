@@ -282,6 +282,53 @@ test("content catalog: faults/incidents/parts/course are consistent (#3 expansio
   const discs = new Set(faults.map((f) => f.discipline));
   for (const d of ["mechanical", "electrical", "control", "structural", "hse"]) ok(discs.has(d), `faults cover discipline ${d}`);
 });
+test("tier system: tierOf monotonic & new account is Tier 1 (#76)", () => {
+  eq(g.tierOf(I), 1, "fresh account starts at Tier 1");
+  eq(g.TIER_COUNT, 4);
+  // 進度訊號跨門檻 → 升級；且單調不減
+  ok(g.tierOf({ ...I, missionsDone: 6 }) >= 2, "missions push to >=T2");
+  ok(g.tierOf({ ...I, generationMWh: 6000 }) >= 3, "generation pushes to >=T3");
+  ok(g.tierOf({ ...I, farmsOwned: 3 }) >= 3, "more farms push to >=T3");
+  ok(g.tierOf({ ...I, campaignIndex: 6 }) === 4, "late campaign reaches T4");
+  // 單調性：各訊號遞增 tier 不減
+  let prev = 0;
+  for (const gen of [0, 1500, 6000, 15000, 30000]) { const t = g.tierOf({ ...I, generationMWh: gen }); ok(t >= prev, "tier non-decreasing in generation"); prev = t; }
+  // 每個 tier 的故障率倍率存在且遞增
+  ok(g.TIER_FAULT_MULT[1] < g.TIER_FAULT_MULT[3], "fault rate scales with tier");
+});
+test("tier gating: incident/part/fault pools grow with tier; consumable parts reachable at T1 (#76)", () => {
+  const t1 = inc.incidentsForTier(1), t4 = inc.incidentsForTier(4);
+  ok(t1.length >= 4 && t1.length < t4.length, `T1 pool small (${t1.length}) < T4 (${t4.length})`);
+  eq(t4.length, inc.INCIDENTS.length, "T4 unlocks the whole pool");
+  // Tier 1 故障池應以「可重啟或耗材級小修」為主（入門友善）：每個 T1 故障的備品價格不過高
+  for (const x of t1) {
+    const p = data.PARTS.find((pp) => pp.id === x.part);
+    ok(p, `T1 incident ${x.id} part exists`);
+    ok(x.resettable || data.priceNum(p) <= 700000, `T1 incident ${x.id} is soft or low-cost`);
+  }
+  // 不變式：每個 incident 的備品 minTier ≤ incident minTier（玩到該故障時備品買得到）
+  for (const x of inc.INCIDENTS) {
+    const p = data.PARTS.find((pp) => pp.id === x.part);
+    ok((p.minTier ?? 1) <= (x.minTier ?? 1), `incident ${x.id}: part tier <= incident tier`);
+  }
+  // partsForTier 隨 tier 成長、T4 全開
+  ok(data.partsForTier(1).length < data.partsForTier(4).length, "parts pool grows with tier");
+  eq(data.partsForTier(4).length, data.PARTS.length, "T4 unlocks all parts");
+  // 每個故障都有層級；入門故障(Tier 1)至少數種
+  for (const id of Object.keys(flt.FAULTS)) ok(flt.faultTier(id) >= 1 && flt.faultTier(id) <= 4, `fault ${id} has a valid tier`);
+  ok(Object.keys(flt.FAULTS).filter((id) => flt.faultTier(id) === 1).length >= 3, ">=3 entry-level faults");
+});
+test("tier gating: randomIncidentId respects tier pool (#76)", () => {
+  seed(7);
+  const t1ids = new Set(inc.incidentsForTier(1).map((x) => x.id));
+  for (let i = 0; i < 200; i++) ok(t1ids.has(inc.randomIncidentId(1)), "T1 random fault stays within T1 pool");
+});
+test("tier gating: fresh fleet plants only Tier-1 faults (#76)", () => {
+  seed(11);
+  const fleet = g.buildFleet(1); // 預設 tier 1
+  const t1ids = new Set(inc.incidentsForTier(1).map((x) => x.id));
+  for (const t of fleet.filter((x) => x.status === "fault")) ok(t1ids.has(t.faultId), `init fault ${t.faultId} within T1`);
+});
 test("codex & components: every fault has a deep codex entry; components map 1:1 to faults (C: 圖鑑/多重根因)", () => {
   const faultIds = Object.keys(flt.FAULTS);
   // 每個故障都有完整的圖鑑解說(五欄 + 雙語)
