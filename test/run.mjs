@@ -51,6 +51,7 @@ const prof = await load("src/state/profile.ts");
 const api = await load("src/cloud/api.ts");
 const recs = await load("src/state/records.ts");
 const daily = await load("src/state/dailyTasks.ts");
+const weekly = await load("src/state/weeklyChallenges.ts");
 const R = g.reducer, I = g.INITIAL;
 
 // ───────────────────────── INITIAL 不變量 ─────────────────────────
@@ -1140,6 +1141,48 @@ test("daily: rollDailyState carries streak only if prev was fully completed", ()
   const partial = { day: 10, ids: ["a", "b"], base: { resolved: 0, missions: 0, gen: 0, safety: 0 }, claimed: ["a"], streak: 3 };
   eq(daily.rollDailyState(11, "s", I, full).streak, 3, "carry streak when prev complete");
   eq(daily.rollDailyState(11, "s", I, partial).streak, 0, "reset streak when prev incomplete");
+});
+
+// ───────────────────────── 每週主題挑戰（#79） ─────────────────────────
+test("weekly: weekOf groups 7 game-days; themeForWeek deterministic & valid", () => {
+  eq(weekly.weekOf(0), 0); eq(weekly.weekOf(6), 0); eq(weekly.weekOf(7), 1); eq(weekly.weekOf(21), 3);
+  const a = weekly.themeForWeek(4, "seedZ"), b = weekly.themeForWeek(4, "seedZ");
+  eq(a.id, b.id, "same seed+week reproducible");
+  ok(weekly.WEEK_THEMES.some((t) => t.id === a.id), "theme is from the pool");
+  // 主題涵蓋風暴(↑)與平穩(↓)兩種 faultMult 方向
+  ok(weekly.WEEK_THEMES.some((t) => t.faultMult > 1) && weekly.WEEK_THEMES.some((t) => t.faultMult < 1), "themes span fault-rate up & down");
+  for (const t of weekly.WEEK_THEMES) { ok(t.name.zh && t.name.en && t.goal.zh && t.goal.en, `theme ${t.id} bilingual`); ok(t.xp > 0 && t.cash > 0, `theme ${t.id} rewards`); }
+});
+test("weekly: rollWeeklyState captures baseline incl. start day; carries streak only if prev claimed", () => {
+  const d = { ...I, fleetResolved: 4, missionsDone: 2, generationMWh: 500, safetyIncidents: 1, day: 30 };
+  const wk = weekly.rollWeeklyState(weekly.weekOf(d.day), "s", d, null);
+  eq(wk.base.resolved, 4); eq(wk.base.gen, 500); eq(wk.base.day, 30);
+  eq(wk.claimed, false); eq(wk.streak, 0);
+  const prevClaimed = { week: 3, themeId: "storm", faultMult: 1.4, base: wk.base, claimed: true, streak: 5 };
+  const prevOpen = { ...prevClaimed, claimed: false };
+  eq(weekly.rollWeeklyState(4, "s", d, prevClaimed).streak, 5, "carry streak when prev claimed");
+  eq(weekly.rollWeeklyState(4, "s", d, prevOpen).streak, 0, "reset streak when prev not claimed");
+});
+test("weekly: weeklyDue detects met goal; CLAIM_WEEKLY grants once & bumps streak", () => {
+  // storm 目標:本週修復 ≥6 台。base.resolved=0,當前 6 → 達成
+  const wk = { week: 0, themeId: "storm", faultMult: 1.4, base: { resolved: 0, missions: 0, gen: 0, safety: 0, day: I.day }, claimed: false, streak: 2 };
+  ok(!weekly.weeklyDue({ ...I, weekly: wk, fleetResolved: 3 }), "not yet (3 < 6)");
+  ok(weekly.weeklyDue({ ...I, weekly: wk, fleetResolved: 6 }), "met at 6");
+  let s = { ...I, weekly: wk, budget: 1_000_000, xp: 0, fleetResolved: 6 };
+  const th = weekly.themeById("storm");
+  s = R(s, { type: "CLAIM_WEEKLY", xp: th.xp, cash: th.cash });
+  eq(s.budget, 1_000_000 + th.cash, "weekly cash granted");
+  eq(s.weekly.streak, 3, "streak bumped");
+  ok(s.weekly.claimed, "marked claimed");
+  const s2 = R(s, { type: "CLAIM_WEEKLY", xp: th.xp, cash: th.cash });
+  eq(s2.budget, s.budget, "duplicate weekly claim ignored");
+});
+test("weekly: storm theme raises fault pressure vs calm (faultMult wired into advance)", () => {
+  // 同一 seed 下,風暴週(faultMult 1.4)整體新增故障數應 ≥ 平穩週(0.7)。多次抽樣比較總量,避免單日抖動。
+  const mkWeekly = (id, mult) => ({ week: 0, themeId: id, faultMult: mult, base: { resolved: 0, missions: 0, gen: 0, safety: 0, day: I.day }, claimed: false, streak: 0 });
+  const runFaults = (mult) => { seed(99); let s = { ...I, weekly: mkWeekly(mult > 1 ? "storm" : "calm", mult) }; for (let i = 0; i < 25; i++) s = R(s, { type: "OPS_ADVANCE" }); return s.fleetLostMWh; };
+  const storm = runFaults(1.4), calm = runFaults(0.7);
+  ok(storm >= calm, `storm downtime (${storm}) >= calm downtime (${calm})`);
 });
 
 console.log(`\n${pass} passed, ${fail} failed (${pass + fail} total)`);

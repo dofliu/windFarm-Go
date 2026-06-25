@@ -235,6 +235,7 @@ export interface GameData {
   lastLedger: Ledger | null; // 最近一次推進的每日收支明細（莉莉財報）
   repair: RepairState | null; // 進行中的維修作業進度（存進 state → 切換畫面不丟失、作業窗不被免費重置）
   daily: DailyState | null; // 每日任務（#78）：綁遊戲內日，達成自動發獎；null = 尚未產生(掛載時 roll)
+  weekly: WeeklyState | null; // 每週主題挑戰（#79）：綁遊戲內週，主題影響故障率 + 較大獎勵；null = 掛載時 roll
 }
 
 // 每日任務狀態（#78）：綁遊戲內日；baseline 記錄當日起始累積值，達成以增量/當前狀態判定。
@@ -244,6 +245,16 @@ export interface DailyState {
   base: { resolved: number; missions: number; gen: number; safety: number }; // 當日起始累積值
   claimed: string[]; // 已發獎的小目標 id
   streak: number; // 連續「全部完成」天數
+}
+
+// 每週主題挑戰狀態（#79）：綁遊戲內週；themeId 決定主題與 faultMult(綁事件池),baseline 記錄週起始累積值。
+export interface WeeklyState {
+  week: number; // 對應的遊戲內週（見 weeklyChallenges.ts weekOf）
+  themeId: string; // 本週主題 id
+  faultMult: number; // 主題對戰情室隨機故障率的影響(advance 讀取)
+  base: { resolved: number; missions: number; gen: number; safety: number; day: number }; // 週起始累積值
+  claimed: boolean; // 本週挑戰是否已領獎
+  streak: number; // 連續完成週數
 }
 
 // 維修作業進度（#33）：原本只存在 RepairScreen 的 local state，切到別的畫面就重置（丟進度＋免費重置作業窗）。
@@ -420,6 +431,7 @@ export const INITIAL: GameData = {
   lastLedger: null,
   repair: null,
   daily: null,
+  weekly: null,
 };
 
 const clampN = (n: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, n));
@@ -519,8 +531,9 @@ function advance(s: GameData, days = 1): Partial<GameData> {
       // 只有「運轉中」的機組會新故障 → 機率隨運轉比例縮放，形成穩定平衡而非死亡螺旋（不會全場掛掉）。
       const oks = fleet.filter((t) => t.status === "ok");
       const okFrac = fleet.length ? oks.length / fleet.length : 1;
-      // 故障率再依運維層級縮放（#76）：入門較緩、規模大才吃滿
-      const faultProb = Math.min(0.4, FAULT_RATE_BASE + ((100 - health) / 100) * 0.15) * (buffDays > 0 ? INSPECT_FAULT_MULT : 1) * okFrac * TIER_FAULT_MULT[tier];
+      // 故障率依運維層級（#76）與每週主題（#79：風暴週↑、平穩週↓）縮放
+      const weeklyMult = s.weekly?.faultMult ?? 1;
+      const faultProb = Math.min(0.5, FAULT_RATE_BASE + ((100 - health) / 100) * 0.15) * (buffDays > 0 ? INSPECT_FAULT_MULT : 1) * okFrac * TIER_FAULT_MULT[tier] * weeklyMult;
       if (oks.length && Math.random() < faultProb) {
         const pick = oks[Math.floor(Math.random() * oks.length)];
         const fi = fleet.findIndex((t) => t.id === pick.id);
@@ -634,6 +647,8 @@ export type Action =
   | { type: "SET_REPAIR"; repair: RepairState | null } // 更新/清空進行中的維修進度（#33 持久化）
   | { type: "ROLL_DAILY"; daily: DailyState } // 產生當日每日任務（#78，由 DailyTracker 於日推進時派發）
   | { type: "CLAIM_DAILY"; id: string; xp: number; cash: number } // 發放某每日任務獎勵（#78）
+  | { type: "ROLL_WEEKLY"; weekly: WeeklyState } // 產生當週主題挑戰（#79，由 WeeklyTracker 於週推進時派發）
+  | { type: "CLAIM_WEEKLY"; xp: number; cash: number } // 發放本週挑戰獎勵（#79）
   | { type: "RESET" };
 
 export const TEST_GRANT = 50_000_000; // 一次測試加值金額 ◎（測試/沙盒用）
@@ -929,6 +944,13 @@ export function reducer(s: GameData, a: Action): GameData {
       const nowFull = claimed.length >= dl.ids.length;
       const streak = nowFull && !wasFull ? dl.streak + 1 : dl.streak; // 全部完成 → 連勝 +1
       return { ...s, budget: s.budget + Math.max(0, a.cash), xp: s.xp + Math.max(0, a.xp), daily: { ...dl, claimed, streak } };
+    }
+    case "ROLL_WEEKLY":
+      return { ...s, weekly: a.weekly };
+    case "CLAIM_WEEKLY": {
+      const wk = s.weekly;
+      if (!wk || wk.claimed) return s; // 已領 → 忽略(冪等)
+      return { ...s, budget: s.budget + Math.max(0, a.cash), xp: s.xp + Math.max(0, a.xp), weekly: { ...wk, claimed: true, streak: wk.streak + 1 } };
     }
     case "GRANT_FUNDS":
       return { ...s, budget: s.budget + Math.max(0, a.amount) };
