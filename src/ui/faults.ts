@@ -815,6 +815,22 @@ export const locationOf = (faultId: string): RepairLocation => FAULT_LOCATION[fa
 export const MAJOR_FAULTS: string[] = ["gen_vibration", "gearbox_bearing_wear", "blade_crack"];
 export const isMajorFault = (faultId: string): boolean => MAJOR_FAULTS.includes(faultId);
 
+// 故障型錄的運維層級（#76）：依嚴重度/組件大小分層，供圖鑑與 UI 漸進揭露（入門只見 Tier 1 故障）。
+// 與 incidents.ts 的 minTier 同調：耗材小修=1、中組件=2、較大組件=3、最大組件更換=4。
+export const FAULT_TIER: Record<string, number> = {
+  // Tier 1：入門耗材級小修
+  gearbox_overheat: 1, anemometer_fault: 1, yaw_misalign: 1, gen_brush_wear: 1,
+  // Tier 2：中組件
+  pitch_fault: 2, yaw_gear_wear: 2, pitch_hydraulic_leak: 2, converter_fault: 2,
+  blade_erosion: 2, tower_bolt_loose: 2, controller_comm: 2, transformer_overtemp: 2,
+  lift_fault: 2, gen_overtemp: 2,
+  // Tier 3：較大組件
+  gen_vibration: 3, converter_igbt: 3, cable_insulation: 3,
+  // Tier 4：最大組件更換（重吊/安裝船）
+  gearbox_bearing_wear: 4, blade_crack: 4,
+};
+export const faultTier = (faultId: string): number => FAULT_TIER[faultId] ?? 1;
+
 // 工單池（#4）：每筆工單對應一種故障，完成後輪替到下一筆。
 export const QUEST_POOL: Quest[] = [
   {
