@@ -20,6 +20,7 @@ import LoginScreen from "./ui/LoginScreen";
 import ScoreSync from "./ui/ScoreSync";
 import RecordsTracker from "./ui/RecordsTracker";
 import DailyTracker from "./ui/DailyTracker";
+import WeeklyTracker from "./ui/WeeklyTracker";
 import ProfileModal from "./ui/ProfileModal";
 import TeacherModal from "./ui/TeacherModal";
 import WelcomeOnLogin from "./ui/WelcomeOnLogin";
@@ -146,6 +147,7 @@ export default function App() {
           <ScoreSync />
           <RecordsTracker />
           <DailyTracker />
+          <WeeklyTracker />
           <WelcomeOnLogin />
           <LedgerToaster />
           <Toaster />

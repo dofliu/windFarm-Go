@@ -26,6 +26,7 @@ import { ForecastStrip, StormWarning } from "../Forecast";
 import { LedgerView } from "../Ledger";
 import { missionWeek } from "../../state/course";
 import { dailyDef } from "../../state/dailyTasks";
+import { themeById } from "../../state/weeklyChallenges";
 import type { I18n } from "../../game/systems/types";
 import type { Screen } from "../../App";
 
@@ -376,6 +377,29 @@ export default function HubScreen({ setScreen, accent, onDispatch, onFacility, s
                     </div>
                   </div>
                 ) : <div style={{ color: C.mist, fontSize: 12 }}>—</div>}
+              </OpsBlock>
+
+              {/* 每週主題挑戰（#79）：主題影響故障率 + 較大獎勵 */}
+              <OpsBlock title={{ zh: "每週挑戰", en: "Weekly Challenge" }}>
+                {data.weekly && themeById(data.weekly.themeId) ? (() => {
+                  const th = themeById(data.weekly.themeId)!;
+                  const done = data.weekly.claimed;
+                  return (
+                    <div style={{ padding: "8px 10px", borderRadius: 5, background: done ? "rgba(127,206,142,.1)" : "rgba(95,168,217,.1)", border: `1px solid ${done ? "rgba(127,206,142,.3)" : "rgba(95,168,217,.3)"}` }}>
+                      <div style={{ fontSize: 12.5, fontWeight: 700, color: C.goldText }}>{th.icon} {t(th.name)}</div>
+                      <div style={{ fontSize: 11, color: C.mist, marginTop: 2 }}>{t(th.desc)}</div>
+                      <div style={{ fontSize: 12, color: done ? C.green : C.cream, marginTop: 5 }}>
+                        {done ? "✅ " : "🎯 "}{t(th.goal)}
+                      </div>
+                      <div style={{ display: "flex", justifyContent: "space-between", marginTop: 5, paddingTop: 5, borderTop: "1px solid rgba(255,255,255,.08)", fontSize: 11 }}>
+                        <span style={{ color: th.faultMult > 1 ? C.amber2 : th.faultMult < 1 ? C.green : C.mist2 }}>
+                          {th.faultMult > 1 ? t({ zh: "⚠ 故障率上升", en: "⚠ Higher faults" }) : th.faultMult < 1 ? t({ zh: "✔ 故障率下降", en: "✔ Fewer faults" }) : t({ zh: "故障率持平", en: "Normal faults" })}
+                        </span>
+                        <span style={{ color: C.goldText, fontWeight: 700 }}>🔥 {t({ zh: "連續達成", en: "Streak" })} {data.weekly.streak}</span>
+                      </div>
+                    </div>
+                  );
+                })() : <div style={{ color: C.mist, fontSize: 12 }}>—</div>}
               </OpsBlock>
 
               {/* 船隊（含磨耗保養 #7） */}
