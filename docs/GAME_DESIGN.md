@@ -206,5 +206,16 @@ scores(user_id, score, availability, generation_mwh, missions_done, day, updated
     - **預防性定檢** `OPS_INSPECT`：派一組人巡檢（`INSPECT_DAYS` 天）→ 完成後 `INSPECT_BUFF_DAYS` 天內故障率 ×`INSPECT_FAULT_MULT`（降低）＋小幅健康度回復，教「預防保養減少故障」。
   - **經濟整合（已實作）**：戰情室停機**直接折抵淨發電** → 同時減少售電現金與發電量 KPI（見 §8）；績效分用淨發電量（不再額外扣 `fleetLostMWh`，避免重複）。「忽略機組故障」因此**同時少賺錢、又掉排名**（模擬：放置 ≈ −20 萬／績效 5966；積極管理 +780 萬／績效 10500）。`fleetLostMWh` 保留為「累積停機損失」學習指標。
   - **平衡模擬器**：`npm run sim`（`test/sim.mjs`，可帶天數/種子）以 passive/active/full-crew 三策略輸出妥善率/經濟/績效，調數值後可快速回測手感。
-  - **C2 後續（仍可選）**：把隨機事件池綁到「每週主題」。
+  - **C2 後續**：✅ 已把隨機事件池綁到「每週主題」（見 §16 每週主題挑戰）。
+
+## 16. 循序漸進難度・長線動機・真實度深化（#76–#82）
+針對「做中學要循序漸進、好玩要有長線動機、盡量貼近真實營運」的回饋,於現有架構上新增:
+
+- **運維層級 Tier（#76/#77，依進度自動推進）**：由累積發電/風場數/任務數/主線進度推導 `tierOf`（單調不減,不需玩家手選）。故障型錄(`incidents.minTier`/`faults.FAULT_TIER`)、備品(`parts.minTier`)、故障率(`TIER_FAULT_MULT`)依層級分層——**入門只見可重啟軟故障+耗材級小修(Tier 1)**,規模擴大才解鎖中/大組件與更高經濟壓力。UI:Hub「運維層級」徽章+升級提示、Tier 1 隱藏 SLA/季度結算等進階面板、交易所依 tier 過濾備品(可切換顯示全部)。不變式:每故障所需備品 `minTier ≤ 故障 minTier`。
+- **每日任務（#78，綁遊戲內日）**：`dailyTasks.ts` 6 種小目標池,依 `seed+日` 決定性抽 3 個,baseline 記當日起始累積值,達成自動發獎(XP+現金)+連勝(streak)。狀態 `daily` + `ROLL_DAILY`/`CLAIM_DAILY`(冪等),由 `DailyTracker` 驅動。
+- **每週主題挑戰（#79，綁遊戲內週 + 事件池）**：`weeklyChallenges.ts` 5 主題(風暴/斷料/人力/大修/平穩),依 `seed+週` 決定性挑選,主題 `faultMult` 改變戰情室故障率(風暴↑、平穩↓),達成給較大獎勵+連續完成週。狀態 `weekly` + `ROLL_WEEKLY`/`CLAIM_WEEKLY`,由 `WeeklyTracker` 驅動。
+- **情境包匯入（#80）**：`scenarioPack.ts` 把單筆課程匯入一般化為「一組沙盒判斷型任務(JSON)」,嚴格驗證後與內建並存(`allTasks()`),可移除;教師不必改程式碼即可新增活動/題組(範例 docs/scenario-pack-example.json)。
+- **真實度深化（#81）**：大型組件大修加 **jack-up 安裝船動員前置期**(`mobilizeLeft`)+一次性動員費(`JACKUP_MOBILIZE_COST`),動員期間不收待命費(demurrage 改為到場後才收)→「現在換大組件 vs 接受停機」更具重量;**計畫性定期保養**(`SCHEDULED_SERVICE`,到期可做)降故障率一段時間+回健康度,補齊維護三分類(計畫性/狀態式CBM/故障矯正)。
+- **故障/備品分層擴充（#82）**：在 Tier 框架下新增防蝕(結構/T2)、變壓器套管(電氣/T3)、海纜接頭過熱(電氣/T3)等完整故障(診斷+SOP+圖鑑),使海纜/塔架/變壓器成為多重根因;計數 22 故障/23 戰情室故障/30 備品。
+- **併發壓力測試**：`npm run stress`(`test/stress.mjs`)忠實重現雲端後端契約(djb2 簽章/clampInt/8 秒節流/排行彙整/同時執行上限)做併發負載,證實多人同時送分可負荷——併發有界不丟請求、節流去重削減約 7 成寫入、簽章在併發下仍正確,延遲僅優雅升高。詳見 [STRESS_TEST.md](STRESS_TEST.md)。
 
