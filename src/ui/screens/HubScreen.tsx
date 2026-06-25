@@ -14,7 +14,7 @@ import { CAMPAIGN, missionInstance } from "../campaign";
 import { FAULTS } from "../faults";
 import { PARTS } from "../data";
 import { DISC } from "../disc";
-import { toWan, computeScore, QUARTER_DAYS, SLA_FLOOR, DEMURRAGE_PER_DAY, dailyStorageCost, FATIGUE_LIMIT, fatigueOf, fleetUptime, dailyRevenue, dailyPayroll, TEST_GRANT, activeVesselSpec, seaTolOf, tierOf, TIER_LABEL, TIER_COUNT } from "../../state/game";
+import { toWan, computeScore, QUARTER_DAYS, SLA_FLOOR, DEMURRAGE_PER_DAY, dailyStorageCost, FATIGUE_LIMIT, fatigueOf, fleetUptime, dailyRevenue, dailyPayroll, TEST_GRANT, activeVesselSpec, seaTolOf, tierOf, TIER_LABEL, TIER_COUNT, JACKUP_MOBILIZE_COST, serviceDue, serviceDueInDays, SCHEDULED_SERVICE_COST } from "../../state/game";
 import { FARMS } from "../../state/farms";
 import { BUILD_STAGE_COUNT } from "../../state/construction";
 import { fetchLeaderboard, type Row } from "../../cloud/sheet";
@@ -246,6 +246,24 @@ export default function HubScreen({ setScreen, accent, onDispatch, onFacility, s
               </div>
             );
           })()}
+          {/* 計畫性定期保養（#81）：到期可做 → 降故障率 + 回健康度（預防 vs 成本取捨）。Tier 2 起顯示。 */}
+          {tier >= 2 && (() => {
+            const due = serviceDue(data);
+            const left = serviceDueInDays(data);
+            const can = due && data.budget >= SCHEDULED_SERVICE_COST;
+            return (
+              <div style={{ marginTop: 10, padding: "7px 9px", borderRadius: 4, background: due ? "rgba(214,167,84,.12)" : "rgba(255,255,255,.04)", border: `1px solid ${due ? "rgba(214,167,84,.4)" : "rgba(214,167,84,.18)"}` }}>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11.5 }}>
+                  <span style={{ color: C.gold, fontWeight: 700, letterSpacing: ".06em" }}>🧰 {t({ zh: "計畫性定期保養", en: "Scheduled Service" })}</span>
+                  <span style={{ color: due ? C.amber2 : C.mist2 }}>{due ? t({ zh: "已到期", en: "Due" }) : t({ zh: `剩 ${left} 天`, en: `${left}d` })}</span>
+                </div>
+                <div style={{ fontSize: 10.5, color: C.mist, marginTop: 2 }}>{t({ zh: `費用 ◎${toWan(SCHEDULED_SERVICE_COST)} 萬・工期 2 天 → 一段時間降低故障率並回復健康度(預防保養)。`, en: `◎${toWan(SCHEDULED_SERVICE_COST)}M · 2 days → cuts fault rate for a while + restores health (prevention).` })}</div>
+                <button disabled={!can} onClick={() => { if (!can) return; Sfx.success(); dispatch({ type: "SCHEDULED_SERVICE" }); toast({ zh: "🧰 計畫保養完成：未來一段時間故障率下降。", en: "🧰 Scheduled service done: lower fault rate for a while." }); }} style={{ width: "100%", marginTop: 6, padding: "6px 0", borderRadius: 4, border: "1px solid rgba(214,167,84,.5)", background: can ? primaryBg(accent) : "rgba(255,255,255,.06)", color: can ? C.ink : C.mist, fontFamily: FONT_SERIF, fontWeight: 900, fontSize: 12, cursor: can ? "pointer" : "not-allowed" }}>
+                  {due ? t({ zh: "執行定期保養", en: "Run scheduled service" }) : t({ zh: "尚未到期", en: "Not due yet" })}
+                </button>
+              </div>
+            );
+          })()}
           <div style={{ ...kvRow, marginTop: 8 }}><span style={{ color: C.mist }}>{t({ zh: "營運風場", en: "Farms" })}</span><span style={{ fontWeight: 700 }}>{data.farmsOwned} / {FARMS.length}</span></div>
           <div style={kvRow}><span style={{ color: C.mist }}>{t({ zh: "可用率", en: "Availability" })}</span><span style={{ fontWeight: 700 }}>{data.availability}%</span></div>
           <div style={kvRow}><span style={{ color: C.mist }}>{t({ zh: "發電量", en: "Generation" })}</span><span style={{ fontWeight: 700 }}>{data.generationMWh} MWh</span></div>
@@ -316,8 +334,17 @@ export default function HubScreen({ setScreen, accent, onDispatch, onFacility, s
                     <div style={{ color: C.mist, fontSize: 11.5 }}>{quest.unit} · {fault ? t(fault.name) : "—"} · <span style={{ color: stage === "done" ? C.green : C.amber2 }}>{t(stage === "available" ? S.status.available : stage === "active" ? S.status.active : S.status.done)}</span></div>
                     {stage === "active" && <div style={{ fontSize: 11, color: C.amber2, marginTop: 4 }}>{t({ zh: "⚠ 停機中：每天約損失 3 萬", en: "⚠ Down: ~30k/day lost" })}</div>}
                     {/* 多回合大修（#4）：需連續可作業天氣窗，惡劣海象停滯 + 船舶待命費 */}
-                    {stage === "active" && data.overhaul && (() => {
-                      const oh = data.overhaul;
+                    {stage === "active" && data.overhaul && (oh => (oh.mobilizeLeft ?? 0) > 0 ? (
+                      // 安裝船(jack-up)動員/航行中（#81）：尚未到場,僅倒數,不收待命費
+                      <div style={{ marginTop: 8, padding: "8px 9px", borderRadius: 4, background: "rgba(95,168,217,.1)", border: "1px solid rgba(95,168,217,.34)" }}>
+                        <div style={{ fontSize: 11.5, fontWeight: 700, color: C.goldText }}>🚢 {t({ zh: "安裝船動員中", en: "Jack-up mobilizing" })} · {oh.unit}</div>
+                        <div style={{ fontSize: 11, color: C.mist, marginTop: 3 }}>{t({ zh: `大型組件更換需先動員/航行安裝船,剩 ${oh.mobilizeLeft} 天到場(已預付動員費 ◎${toWan(JACKUP_MOBILIZE_COST)} 萬)。`, en: `Major component swap needs the jack-up to mobilize: ${oh.mobilizeLeft}d to arrive (mobilization fee ◎${toWan(JACKUP_MOBILIZE_COST)}M prepaid).` })}</div>
+                        <div style={{ fontSize: 11, color: C.amber2, marginTop: 2 }}>{t({ zh: "⚠ 此期間機組仍停機損失發電,但尚不收待命費。", en: "⚠ Unit stays down (lost generation), but no standby fee yet." })}</div>
+                        <button onClick={() => { Sfx.click(); dispatch({ type: "ADVANCE_OVERHAUL" }); }} style={{ width: "100%", marginTop: 8, padding: "7px 0", borderRadius: 4, border: "1px solid rgba(255,236,196,.6)", background: primaryBg(accent), color: C.ink, fontFamily: FONT_SERIF, fontWeight: 900, fontSize: 13, cursor: "pointer" }}>
+                          {t({ zh: "推進動員（消耗 1 天）", en: "Advance mobilization (1 day)" })}
+                        </button>
+                      </div>
+                    ) : (() => {
                       const pct = Math.round((oh.progress / oh.need) * 100);
                       const seaOk = data.seaState === "workable";
                       return (
@@ -339,7 +366,7 @@ export default function HubScreen({ setScreen, accent, onDispatch, onFacility, s
                           </button>
                         </div>
                       );
-                    })()}
+                    })())(data.overhaul)}
                     {/* 接單 / 下一關 動作 */}
                     {stage === "available" && (
                       <button ref={acceptRef} onClick={() => { Sfx.click(); dispatch({ type: "ACCEPT_QUEST" }); if (data.customQuest) say({ speaker: "narrator_girl", expr: "happy", line: { zh: `工單已接下！前往 ${quest.unit}，從中央「出海航行」出發！`, en: `Accepted! Head to ${quest.unit} via Set Sail.` } }); else say(mission.intro); }} style={{ width: "100%", marginTop: 8, padding: "7px 0", borderRadius: 4, border: "1px solid rgba(255,236,196,.6)", background: primaryBg(accent), color: C.ink, fontFamily: FONT_SERIF, fontWeight: 900, fontSize: 13, cursor: "pointer" }}>{t(S.btn.accept)}</button>
