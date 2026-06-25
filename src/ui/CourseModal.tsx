@@ -18,7 +18,7 @@ function toI18n(v: unknown, fallback: I18n): I18n {
 }
 
 // 課程模式（#6）：一鍵把某週故障指派為下一筆工單，或匯入自訂任務 JSON。
-export default function CourseModal({ open, onClose, week = 1, onSetWeek }: { open: boolean; onClose: () => void; week?: number; onSetWeek?: (w: number) => void }) {
+export default function CourseModal({ open, onClose, week = 1, onSetWeek, onTeacher }: { open: boolean; onClose: () => void; week?: number; onSetWeek?: (w: number) => void; onTeacher?: () => void }) {
   useLang();
   const { dispatch } = useGame();
   const { start: startTutorial } = useTutorial();
@@ -88,6 +88,21 @@ export default function CourseModal({ open, onClose, week = 1, onSetWeek }: { op
             </div>
             <span style={{ color: C.mist2, fontSize: 14 }}>▶</span>
           </button>
+
+          {/* 教師檢視：班級碼 + 教師碼 → 唯讀檢視全班進度（雲端） */}
+          {onTeacher && (
+            <button
+              onClick={() => { Sfx.click(); onTeacher(); }}
+              style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 6, background: "rgba(217,164,65,.12)", border: "1px solid rgba(214,167,84,.45)", color: C.cream, cursor: "pointer", marginBottom: 14, textAlign: "left" }}
+            >
+              <span style={{ fontSize: 20 }}>👩‍🏫</span>
+              <div style={{ flex: 1 }}>
+                <div style={{ color: C.goldText, fontWeight: 900, fontFamily: FONT_SERIF, fontSize: 14 }}>{t({ zh: "教師檢視 · 班級進度", en: "Instructor · Class progress" })}</div>
+                <div style={{ color: C.mist, fontSize: 11.5, marginTop: 2 }}>{t({ zh: "輸入班級碼與教師碼,唯讀檢視全班學生的最新進度。", en: "Enter class & teacher code to view the whole class (read-only)." })}</div>
+              </div>
+              <span style={{ color: C.mist2, fontSize: 14 }}>▶</span>
+            </button>
+          )}
 
           {/* 教師端：目前開放週次（鎖定計分主線；沙盒不受限） */}
           <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 6, background: "rgba(217,164,65,.1)", border: "1px solid rgba(214,167,84,.4)", marginBottom: 14 }}>

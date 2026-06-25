@@ -49,6 +49,7 @@ const tasks = await load("src/state/tasks.ts");
 const cons = await load("src/state/construction.ts");
 const prof = await load("src/state/profile.ts");
 const api = await load("src/cloud/api.ts");
+const recs = await load("src/state/records.ts");
 const R = g.reducer, I = g.INITIAL;
 
 // ───────────────────────── INITIAL 不變量 ─────────────────────────
@@ -993,6 +994,55 @@ test("cloud/api: identityOf & cloudKey are consistent with profile.idOf", () => 
   const id = api.identityOf(p);
   eq(id.studentId, "S01"); eq(id.classCode, "A1"); eq(id.pinHash, "h");
   eq(api.cloudKey(p), prof.idOf(p), "cloudKey === idOf");
+});
+
+// ───────────────────────── 學習紀錄與成就（階段 3，純函式） ─────────────────────────
+test("records: INITIAL unlocks nothing (fresh account)", () => {
+  eq(recs.evaluateAchievements(I).length, 0, "no achievements at start");
+});
+test("records: field-based achievements unlock from GameData", () => {
+  ok(recs.evaluateAchievements({ ...I, missionsDone: 1 }).includes("first_mission"), "first mission");
+  ok(recs.evaluateAchievements({ ...I, missionsDone: 10 }).includes("ten_missions"), "ten missions");
+  ok(recs.evaluateAchievements({ ...I, campaignDone: true }).includes("campaign_done"), "campaign");
+  ok(recs.evaluateAchievements({ ...I, buildDone: true }).includes("build_done"), "build");
+  ok(recs.evaluateAchievements({ ...I, seenFaults: ["a", "b", "c"] }).includes("catalog_3"), "catalog 3");
+  ok(recs.evaluateAchievements({ ...I, generationMWh: 1000 }).includes("gen_1000"), "gen 1000");
+  ok(recs.evaluateAchievements({ ...I, fleetResolved: 20 }).includes("fleet_master"), "fleet master");
+  ok(recs.evaluateAchievements({ ...I, farmsOwned: 2 }).includes("multi_farm"), "multi farm");
+  ok(recs.evaluateAchievements({ ...I, ownedVessels: ["ctv", "sov"] }).includes("two_vessels"), "two vessels");
+  ok(recs.evaluateAchievements({ ...I, day: 51, safetyIncidents: 0 }).includes("safety_clean"), "30 days clean");
+  ok(!recs.evaluateAchievements({ ...I, day: 51, safetyIncidents: 1 }).includes("safety_clean"), "incident breaks clean");
+  ok(recs.evaluateAchievements({ ...I, quarter: 2, slaPenalties: 0 }).includes("sla_keeper"), "sla keeper");
+  ok(recs.evaluateAchievements({ ...I, generationMWh: 2000 }).includes("score_1500"), "score via generation");
+});
+test("records: mergeRecord adds new unlocks once, updates bests", () => {
+  const e = recs.emptyRecord();
+  const r1 = recs.mergeRecord(e, { ...I, missionsDone: 1, generationMWh: 1200 }, 1000);
+  ok(r1.newly.includes("first_mission"), "first mission newly unlocked");
+  ok(r1.newly.includes("gen_1000"), "gen_1000 newly unlocked");
+  eq(r1.rec.unlocked["first_mission"], 1000, "timestamp recorded");
+  eq(r1.rec.bestGeneration, 1200, "best generation tracked");
+  ok(r1.rec.bestScore > 0, "best score tracked");
+  const r2 = recs.mergeRecord(r1.rec, { ...I, missionsDone: 1, generationMWh: 1200 }, 2000);
+  eq(r2.newly.length, 0, "no re-unlock on same state");
+  eq(r2.rec.unlocked["first_mission"], 1000, "original timestamp kept");
+});
+test("records: bests only grow (high-water mark)", () => {
+  const base = { ...recs.emptyRecord(), bestScore: 999, bestDay: 100, bestGeneration: 9999, bestMissions: 50, bestCatalog: 9, bestResolved: 30 };
+  const { rec } = recs.mergeRecord(base, { ...I, missionsDone: 1 }, 5000);
+  eq(rec.bestScore, 999, "score not reduced");
+  eq(rec.bestGeneration, 9999, "generation not reduced");
+  eq(rec.bestMissions, 50, "missions not reduced");
+});
+test("records: unionRecord merges unlocks (earliest) and max bests", () => {
+  const a = { ...recs.emptyRecord(), unlocked: { first_mission: 100, gen_1000: 500 }, bestScore: 300, bestGeneration: 1000 };
+  const b = { ...recs.emptyRecord(), unlocked: { first_mission: 50, multi_farm: 800 }, bestScore: 700, bestGeneration: 400 };
+  const u = recs.unionRecord(a, b);
+  eq(u.unlocked["first_mission"], 50, "earliest unlock time wins");
+  eq(u.unlocked["gen_1000"], 500, "kept from a");
+  eq(u.unlocked["multi_farm"], 800, "kept from b");
+  eq(u.bestScore, 700, "max score");
+  eq(u.bestGeneration, 1000, "max generation");
 });
 
 console.log(`\n${pass} passed, ${fail} failed (${pass + fail} total)`);

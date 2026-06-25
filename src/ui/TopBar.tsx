@@ -42,12 +42,14 @@ export default function TopBar({
   accent,
   onGear,
   onLogout,
+  onProfile,
 }: {
   screen: Screen;
   setScreen: (s: Screen) => void;
   accent: string;
   onGear?: () => void;
   onLogout?: () => void;
+  onProfile?: () => void;
 }) {
   useLang();
   const { data } = useGame();
@@ -178,12 +180,12 @@ export default function TopBar({
           </span>
         </div>
         {profile && (
-          <div style={{ ...chip, gap: 8 }} title={t({ zh: "點登出可切換帳號", en: "Click logout to switch account" })}>
+          <div onClick={() => { Sfx.click(); onProfile?.(); }} style={{ ...chip, gap: 8, cursor: "pointer" }} title={t({ zh: "查看個人檔案與成就", en: "View profile & achievements" })}>
             <span style={{ width: 24, height: 24, borderRadius: "50%", background: "radial-gradient(circle at 50% 35%, #2a6275, #103039)", border: `1px solid ${C.gold}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, color: C.goldText, fontWeight: 900 }}>
-              {profile.nickname.slice(0, 1)}
+              {(profile.nickname || profile.studentId || "?").slice(0, 1)}
             </span>
             <div style={{ lineHeight: 1.15 }}>
-              <div style={{ color: C.cream, fontSize: 13, fontWeight: 700, maxWidth: 90, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{profile.nickname}</div>
+              <div style={{ color: C.cream, fontSize: 13, fontWeight: 700, maxWidth: 90, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{profile.nickname || profile.studentId}</div>
               {profile.classCode && <div style={{ color: C.mist, fontSize: 10 }}>{t({ zh: "班級", en: "Class" })} {profile.classCode}</div>}
             </div>
           </div>
