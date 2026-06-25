@@ -18,6 +18,9 @@ import Toaster from "./ui/Toaster";
 import { LedgerToaster } from "./ui/Ledger";
 import LoginScreen from "./ui/LoginScreen";
 import ScoreSync from "./ui/ScoreSync";
+import RecordsTracker from "./ui/RecordsTracker";
+import ProfileModal from "./ui/ProfileModal";
+import TeacherModal from "./ui/TeacherModal";
 import WelcomeOnLogin from "./ui/WelcomeOnLogin";
 import { GameProvider } from "./state/GameContext";
 import { DialogueProvider } from "./state/DialogueContext";
@@ -39,6 +42,8 @@ export default function App() {
   const [showOps, setShowOps] = useState(false);
   const [showFleet, setShowFleet] = useState(false);
   const [showBuild, setShowBuild] = useState(false);
+  const [showProfile, setShowProfile] = useState(false);
+  const [showTeacher, setShowTeacher] = useState(false);
   const [facility, setFacility] = useState<Facility | null>(null);
   const [loggedIn, setLoggedIn] = useState(() => isAuthed(getProfile()));
   const [sceneId, setSceneId] = useState(getSceneId);
@@ -126,16 +131,19 @@ export default function App() {
           {screen === "sail" && <SailScreen setScreen={setScreen} accent={accent} mode={mode} />}
           {screen === "repair" && <RepairScreen setScreen={setScreen} mode={mode} />}
 
-          <TopBar screen={screen} setScreen={setScreen} accent={accent} onGear={() => setShowCourse(true)} onLogout={logout} />
+          <TopBar screen={screen} setScreen={setScreen} accent={accent} onGear={() => setShowCourse(true)} onLogout={logout} onProfile={() => setShowProfile(true)} />
           <DialogueLayer />
           <TutorialOverlay screen={screen} />
-          <CourseModal open={showCourse} onClose={() => setShowCourse(false)} week={week} onSetWeek={changeWeek} />
+          <CourseModal open={showCourse} onClose={() => setShowCourse(false)} week={week} onSetWeek={changeWeek} onTeacher={() => { setShowCourse(false); setShowTeacher(true); }} />
           <DispatchModal open={showDispatch} onClose={() => setShowDispatch(false)} />
           <OpsCenterModal open={showOps} onClose={() => setShowOps(false)} />
           <FleetOpsModal open={showFleet} onClose={() => setShowFleet(false)} />
           <ConstructionModal open={showBuild} onClose={() => setShowBuild(false)} />
           <FacilityModal kind={facility} onClose={() => setFacility(null)} />
+          <ProfileModal open={showProfile} onClose={() => setShowProfile(false)} />
+          <TeacherModal open={showTeacher} onClose={() => setShowTeacher(false)} />
           <ScoreSync />
+          <RecordsTracker />
           <WelcomeOnLogin />
           <LedgerToaster />
           <Toaster />
