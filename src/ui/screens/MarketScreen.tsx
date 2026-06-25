@@ -2,9 +2,10 @@ import { useState } from "react";
 import { C, FONT_SERIF, primaryBg, panel, stripe } from "../tokens";
 import { t } from "../../game/systems/i18n";
 import { useLang } from "../useLang";
-import { PARTS, stars, priceNum, fmt } from "../data";
+import { PARTS, partsForTier, stars, priceNum, fmt } from "../data";
 import { Portrait } from "../Portrait";
 import { useGame } from "../../state/GameContext";
+import { tierOf, TIER_COUNT } from "../../state/game";
 import { useDialogue } from "../../state/DialogueContext";
 import { S } from "../../i18n/strings";
 import { Sfx } from "../../audio/sfx";
@@ -23,6 +24,10 @@ export default function MarketScreen({ accent }: { accent: string }) {
   const { say } = useDialogue();
   const [mode, setMode] = useState<"buy" | "sell">("buy");
   const [cart, setCart] = useState<Record<string, number>>({});
+  const [showAll, setShowAll] = useState(false); // #77 漸進揭露：預設只顯示已解鎖備品，可切換顯示全部
+  const tier = tierOf(data);
+  const buyParts = showAll ? PARTS : partsForTier(tier); // 依運維層級過濾(非阻擋：可切換全部)
+  const lockedCount = PARTS.length - partsForTier(tier).length;
 
   const subtotal = PARTS.reduce((s, p) => s + priceNum(p) * (cart[p.id] ?? 0), 0);
   const total = Math.round(subtotal * (1 + TAX));
@@ -85,11 +90,21 @@ export default function MarketScreen({ accent }: { accent: string }) {
                 </div>
               ))}
             </div>
-            <div style={{ marginLeft: "auto", fontSize: 13, color: C.mist2 }}>
+            <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 12, fontSize: 13, color: C.mist2 }}>
+              {mode === "buy" && lockedCount > 0 && (
+                <span
+                  onClick={() => { Sfx.click(); setShowAll((v) => !v); }}
+                  style={{ cursor: "pointer", fontSize: 11.5, padding: "4px 9px", borderRadius: 4, border: "1px solid rgba(214,167,84,.4)", background: showAll ? "rgba(214,167,84,.16)" : "rgba(255,255,255,.04)", color: showAll ? C.goldText : C.mist, whiteSpace: "nowrap" }}
+                >
+                  {showAll
+                    ? t({ zh: `顯示全部（含未解鎖）`, en: `Showing all (incl. locked)` })
+                    : t({ zh: `🎖 層級 ${tier}/${TIER_COUNT}：已解鎖備品｜+${lockedCount} 未解鎖`, en: `🎖 Tier ${tier}/${TIER_COUNT}: unlocked｜+${lockedCount} locked` })}
+                </span>
+              )}
               {mode === "buy" ? (
-                <>
+                <span>
                   {t(S.market.nextRestock)} <span style={{ color: C.cream, fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>11:04</span>
-                </>
+                </span>
               ) : (
                 t({ zh: "賣出回收價 = 行情 9 折", en: "Sell-back = 90% of price" })
               )}
@@ -98,13 +113,14 @@ export default function MarketScreen({ accent }: { accent: string }) {
 
           {mode === "buy" ? (
             <div style={{ flex: 1, padding: 18, display: "grid", gridTemplateColumns: "repeat(3,1fr)", gridAutoRows: "min-content", gap: 14, overflow: "auto" }}>
-              {PARTS.map((p) => {
+              {buyParts.map((p) => {
                 const up = p.idx >= 100;
+                const locked = (p.minTier ?? 1) > tier; // 顯示全部時，未解鎖品標示但仍可購（非阻擋）
                 const inCart = cart[p.id] ?? 0;
                 return (
                   <div key={p.id} onClick={() => add(p.id)} style={{ position: "relative", background: inCart ? "rgba(217,164,65,.14)" : "rgba(225,237,242,.07)", border: `1px solid ${inCart ? accent : "rgba(214,167,84,.35)"}`, borderRadius: 5, padding: "11px 12px", cursor: "pointer" }}>
                     {inCart > 0 && <div style={{ position: "absolute", top: -8, right: -8, minWidth: 22, height: 22, borderRadius: 11, background: primaryBg(accent), color: C.ink, fontSize: 12, fontWeight: 900, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 6px", border: "1px solid rgba(255,236,196,.7)" }}>{inCart}</div>}
-                    <div style={{ color: C.cream, fontSize: 15, fontWeight: 700, fontFamily: FONT_SERIF }}>{t(p.n)}</div>
+                    <div style={{ color: C.cream, fontSize: 15, fontWeight: 700, fontFamily: FONT_SERIF }}>{t(p.n)}{locked && <span style={{ marginLeft: 6, fontSize: 10, color: C.amber2, fontWeight: 700 }}>🔒 T{p.minTier}</span>}</div>
                     <div style={{ color: "#e2b24a", fontSize: 12, letterSpacing: 1, margin: "3px 0 8px" }}>{stars(p.stars)}</div>
                     <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                       <div style={{ width: 52, height: 52, flex: "none", borderRadius: 5, background: stripe, border: "1px solid rgba(214,167,84,.3)", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "monospace", fontSize: 9, color: C.mist3 }}>IMG</div>
