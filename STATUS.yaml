@@ -3,8 +3,8 @@ name_zh: 離岸風場・運維傳說
 category: edtech
 progress: 100
 status: active
-last_updated: "2026-06-21"
-next_milestone: "真實營運深化(見 GAME_DESIGN §15):Phase A/B/C + 試玩微調 + C2(船舶並行上限/預防性定檢) 已完成;另已補自動化測試(43例)+PR CI、修正 REST/例行/大修完成 會吞掉當日事件可用率變化的瑕疵;後續可選:每週主題事件池、戰情室停機折抵收入(需與設計者確認)"
+last_updated: "2026-06-25"
+next_milestone: "帳號與雲端為主學習歷程已完成:學號帳號+通關碼(後端 Apps Script 驗證)、跨裝置雲端為主存檔/紀錄、15 項成就+個人檔案頁、遊戲內教師檢視面板(班級碼+教師碼);母港左側面板可各自收合+設施圖示。後續延伸候選:教師面板 CSV 匯出、每日/每週挑戰、營運趨勢儀表板、登入畫面教師入口"
 technologies:
   - React
   - TypeScript
@@ -16,4 +16,4 @@ outputs:
   - presentation
 description: "An Uncharted-Waters-style educational game for offshore wind O&M training."
 description_zh: "大航海時代風格、以離岸風電運維為核心的教學遊戲。"
-key_metrics: "四畫面UI+三模式背景(模擬/實境/漫畫)+俯瞰60°、151題判斷型任務引擎(7類)、雙層架構(計分主線+無限沙盒)、多風場+突發事件+安全KPI、雲端班級排行榜(Apps Script)、每週開放、中英雙語"
+key_metrics: "四畫面UI+三模式背景(模擬/實境/漫畫)+俯瞰60°、151題判斷型任務引擎(7類)、雙層架構(計分主線+無限沙盒)、多風場+突發事件+安全KPI、學號帳號+通關碼(後端驗證)+雲端為主存檔/紀錄、15項成就+個人檔案頁、教師檢視面板、雲端班級排行榜(Apps Script)、每週開放、中英雙語"
