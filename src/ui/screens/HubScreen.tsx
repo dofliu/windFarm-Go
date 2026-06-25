@@ -25,6 +25,7 @@ import { portraitUrl } from "../characters";
 import { ForecastStrip, StormWarning } from "../Forecast";
 import { LedgerView } from "../Ledger";
 import { missionWeek } from "../../state/course";
+import { dailyDef } from "../../state/dailyTasks";
 import type { I18n } from "../../game/systems/types";
 import type { Screen } from "../../App";
 
@@ -351,6 +352,28 @@ export default function HubScreen({ setScreen, accent, onDispatch, onFacility, s
                     ) : (
                       <button onClick={() => { Sfx.click(); dispatch({ type: "NEXT_QUEST", poolSize: CAMPAIGN.length }); }} style={{ width: "100%", marginTop: 8, padding: "7px 0", borderRadius: 4, border: "1px solid rgba(214,167,84,.5)", background: "rgba(15,40,50,.82)", color: C.cream, fontFamily: FONT_SERIF, fontWeight: 700, fontSize: 13, cursor: "pointer" }}>✅ {t(S.btn.nextOrder)}</button>
                     ))}
+                  </div>
+                ) : <div style={{ color: C.mist, fontSize: 12 }}>—</div>}
+              </OpsBlock>
+
+              {/* 每日任務（#78）：綁遊戲內日，達成自動發獎 */}
+              <OpsBlock title={{ zh: "今日任務", en: "Daily Tasks" }}>
+                {data.daily ? (
+                  <div style={{ padding: "8px 10px", borderRadius: 5, background: "rgba(255,255,255,.04)", border: "1px solid rgba(214,167,84,.18)" }}>
+                    {data.daily.ids.map((id) => {
+                      const def = dailyDef(id);
+                      const done = data.daily!.claimed.includes(id);
+                      return (
+                        <div key={id} style={{ display: "flex", alignItems: "flex-start", gap: 6, fontSize: 12, color: done ? C.green : C.cream, padding: "2px 0" }}>
+                          <span style={{ flex: "none" }}>{done ? "✅" : "◻"}</span>
+                          <span style={{ textDecoration: done ? "line-through" : "none", opacity: done ? 0.8 : 1 }}>{t(def?.desc ?? { zh: id, en: id })}</span>
+                        </div>
+                      );
+                    })}
+                    <div style={{ display: "flex", justifyContent: "space-between", marginTop: 5, paddingTop: 5, borderTop: "1px solid rgba(255,255,255,.08)", fontSize: 11.5 }}>
+                      <span style={{ color: C.mist }}>{t({ zh: "今日進度", en: "Today" })} {data.daily.claimed.length}/{data.daily.ids.length}</span>
+                      <span style={{ color: C.goldText, fontWeight: 700 }}>🔥 {t({ zh: "連勝", en: "Streak" })} {data.daily.streak}</span>
+                    </div>
                   </div>
                 ) : <div style={{ color: C.mist, fontSize: 12 }}>—</div>}
               </OpsBlock>

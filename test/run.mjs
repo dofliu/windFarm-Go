@@ -50,6 +50,7 @@ const cons = await load("src/state/construction.ts");
 const prof = await load("src/state/profile.ts");
 const api = await load("src/cloud/api.ts");
 const recs = await load("src/state/records.ts");
+const daily = await load("src/state/dailyTasks.ts");
 const R = g.reducer, I = g.INITIAL;
 
 // ───────────────────────── INITIAL 不變量 ─────────────────────────
@@ -1090,6 +1091,55 @@ test("records: unionRecord merges unlocks (earliest) and max bests", () => {
   eq(u.unlocked["multi_farm"], 800, "kept from b");
   eq(u.bestScore, 700, "max score");
   eq(u.bestGeneration, 1000, "max generation");
+});
+
+// ───────────────────────── 每日任務（#78） ─────────────────────────
+test("daily: pickDailyIds deterministic, right length, unique", () => {
+  const a = daily.pickDailyIds(30, "seedX");
+  const b = daily.pickDailyIds(30, "seedX");
+  eq(a.length, daily.DAILY_PER_DAY, "right count");
+  eq(JSON.stringify(a), JSON.stringify(b), "same seed+day reproducible");
+  eq(a.length, new Set(a).size, "no duplicate tasks");
+  for (const id of a) ok(daily.dailyDef(id), `id ${id} maps to a def`);
+  // 不同日 → 多半不同(至少不必相同)
+  ok(daily.pickDailyIds(31, "seedX").join() !== "" , "produces ids for other days");
+});
+test("daily: rollDailyState captures baseline from current cumulative", () => {
+  const d = { ...I, fleetResolved: 5, missionsDone: 3, generationMWh: 900, safetyIncidents: 1 };
+  const dl = daily.rollDailyState(d.day, "s", d, null);
+  eq(dl.day, d.day);
+  eq(dl.base.resolved, 5); eq(dl.base.missions, 3); eq(dl.base.gen, 900); eq(dl.base.safety, 1);
+  eq(dl.claimed.length, 0, "nothing claimed yet");
+  eq(dl.streak, 0, "fresh streak");
+});
+test("daily: dueDailyClaims detects met increment goals", () => {
+  // 強制一組含 mission1 的每日任務
+  const base = { resolved: 0, missions: 0, gen: 0, safety: 0 };
+  const dl = { day: I.day, ids: ["mission1", "health", "uptime"], base, claimed: [], streak: 0 };
+  const before = daily.dueDailyClaims({ ...I, daily: dl, missionsDone: 0 });
+  ok(!before.includes("mission1"), "mission not yet done");
+  const after = daily.dueDailyClaims({ ...I, daily: dl, missionsDone: 1 });
+  ok(after.includes("mission1"), "mission increment detected");
+});
+test("daily: CLAIM_DAILY grants reward, is idempotent, increments streak on full", () => {
+  const dl = { day: I.day, ids: ["health", "uptime"], base: { resolved: 0, missions: 0, gen: 0, safety: 0 }, claimed: [], streak: 0 };
+  let s = { ...I, daily: dl, budget: 1_000_000, xp: 0 };
+  s = R(s, { type: "CLAIM_DAILY", id: "health", xp: 20, cash: 120_000 });
+  eq(s.budget, 1_120_000, "cash granted"); eq(s.xp, 20, "xp granted");
+  ok(s.daily.claimed.includes("health"), "marked claimed");
+  eq(s.daily.streak, 0, "not full yet → no streak");
+  // 重複 claim 同一項 → 冪等(不重複發)
+  const s2 = R(s, { type: "CLAIM_DAILY", id: "health", xp: 20, cash: 120_000 });
+  eq(s2.budget, s.budget, "duplicate claim ignored");
+  // 完成第二項 → 全完成 → streak +1
+  const s3 = R(s, { type: "CLAIM_DAILY", id: "uptime", xp: 25, cash: 150_000 });
+  eq(s3.daily.streak, 1, "full completion bumps streak");
+});
+test("daily: rollDailyState carries streak only if prev was fully completed", () => {
+  const full = { day: 10, ids: ["a", "b"], base: { resolved: 0, missions: 0, gen: 0, safety: 0 }, claimed: ["a", "b"], streak: 3 };
+  const partial = { day: 10, ids: ["a", "b"], base: { resolved: 0, missions: 0, gen: 0, safety: 0 }, claimed: ["a"], streak: 3 };
+  eq(daily.rollDailyState(11, "s", I, full).streak, 3, "carry streak when prev complete");
+  eq(daily.rollDailyState(11, "s", I, partial).streak, 0, "reset streak when prev incomplete");
 });
 
 console.log(`\n${pass} passed, ${fail} failed (${pass + fail} total)`);
