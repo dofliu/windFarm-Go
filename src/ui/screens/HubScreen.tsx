@@ -20,6 +20,8 @@ import { BUILD_STAGE_COUNT } from "../../state/construction";
 import { fetchLeaderboard, type Row } from "../../cloud/sheet";
 import { getProfile } from "../../state/profile";
 import { MODE_LABEL, MODE_ICON, type SceneMode } from "../scenes";
+import { FacGlyph } from "../facilityIcons";
+import { portraitUrl } from "../characters";
 import { ForecastStrip, StormWarning } from "../Forecast";
 import { LedgerView } from "../Ledger";
 import { missionWeek } from "../../state/course";
@@ -27,10 +29,10 @@ import type { I18n } from "../../game/systems/types";
 import type { Screen } from "../../App";
 
 // 左側設施列
-function FacRow({ char, label, stat, onClick, targetRef }: { char: string; label: I18n; stat?: I18n; onClick: () => void; targetRef?: (el: HTMLElement | null) => void }) {
+function FacRow({ icon, label, stat, onClick, targetRef }: { icon: ReactNode; label: I18n; stat?: I18n; onClick: () => void; targetRef?: (el: HTMLElement | null) => void }) {
   return (
     <div ref={targetRef} onClick={onClick} style={{ display: "flex", alignItems: "center", gap: 11, padding: "6px 10px", borderRadius: 5, background: "rgba(255,255,255,.04)", marginBottom: 5, cursor: "pointer", border: "1px solid rgba(214,167,84,.14)" }}>
-      <div style={{ width: 32, height: 32, flex: "none", borderRadius: "50%", background: "radial-gradient(circle at 50% 35%, #20586a, #0f3140)", border: "2px solid rgba(214,167,84,.7)", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: FONT_SERIF, fontWeight: 900, color: C.goldText, fontSize: 15 }}>{char}</div>
+      <div style={{ width: 32, height: 32, flex: "none", borderRadius: "50%", overflow: "hidden", background: "radial-gradient(circle at 50% 35%, #20586a, #0f3140)", border: "2px solid rgba(214,167,84,.7)", display: "flex", alignItems: "center", justifyContent: "center", color: C.goldText }}>{icon}</div>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ color: C.cream, fontSize: 14, fontWeight: 700 }}>{t(label)}</div>
         {stat && <div style={{ color: C.mist, fontSize: 11.5 }}>{t(stat)}</div>}
@@ -52,6 +54,16 @@ function OpsBlock({ title, children }: { title: I18n; children: ReactNode }) {
 
 const kvRow: CSSProperties = { display: "flex", justifyContent: "space-between", fontSize: 13, color: C.cream, padding: "3px 0" };
 
+// 可收合面板標題（設施 / 風場動態 / 我的營運 共用）
+function PanelHead({ title, open, onToggle }: { title: I18n; open: boolean; onToggle: () => void }) {
+  return (
+    <div style={{ ...panelHeader, justifyContent: "space-between", cursor: "pointer" }} onClick={() => { Sfx.click(); onToggle(); }}>
+      <span style={panelTitle}>{t(title)}</span>
+      <span style={{ color: C.mist2, fontSize: 13 }}>{open ? "▾ " + t({ zh: "收合", en: "Hide" }) : "▸ " + t({ zh: "展開", en: "Show" })}</span>
+    </div>
+  );
+}
+
 export default function HubScreen({ setScreen, accent, onDispatch, onFacility, sceneName, onCycleScene, aerial, onToggleView, mode = "sim", onCycleMode, onOps, onFleet, onBuild, week = 1 }: { setScreen: (s: Screen) => void; accent: string; onDispatch?: () => void; onFacility?: (k: "vessel" | "tech" | "tool" | "codex" | "ranking" | "farms") => void; sceneName?: I18n; onCycleScene?: () => void; aerial?: boolean; onToggleView?: () => void; mode?: SceneMode; onCycleMode?: () => void; onOps?: () => void; onFleet?: () => void; onBuild?: () => void; week?: number }) {
   useLang();
   const { data, dispatch } = useGame();
@@ -63,6 +75,8 @@ export default function HubScreen({ setScreen, accent, onDispatch, onFacility, s
   const vSpec = activeVesselSpec(data);
   const goSail = () => setScreen("sail");
   const [opsOpen, setOpsOpen] = useState(true); // #6 抽屜預設展開
+  const [facOpen, setFacOpen] = useState(true); // 左側「設施」可獨立收合
+  const [farmOpen, setFarmOpen] = useState(true); // 左側「風場動態」可獨立收合
   // 新手教學高亮目標
   const acceptRef = useCoachTarget("accept");
   const marketRef = useCoachTarget("market");
@@ -142,27 +156,30 @@ export default function HubScreen({ setScreen, accent, onDispatch, onFacility, s
       {/* ───── 左側：設施 + 風場動態（單一可捲動欄，避免重疊） ───── */}
       <div style={{ position: "absolute", left: 26, top: 84, width: 292, bottom: 28, overflowY: "auto", overflowX: "hidden", display: "flex", flexDirection: "column", gap: 12 }}>
       <div style={{ ...panel, flex: "none" }}>
-        <div style={panelHeader}><span style={panelTitle}>{t({ zh: "設施", en: "Facilities" })}</span></div>
+        <PanelHead title={{ zh: "設施", en: "Facilities" }} open={facOpen} onToggle={() => setFacOpen((v) => !v)} />
+        {facOpen && (
         <div style={{ padding: "10px 10px 6px" }}>
-          <FacRow char="調" label={{ zh: "調度中心", en: "Dispatch" }} stat={stage === "available" ? { zh: "有新工單可接", en: "New order available" } : stage === "active" ? { zh: "工單進行中", en: "Order active" } : { zh: "本關已完成", en: "Stage done" }} onClick={() => { Sfx.click(); onDispatch?.(); }} />
-          <FacRow char="營" label={{ zh: "自由營運中心", en: "Ops Center" }} stat={{ zh: "無限狀況・判斷決策（衝排行）", en: "Endless situations · judgment (leaderboard)" }} onClick={() => { Sfx.click(); onOps?.(); }} />
-          <FacRow char="戰" label={{ zh: "風場戰情室", en: "Fleet Ops" }} stat={{ zh: `機組妥善 ${fleetUptime(data.fleet)}% · 待修 ${data.fleet.filter((tt) => tt.status === "fault").length}`, en: `Uptime ${fleetUptime(data.fleet)}% · ${data.fleet.filter((tt) => tt.status === "fault").length} faults` }} onClick={() => { Sfx.click(); onFleet?.(); }} />
-          <FacRow char="師" label={{ zh: "技師公會", en: "Tech Guild" }} stat={{ zh: `技師 ${data.engineers.length} 名 · 在勤 ${data.techAvail}/${data.techTotal}`, en: `${data.engineers.length} engineers · ${data.techAvail}/${data.techTotal} on duty` }} onClick={() => { Sfx.click(); onFacility?.("tech"); }} />
-          <FacRow char="工" label={{ zh: "機具工坊", en: "Workshop" }} stat={{ zh: `工具 Lv.${data.toolLevel}`, en: `Tools Lv.${data.toolLevel}` }} onClick={() => { Sfx.click(); onFacility?.("tool"); }} />
-          <FacRow char="備" label={{ zh: "備品交易所", en: "Parts Market" }} stat={{ zh: `庫存 ${invItems.length} 類`, en: `${invItems.length} part types in stock` }} onClick={() => { Sfx.click(); setScreen("market"); }} targetRef={marketRef} />
-          <FacRow char="船" label={{ zh: "船隊整備廠", en: "Fleet Yard" }} stat={{ zh: `${vSpec.icon} ${vSpec.short.zh} · ${data.ownedVessels.length} 艘 · Lv.${data.vesselLevel}`, en: `${vSpec.icon} ${vSpec.short.en} · ${data.ownedVessels.length} ships · Lv.${data.vesselLevel}` }} onClick={() => { Sfx.click(); onFacility?.("vessel"); }} />
-          <FacRow char="場" label={{ zh: "風場拓展", en: "Expand Farms" }} stat={{ zh: `營運 ${data.farmsOwned}/${FARMS.length} 座風場`, en: `${data.farmsOwned}/${FARMS.length} farms operating` }} onClick={() => { Sfx.click(); onFacility?.("farms"); }} />
-          <FacRow char="建" label={{ zh: "風場建置（番外篇）", en: "Build a Farm (Side)" }} stat={data.buildDone ? { zh: `🎉 已完工 · 品質 ${data.buildScore}`, en: `🎉 Built · quality ${data.buildScore}` } : { zh: `EPC 建置短戰役 · 階段 ${data.buildStage}/${BUILD_STAGE_COUNT}`, en: `EPC build campaign · phase ${data.buildStage}/${BUILD_STAGE_COUNT}` }} onClick={() => { Sfx.click(); onBuild?.(); }} />
+          <FacRow icon={<FacGlyph name="dispatch" />} label={{ zh: "調度中心", en: "Dispatch" }} stat={stage === "available" ? { zh: "有新工單可接", en: "New order available" } : stage === "active" ? { zh: "工單進行中", en: "Order active" } : { zh: "本關已完成", en: "Stage done" }} onClick={() => { Sfx.click(); onDispatch?.(); }} />
+          <FacRow icon={<FacGlyph name="ops" />} label={{ zh: "自由營運中心", en: "Ops Center" }} stat={{ zh: "無限狀況・判斷決策（衝排行）", en: "Endless situations · judgment (leaderboard)" }} onClick={() => { Sfx.click(); onOps?.(); }} />
+          <FacRow icon={<FacGlyph name="warroom" />} label={{ zh: "風場戰情室", en: "Fleet Ops" }} stat={{ zh: `機組妥善 ${fleetUptime(data.fleet)}% · 待修 ${data.fleet.filter((tt) => tt.status === "fault").length}`, en: `Uptime ${fleetUptime(data.fleet)}% · ${data.fleet.filter((tt) => tt.status === "fault").length} faults` }} onClick={() => { Sfx.click(); onFleet?.(); }} />
+          <FacRow icon={<img src={portraitUrl("repair_eng")} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "top center" }} />} label={{ zh: "技師公會", en: "Tech Guild" }} stat={{ zh: `技師 ${data.engineers.length} 名 · 在勤 ${data.techAvail}/${data.techTotal}`, en: `${data.engineers.length} engineers · ${data.techAvail}/${data.techTotal} on duty` }} onClick={() => { Sfx.click(); onFacility?.("tech"); }} />
+          <FacRow icon={<FacGlyph name="tool" />} label={{ zh: "機具工坊", en: "Workshop" }} stat={{ zh: `工具 Lv.${data.toolLevel}`, en: `Tools Lv.${data.toolLevel}` }} onClick={() => { Sfx.click(); onFacility?.("tool"); }} />
+          <FacRow icon={<FacGlyph name="parts" />} label={{ zh: "備品交易所", en: "Parts Market" }} stat={{ zh: `庫存 ${invItems.length} 類`, en: `${invItems.length} part types in stock` }} onClick={() => { Sfx.click(); setScreen("market"); }} targetRef={marketRef} />
+          <FacRow icon={<FacGlyph name="vessel" />} label={{ zh: "船隊整備廠", en: "Fleet Yard" }} stat={{ zh: `${vSpec.icon} ${vSpec.short.zh} · ${data.ownedVessels.length} 艘 · Lv.${data.vesselLevel}`, en: `${vSpec.icon} ${vSpec.short.en} · ${data.ownedVessels.length} ships · Lv.${data.vesselLevel}` }} onClick={() => { Sfx.click(); onFacility?.("vessel"); }} />
+          <FacRow icon={<FacGlyph name="farms" />} label={{ zh: "風場拓展", en: "Expand Farms" }} stat={{ zh: `營運 ${data.farmsOwned}/${FARMS.length} 座風場`, en: `${data.farmsOwned}/${FARMS.length} farms operating` }} onClick={() => { Sfx.click(); onFacility?.("farms"); }} />
+          <FacRow icon={<FacGlyph name="build" />} label={{ zh: "風場建置（番外篇）", en: "Build a Farm (Side)" }} stat={data.buildDone ? { zh: `🎉 已完工 · 品質 ${data.buildScore}`, en: `🎉 Built · quality ${data.buildScore}` } : { zh: `EPC 建置短戰役 · 階段 ${data.buildStage}/${BUILD_STAGE_COUNT}`, en: `EPC build campaign · phase ${data.buildStage}/${BUILD_STAGE_COUNT}` }} onClick={() => { Sfx.click(); onBuild?.(); }} />
           <div style={{ display: "flex", gap: 6 }}>
-            <FacRowMini char="鑑" label={{ zh: "圖鑑", en: "Codex" }} onClick={() => { Sfx.click(); onFacility?.("codex"); }} />
-            <FacRowMini char="榜" label={{ zh: "排行", en: "Ranking" }} onClick={() => { Sfx.click(); onFacility?.("ranking"); }} />
+            <FacRowMini icon={<FacGlyph name="codex" />} label={{ zh: "圖鑑", en: "Codex" }} onClick={() => { Sfx.click(); onFacility?.("codex"); }} />
+            <FacRowMini icon={<FacGlyph name="ranking" />} label={{ zh: "排行", en: "Ranking" }} onClick={() => { Sfx.click(); onFacility?.("ranking"); }} />
           </div>
         </div>
+        )}
       </div>
 
       {/* ───── 左側：風場動態 + 班級動態 ───── */}
       <div style={{ ...panel, flex: "none" }}>
-        <div style={panelHeader}><span style={panelTitle}>{t({ zh: "風場動態", en: "Farm Status" })}</span></div>
+        <PanelHead title={{ zh: "風場動態", en: "Farm Status" }} open={farmOpen} onToggle={() => setFarmOpen((v) => !v)} />
+        {farmOpen && (
         <div style={{ padding: "10px 12px" }}>
           <div style={kvRow}><span style={{ color: C.mist }}>{t({ zh: "海象（今日）", en: "Sea (today)" })}</span><span style={{ color: seaColor, fontWeight: 700 }}>{t(seaLabel)}</span></div>
           {/* 微觀天氣預報（#2）：未來三日 + 風暴警示 */}
@@ -243,16 +260,14 @@ export default function HubScreen({ setScreen, accent, onDispatch, onFacility, s
             )}
           </div>
         </div>
+        )}
       </div>
       </div>
 
       {/* ───── 右側：我的營運（可收納抽屜 #6）───── */}
       <div style={{ position: "absolute", right: 26, top: 84, width: 300 }}>
         <div style={{ ...panel }}>
-          <div style={{ ...panelHeader, justifyContent: "space-between", cursor: "pointer" }} onClick={() => { Sfx.click(); setOpsOpen((v) => !v); }}>
-            <span style={panelTitle}>{t({ zh: "我的營運", en: "My Operations" })}</span>
-            <span style={{ color: C.mist2, fontSize: 13 }}>{opsOpen ? "▾ " + t({ zh: "收合", en: "Hide" }) : "▸ " + t({ zh: "展開", en: "Show" })}</span>
-          </div>
+          <PanelHead title={{ zh: "我的營運", en: "My Operations" }} open={opsOpen} onToggle={() => setOpsOpen((v) => !v)} />
           {opsOpen && (
             <div style={{ padding: "12px 14px", maxHeight: 540, overflowY: "auto" }}>
               {/* 待處理工單 / 故障 */}
@@ -403,10 +418,10 @@ export default function HubScreen({ setScreen, accent, onDispatch, onFacility, s
   );
 }
 
-function FacRowMini({ char, label, onClick }: { char: string; label: I18n; onClick: () => void }) {
+function FacRowMini({ icon, label, onClick }: { icon: ReactNode; label: I18n; onClick: () => void }) {
   return (
     <div onClick={onClick} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 7, padding: "8px 0", borderRadius: 5, background: "rgba(255,255,255,.04)", cursor: "pointer", border: "1px solid rgba(214,167,84,.14)" }}>
-      <span style={{ width: 26, height: 26, borderRadius: "50%", background: "radial-gradient(circle at 50% 35%, #20586a, #0f3140)", border: "1.5px solid rgba(214,167,84,.7)", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: FONT_SERIF, fontWeight: 900, color: C.goldText, fontSize: 13 }}>{char}</span>
+      <span style={{ width: 26, height: 26, borderRadius: "50%", background: "radial-gradient(circle at 50% 35%, #20586a, #0f3140)", border: "1.5px solid rgba(214,167,84,.7)", display: "flex", alignItems: "center", justifyContent: "center", color: C.goldText }}>{icon}</span>
       <span style={{ color: C.cream, fontSize: 13, fontWeight: 700 }}>{t(label)}</span>
     </div>
   );
