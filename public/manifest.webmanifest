@@ -1,0 +1,19 @@
+{
+  "name": "離岸風場・運維傳說 / Offshore O&M Legend",
+  "short_name": "運維傳說",
+  "description": "大航海時代風格、以離岸風電運維為核心的教學遊戲。An Uncharted-Waters-style educational game for offshore wind O&M.",
+  "lang": "zh-Hant",
+  "dir": "ltr",
+  "start_url": ".",
+  "scope": ".",
+  "id": "windfarm-go",
+  "display": "standalone",
+  "orientation": "landscape",
+  "background_color": "#070d11",
+  "theme_color": "#0f282f",
+  "categories": ["education", "games"],
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+  ]
+}

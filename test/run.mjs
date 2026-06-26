@@ -1,6 +1,7 @@
 // 無外部相依的測試執行器：用 esbuild 打包遊戲邏輯（state 層，無 React）後逐項斷言。
 // 執行：npm test  （node test/run.mjs）
 import { build } from "esbuild";
+import { readFileSync, existsSync } from "node:fs";
 
 // ── 可重現的偽隨機（讓含 Math.random 的系統可決定性測試）──
 function mulberry32(seed) {
@@ -1373,6 +1374,37 @@ test("case studies: advance() records a case into seenCases/lastCase when it rol
     }
   }
   ok(triggered, "some seed triggers a case study within 60 tries");
+});
+
+// ───────────────────────── PWA(階段 1) ─────────────────────────
+test("pwa: manifest valid, app-like display, icons exist, base-agnostic", () => {
+  ok(existsSync("public/manifest.webmanifest"), "manifest exists");
+  const m = JSON.parse(readFileSync("public/manifest.webmanifest", "utf8"));
+  ok(m.name && m.short_name, "manifest has name & short_name");
+  ok(["standalone", "fullscreen", "minimal-ui"].includes(m.display), "display is app-like");
+  ok(Array.isArray(m.icons) && m.icons.length >= 1, "manifest has icons");
+  for (const ic of m.icons) ok(existsSync("public/" + ic.src), `icon '${ic.src}' exists in public/`);
+  ok(m.icons.some((ic) => /maskable/.test(ic.purpose || "")), "has a maskable icon");
+  // 相對 start_url/scope → 同時相容本機(/)與 GitHub Pages 子路徑(/windFarm-Go/)
+  eq(m.start_url, ".", "relative start_url");
+  eq(m.scope, ".", "relative scope");
+});
+test("pwa: service worker present, handles install+fetch, never caches cloud API or non-GET", () => {
+  ok(existsSync("public/sw.js"), "service worker present");
+  const sw = readFileSync("public/sw.js", "utf8");
+  ok(/addEventListener\(["']install/.test(sw), "sw has install handler");
+  ok(/addEventListener\(["']fetch/.test(sw), "sw has fetch handler");
+  ok(/method !== ["']GET["']/.test(sw), "sw bypasses non-GET (writes/API not cached)");
+  ok(/origin !== self\.location\.origin/.test(sw), "sw bypasses cross-origin (cloud backend/fonts)");
+});
+test("pwa: index.html wires manifest + theme-color + apple-touch; SW registered prod-only", () => {
+  const html = readFileSync("index.html", "utf8");
+  ok(/rel=["']manifest["']\s+href=["']manifest\.webmanifest["']/.test(html), "index links manifest (relative)");
+  ok(/name=["']theme-color["']/.test(html), "index has theme-color");
+  ok(/rel=["']apple-touch-icon["']/.test(html), "index has apple-touch-icon");
+  const main = readFileSync("src/main.tsx", "utf8");
+  ok(/import\.meta\.env\.PROD/.test(main) && /serviceWorker\.register/.test(main), "SW registered prod-only");
+  ok(/import\.meta\.env\.BASE_URL/.test(main), "SW path uses BASE_URL (GitHub Pages subpath safe)");
 });
 
 console.log(`\n${pass} passed, ${fail} failed (${pass + fail} total)`);
