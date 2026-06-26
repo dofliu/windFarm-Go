@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="離岸風場・運維傳說">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#14343f"/>
+      <stop offset="1" stop-color="#070d11"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f0d488"/>
+      <stop offset="1" stop-color="#d9a441"/>
+    </linearGradient>
+  </defs>
+  <!-- 全出血底色(maskable 安全:重要元素置中 80%) -->
+  <rect width="512" height="512" fill="url(#bg)"/>
+  <!-- 海面波浪 -->
+  <path d="M0 392 q42 -26 84 0 t84 0 t84 0 t84 0 t84 0 t84 0 V512 H0 Z" fill="#0f3140" opacity="0.9"/>
+  <path d="M0 420 q42 -22 84 0 t84 0 t84 0 t84 0 t84 0 t84 0 V512 H0 Z" fill="#15506a" opacity="0.7"/>
+  <!-- 塔架 -->
+  <rect x="247" y="196" width="18" height="210" rx="6" fill="url(#gold)"/>
+  <!-- 機艙 -->
+  <rect x="238" y="182" width="40" height="26" rx="7" fill="#ffecc4"/>
+  <!-- 三葉片(120°) -->
+  <g fill="url(#gold)" stroke="#070d11" stroke-width="3">
+    <g transform="translate(256 188)">
+      <g>
+        <path d="M0 -8 L10 -150 a10 10 0 0 0 -20 0 Z"/>
+        <path d="M0 -8 L10 -150 a10 10 0 0 0 -20 0 Z" transform="rotate(120)"/>
+        <path d="M0 -8 L10 -150 a10 10 0 0 0 -20 0 Z" transform="rotate(240)"/>
+      </g>
+      <circle r="13" fill="#ffecc4" stroke="#070d11" stroke-width="3"/>
+    </g>
+  </g>
+</svg>
