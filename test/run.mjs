@@ -56,6 +56,7 @@ const weekly = await load("src/state/weeklyChallenges.ts");
 const pack = await load("src/state/scenarioPack.ts");
 const cs = await load("src/state/caseStudies.ts");
 const trends = await load("src/state/trends.ts");
+const mastery = await load("src/state/mastery.ts");
 const R = g.reducer, I = g.INITIAL;
 
 // ───────────────────────── INITIAL 不變量 ─────────────────────────
@@ -1483,6 +1484,37 @@ test("save migration: migrateSave stamps version, fills defaults, runs vessel mi
   // 空物件 → 等同全新(帶版本)
   const fresh = g.migrateSave({});
   eq(fresh.version, g.SAVE_VERSION); eq(fresh.budget, I.budget, "empty → INITIAL budget");
+});
+
+// ───────────────────────── 知識點掌握度(#mastery) ─────────────────────────
+test("mastery: recordAnswer accumulates n/ok per key; accuracy", () => {
+  let m = {};
+  m = mastery.recordAnswer(m, ["disc:control", "kp:x"], true);
+  m = mastery.recordAnswer(m, ["disc:control"], false);
+  eq(m["disc:control"].n, 2); eq(m["disc:control"].ok, 1);
+  eq(m["kp:x"].n, 1); eq(m["kp:x"].ok, 1);
+  eq(mastery.accuracy(m["disc:control"]), 50);
+  eq(mastery.accuracy(undefined), 0, "no cell → 0");
+  eq(mastery.totalAnswered(m), 3, "total answers across keys");
+});
+test("mastery: masteryRows covers all labels; weakest needs minN", () => {
+  const labels = { a: { zh: "甲", en: "A" }, b: { zh: "乙", en: "B" }, c: { zh: "丙", en: "C" } };
+  let m = {};
+  for (let i = 0; i < 4; i++) m = mastery.recordAnswer(m, ["d:a"], true); // a: 4/4 = 100
+  m = mastery.recordAnswer(m, ["d:b"], true); m = mastery.recordAnswer(m, ["d:b"], false); // b: 1/2 = 50
+  m = mastery.recordAnswer(m, ["d:c"], false); // c: 0/1 (n=1 < minN)
+  const rows = mastery.masteryRows(m, "d", labels);
+  eq(rows.length, 3, "one row per label");
+  eq(rows.find((r) => r.key === "a").acc, 100);
+  eq(rows.find((r) => r.key === "b").acc, 50);
+  const w = mastery.weakest(rows, 2); // 只考慮 n>=2 → 只有 a(100) 與 b(50) → 弱點 b
+  eq(w.key, "b", "weakest among sufficiently-sampled is b");
+  eq(mastery.weakest([{ key: "z", label: labels.a, n: 1, ok: 0, acc: 0 }], 2), null, "insufficient sample → null");
+});
+test("mastery: RECORD_ANSWER reducer updates mastery", () => {
+  let s = R(I, { type: "RECORD_ANSWER", keys: ["cat:A"], correct: true });
+  s = R(s, { type: "RECORD_ANSWER", keys: ["cat:A"], correct: false });
+  eq(s.mastery["cat:A"].n, 2); eq(s.mastery["cat:A"].ok, 1);
 });
 
 console.log(`\n${pass} passed, ${fail} failed (${pass + fail} total)`);

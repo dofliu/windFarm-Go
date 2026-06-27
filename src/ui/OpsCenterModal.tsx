@@ -136,6 +136,8 @@ export default function OpsCenterModal({ open, onClose }: { open: boolean; onClo
     // 健康度：好的預防/監控決策回復較多；壞決策加速劣化（#1）
     const dHealth = c.good ? (tpl.cat === "C" || tpl.cat === "B" ? 3 : 1) : -3;
     dispatch({ type: "RESOLVE_TASK", dAvail: c.eff.a ?? 0, dBudget: c.eff.b ?? 0, dSafety: c.eff.s ?? 0, dGen: c.eff.g ?? 0, dHealth, xp: tpl.xp });
+    // 知識點掌握度(#mastery):記錄此任務類型的決策對錯
+    dispatch({ type: "RECORD_ANSWER", keys: [`cat:${tpl.cat}`], correct: c.good });
   };
   const nextTask = () => { Sfx.click(); setTask(generateTask()); setPicked(null); setCount((n) => n + 1); };
 

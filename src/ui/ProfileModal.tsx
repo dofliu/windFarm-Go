@@ -6,6 +6,9 @@ import { useGame } from "../state/GameContext";
 import { computeScore } from "../state/game";
 import { getProfile, displayName } from "../state/profile";
 import { ACHIEVEMENTS, ACHIEVEMENT_COUNT, loadRecord } from "../state/records";
+import { masteryRows, weakest, totalAnswered } from "../state/mastery";
+import { DISC } from "./disc";
+import { CAT_LABEL } from "../state/tasks";
 import { CLOUD_FIRST } from "../cloud/sheet";
 import { cloudEnabled } from "../cloud/api";
 import type { I18n } from "../game/systems/types";
@@ -73,6 +76,44 @@ export default function ProfileModal({ open, onClose }: { open: boolean; onClose
               </div>
             ))}
           </div>
+
+          {/* 知識點掌握度 / 弱點分析(#mastery) */}
+          {(() => {
+            const m = data.mastery ?? {};
+            const discRows = masteryRows(m, "disc", DISC).filter((r) => r.n > 0);
+            const catRows = masteryRows(m, "cat", CAT_LABEL).filter((r) => r.n > 0);
+            const accCol = (a: number) => (a >= 80 ? C.green : a >= 50 ? C.amber2 : C.red);
+            const chip = (r: { key: string; label: I18n; n: number; acc: number }) => (
+              <span key={r.key} style={{ fontSize: 11, padding: "3px 8px", borderRadius: 999, background: "rgba(255,255,255,.05)", border: `1px solid ${accCol(r.acc)}55`, color: C.cream }}>
+                {t(r.label)} <b style={{ color: accCol(r.acc) }}>{r.acc}%</b> <span style={{ color: C.mist2 }}>({r.n})</span>
+              </span>
+            );
+            const weak = weakest([...masteryRows(m, "disc", DISC), ...masteryRows(m, "cat", CAT_LABEL)]);
+            return (
+              <div style={{ marginBottom: 18 }}>
+                <div style={{ color: C.goldText, fontSize: 13.5, fontWeight: 900, fontFamily: FONT_SERIF, marginBottom: 8 }}>🎓 {t({ zh: "知識點掌握度", en: "Knowledge Mastery" })}</div>
+                {totalAnswered(m) === 0 ? (
+                  <div style={{ fontSize: 12, color: C.mist }}>{t({ zh: "尚無作答資料 —— 完成維修診斷測驗或自由營運中心任務後,這裡會顯示你各科別/任務類型的正確率與弱點補強建議。", en: "No answers yet — complete repair-diagnosis quizzes or Ops-Center tasks and your per-discipline / per-category accuracy and weak-spot tips will appear here." })}</div>
+                ) : (
+                  <>
+                    {discRows.length > 0 && (<>
+                      <div style={{ fontSize: 11, color: C.mist, margin: "2px 0 5px" }}>{t({ zh: "診斷測驗 · 各科別正確率", en: "Diagnosis quiz · per discipline" })}</div>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 8 }}>{discRows.map(chip)}</div>
+                    </>)}
+                    {catRows.length > 0 && (<>
+                      <div style={{ fontSize: 11, color: C.mist, margin: "2px 0 5px" }}>{t({ zh: "營運任務 · 各類型正確率", en: "Ops tasks · per category" })}</div>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 8 }}>{catRows.map(chip)}</div>
+                    </>)}
+                    {weak && weak.acc < 80 && (
+                      <div style={{ fontSize: 11.5, color: "#cfe0e6", padding: "7px 9px", borderRadius: 5, background: "rgba(220,100,80,.1)", border: "1px solid rgba(220,100,80,.3)" }}>
+                        ⚠ {t({ zh: `弱點:「${t(weak.label)}」正確率 ${weak.acc}%(${weak.n} 題)。建議到「圖鑑」複習該類故障,或在「自由營運中心」多練同類題鞏固。`, en: `Weak spot: "${t(weak.label)}" at ${weak.acc}% (${weak.n} answered). Review this area in the Codex, or drill similar tasks in the Ops Center.` })}
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            );
+          })()}
 
           {/* 成就牆 */}
           <div style={{ color: C.goldText, fontSize: 13.5, fontWeight: 900, fontFamily: FONT_SERIF, marginBottom: 10 }}>{t({ zh: "成就", en: "Achievements" })}</div>

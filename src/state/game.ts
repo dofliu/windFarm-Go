@@ -4,6 +4,7 @@ import { rollEvent, type EventStamp } from "./events";
 import { incidentAt, randomIncidentId } from "./incidents";
 import { rollCaseStudy } from "./caseStudies";
 import { buildTrendPoint, pushHistory, type TrendPoint } from "./trends";
+import { recordAnswer, type Mastery } from "./mastery";
 import { BUILD_STAGES, BUILD_STAGE_COUNT, BUILD_REWARD_BASE, BUILD_REWARD_PER_SCORE, BUILD_REWARD_XP } from "./construction";
 import { VESSELS, vesselSpec, type VesselClass } from "./vessels";
 
@@ -254,6 +255,7 @@ export interface GameData {
   seenCases: string[]; // 已解鎖/看過的真實案例研究 id（永久收錄於圖鑑案例檔）
   lastCase: { id: string; day: number } | null; // 最近偶發的案例快報（Hub 提示用）
   history: TrendPoint[]; // 營運趨勢歷史（#5）：每次推進日累積一點,供趨勢圖/賽後復盤
+  mastery: Mastery; // 知識點掌握度（#mastery）：依科別/任務類型統計作答正確率,找弱點補強
 }
 
 // 每日任務狀態（#78）：綁遊戲內日；baseline 記錄當日起始累積值，達成以增量/當前狀態判定。
@@ -467,6 +469,7 @@ export const INITIAL: GameData = {
   seenCases: [],
   lastCase: null,
   history: [],
+  mastery: {},
 };
 
 // 計畫性定期保養是否到期（#81）：距上次保養 ≥ 間隔天數
@@ -704,6 +707,7 @@ export type Action =
   | { type: "CLAIM_DAILY"; id: string; xp: number; cash: number } // 發放某每日任務獎勵（#78）
   | { type: "ROLL_WEEKLY"; weekly: WeeklyState } // 產生當週主題挑戰（#79，由 WeeklyTracker 於週推進時派發）
   | { type: "CLAIM_WEEKLY"; xp: number; cash: number } // 發放本週挑戰獎勵（#79）
+  | { type: "RECORD_ANSWER"; keys: string[]; correct: boolean } // 記錄一次作答(知識點掌握度 #mastery)
   | { type: "RESET" };
 
 export const TEST_GRANT = 50_000_000; // 一次測試加值金額 ◎（測試/沙盒用）
@@ -1027,6 +1031,8 @@ export function reducer(s: GameData, a: Action): GameData {
       if (!wk || wk.claimed) return s; // 已領 → 忽略(冪等)
       return { ...s, budget: s.budget + Math.max(0, a.cash), xp: s.xp + Math.max(0, a.xp), weekly: { ...wk, claimed: true, streak: wk.streak + 1 } };
     }
+    case "RECORD_ANSWER":
+      return { ...s, mastery: recordAnswer(s.mastery ?? {}, a.keys, a.correct) };
     case "GRANT_FUNDS":
       return { ...s, budget: s.budget + Math.max(0, a.amount) };
     case "LOAD_STATE":
