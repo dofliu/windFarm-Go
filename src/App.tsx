@@ -1,21 +1,10 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { C } from "./ui/tokens";
 import SceneBackground from "./ui/SceneBackground";
 import TopBar from "./ui/TopBar";
 import HubScreen from "./ui/screens/HubScreen";
-import MarketScreen from "./ui/screens/MarketScreen";
-import SailScreen from "./ui/screens/SailScreen";
-import RepairScreen from "./ui/screens/RepairScreen";
 import DialogueLayer from "./ui/DialogueLayer";
 import TutorialOverlay from "./ui/TutorialOverlay";
-import CourseModal from "./ui/CourseModal";
-import DispatchModal from "./ui/DispatchModal";
-import OpsCenterModal from "./ui/OpsCenterModal";
-import FleetOpsModal from "./ui/FleetOpsModal";
-import ConstructionModal from "./ui/ConstructionModal";
-import FacilityModal, { type Facility } from "./ui/FacilityModal";
-import CaseFileModal from "./ui/CaseFileModal";
-import TrendsModal from "./ui/TrendsModal";
 import Toaster from "./ui/Toaster";
 import { LedgerToaster } from "./ui/Ledger";
 import LoginScreen from "./ui/LoginScreen";
@@ -23,9 +12,22 @@ import ScoreSync from "./ui/ScoreSync";
 import RecordsTracker from "./ui/RecordsTracker";
 import DailyTracker from "./ui/DailyTracker";
 import WeeklyTracker from "./ui/WeeklyTracker";
-import ProfileModal from "./ui/ProfileModal";
-import TeacherModal from "./ui/TeacherModal";
 import WelcomeOnLogin from "./ui/WelcomeOnLogin";
+import type { Facility } from "./ui/FacilityModal";
+// Code-split:較重的非首屏畫面/彈窗改為「打開時才載入對應 chunk」,縮小初始包(行動裝置更快)
+const MarketScreen = lazy(() => import("./ui/screens/MarketScreen"));
+const SailScreen = lazy(() => import("./ui/screens/SailScreen"));
+const RepairScreen = lazy(() => import("./ui/screens/RepairScreen"));
+const CourseModal = lazy(() => import("./ui/CourseModal"));
+const DispatchModal = lazy(() => import("./ui/DispatchModal"));
+const OpsCenterModal = lazy(() => import("./ui/OpsCenterModal"));
+const FleetOpsModal = lazy(() => import("./ui/FleetOpsModal"));
+const ConstructionModal = lazy(() => import("./ui/ConstructionModal"));
+const FacilityModal = lazy(() => import("./ui/FacilityModal"));
+const CaseFileModal = lazy(() => import("./ui/CaseFileModal"));
+const TrendsModal = lazy(() => import("./ui/TrendsModal"));
+const ProfileModal = lazy(() => import("./ui/ProfileModal"));
+const TeacherModal = lazy(() => import("./ui/TeacherModal"));
 import { GameProvider } from "./state/GameContext";
 import { DialogueProvider } from "./state/DialogueContext";
 import { TutorialProvider } from "./state/TutorialContext";
@@ -133,23 +135,28 @@ export default function App() {
           {(mode !== "sim" || showSharedBg) && <SceneBackground sceneId={sceneId} aerial={aerial && screen === "hub"} mode={mode} imageFile={imageFile} />}
 
           {screen === "hub" && <HubScreen setScreen={setScreen} accent={accent} onDispatch={() => setShowDispatch(true)} onFacility={(k) => setFacility(k)} sceneName={sceneName} onCycleScene={cycleScene} aerial={aerial} onToggleView={() => setAerial((v) => !v)} mode={mode} onCycleMode={cycleMode} onOps={() => setShowOps(true)} onFleet={() => setShowFleet(true)} onBuild={() => setShowBuild(true)} onCaseFile={() => setShowCaseFile(true)} onTrends={() => setShowTrends(true)} week={week} />}
-          {screen === "market" && <MarketScreen accent={accent} />}
-          {screen === "sail" && <SailScreen setScreen={setScreen} accent={accent} mode={mode} />}
-          {screen === "repair" && <RepairScreen setScreen={setScreen} mode={mode} />}
+          <Suspense fallback={null}>
+            {screen === "market" && <MarketScreen accent={accent} />}
+            {screen === "sail" && <SailScreen setScreen={setScreen} accent={accent} mode={mode} />}
+            {screen === "repair" && <RepairScreen setScreen={setScreen} mode={mode} />}
+          </Suspense>
 
           <TopBar screen={screen} setScreen={setScreen} accent={accent} onGear={() => setShowCourse(true)} onLogout={logout} onProfile={() => setShowProfile(true)} />
           <DialogueLayer />
           <TutorialOverlay screen={screen} />
-          <CourseModal open={showCourse} onClose={() => setShowCourse(false)} week={week} onSetWeek={changeWeek} onTeacher={() => { setShowCourse(false); setShowTeacher(true); }} />
-          <DispatchModal open={showDispatch} onClose={() => setShowDispatch(false)} />
-          <OpsCenterModal open={showOps} onClose={() => setShowOps(false)} />
-          <FleetOpsModal open={showFleet} onClose={() => setShowFleet(false)} />
-          <ConstructionModal open={showBuild} onClose={() => setShowBuild(false)} />
-          <FacilityModal kind={facility} onClose={() => setFacility(null)} />
-          <CaseFileModal open={showCaseFile} onClose={() => setShowCaseFile(false)} />
-          <TrendsModal open={showTrends} onClose={() => setShowTrends(false)} />
-          <ProfileModal open={showProfile} onClose={() => setShowProfile(false)} />
-          <TeacherModal open={showTeacher} onClose={() => setShowTeacher(false)} />
+          {/* 彈窗:打開時才掛載 → 對應 chunk 才下載(code-split) */}
+          <Suspense fallback={null}>
+            {showCourse && <CourseModal open onClose={() => setShowCourse(false)} week={week} onSetWeek={changeWeek} onTeacher={() => { setShowCourse(false); setShowTeacher(true); }} />}
+            {showDispatch && <DispatchModal open onClose={() => setShowDispatch(false)} />}
+            {showOps && <OpsCenterModal open onClose={() => setShowOps(false)} />}
+            {showFleet && <FleetOpsModal open onClose={() => setShowFleet(false)} />}
+            {showBuild && <ConstructionModal open onClose={() => setShowBuild(false)} />}
+            {facility && <FacilityModal kind={facility} onClose={() => setFacility(null)} />}
+            {showCaseFile && <CaseFileModal open onClose={() => setShowCaseFile(false)} />}
+            {showTrends && <TrendsModal open onClose={() => setShowTrends(false)} />}
+            {showProfile && <ProfileModal open onClose={() => setShowProfile(false)} />}
+            {showTeacher && <TeacherModal open onClose={() => setShowTeacher(false)} />}
+          </Suspense>
           <ScoreSync />
           <RecordsTracker />
           <DailyTracker />

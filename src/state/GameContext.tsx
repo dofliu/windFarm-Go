@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useReducer, type ReactNode } from "react";
-import { INITIAL, reducer, migrateVessels, computeScore, type Action, type GameData } from "./game";
+import { INITIAL, reducer, migrateSave, computeScore, type Action, type GameData } from "./game";
 import { getProfile, saveKeyFor, isAuthed } from "./profile";
 import { SAVE_SYNC, loadCloudState, saveCloudState, CLOUD_FIRST } from "../cloud/sheet";
 import { cloudEnabled, identityOf, loadStateCloud, saveStateCloud, pickNewer, type SaveEnvelope } from "../cloud/api";
@@ -30,7 +30,7 @@ function writeMeta(savedAt: number): void {
 function load(): GameData {
   try {
     const raw = localStorage.getItem(saveKey());
-    if (raw) return migrateVessels({ ...INITIAL, ...JSON.parse(raw) });
+    if (raw) return migrateSave(JSON.parse(raw));
   } catch {
     // 忽略損壞存檔
   }

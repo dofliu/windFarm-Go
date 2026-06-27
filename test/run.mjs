@@ -1468,6 +1468,23 @@ test("trends: advance() appends a history point each day-advance (#5)", () => {
   eq(s2.history.length, 2, "accumulates across advances");
 });
 
+// ───────────────────────── 存檔版本化 / 遷移 ─────────────────────────
+test("save migration: migrateSave stamps version, fills defaults, runs vessel migration, keeps provided", () => {
+  // 舊存檔(無 version、無 ownedVessels、舊 ownsSOV) → 補齊 + 標版
+  const old = { budget: 12345, ownsSOV: true, day: 99 };
+  const m = g.migrateSave(old);
+  eq(m.version, g.SAVE_VERSION, "version stamped");
+  eq(m.budget, 12345, "provided field kept");
+  eq(m.day, 99, "provided field kept");
+  ok(Array.isArray(m.ownedVessels) && m.ownedVessels.includes("sov"), "vessel migration applied (ownsSOV→sov in fleet)");
+  ok(Array.isArray(m.fleet) && m.fleet.length > 0, "missing field defaulted from INITIAL (fleet)");
+  ok(Array.isArray(m.history), "new field history defaulted");
+  eq(m.daily, null, "new field daily defaulted");
+  // 空物件 → 等同全新(帶版本)
+  const fresh = g.migrateSave({});
+  eq(fresh.version, g.SAVE_VERSION); eq(fresh.budget, I.budget, "empty → INITIAL budget");
+});
+
 console.log(`\n${pass} passed, ${fail} failed (${pass + fail} total)`);
 if (fail) { console.log("\nFailures:"); for (const f of fails) console.log("  ✗ " + f); process.exit(1); }
 console.log("✓ all green");

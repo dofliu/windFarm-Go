@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { lazy, Suspense, useMemo, useState } from "react";
 import { C, FONT_SERIF, primaryBg, panel } from "./tokens";
 import { t } from "../game/systems/i18n";
 import { useLang } from "./useLang";
@@ -9,6 +9,7 @@ import { cloudEnabled, isOnline, registerAccount, loginAccount } from "../cloud/
 
 type Mode = "picker" | "pin" | "create" | "remote";
 const useCloud = (): boolean => CLOUD_FIRST && cloudEnabled();
+const TeacherModal = lazy(() => import("./TeacherModal")); // 教師入口:延後載入,不進初始包
 
 // 開場登入（強制 PIN）：本機帳號清單 → 選擇帳號輸入 PIN，或新建帳號（暱稱+班級碼+PIN）。
 // 同一台教室電腦可保有多位學生帳號，各自獨立存檔與紀錄。另保留「訪客」單機試玩（不計排行/紀錄）。
@@ -26,6 +27,7 @@ export default function LoginScreen({ onDone }: { onDone: () => void }) {
   const [pin2, setPin2] = useState("");
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
+  const [showTeacher, setShowTeacher] = useState(false); // 教師檢視入口(免先登入)
 
   const field: React.CSSProperties = {
     width: "100%", padding: "11px 14px", marginTop: 6, borderRadius: 6,
@@ -220,8 +222,17 @@ export default function LoginScreen({ onDone }: { onDone: () => void }) {
           <div onClick={enterGuest} style={{ textAlign: "center", marginTop: 16, paddingTop: 12, borderTop: "1px solid rgba(255,255,255,.08)", fontSize: 12, color: C.mist2, cursor: "pointer" }}>
             {t({ zh: "訪客試玩（單機，不計排行與紀錄）", en: "Play as guest (local, no leaderboard/records)" })}
           </div>
+          {/* 教師入口:不必先登入即可開教師檢視(班級碼 + 教師碼) */}
+          <div onClick={() => { Sfx.click(); setShowTeacher(true); }} style={{ textAlign: "center", marginTop: 10, fontSize: 12, color: C.mist2, cursor: "pointer", textDecoration: "underline" }}>
+            👩‍🏫 {t({ zh: "教師檢視入口", en: "Instructor view" })}
+          </div>
         </div>
       </div>
+      {showTeacher && (
+        <Suspense fallback={null}>
+          <TeacherModal open onClose={() => setShowTeacher(false)} />
+        </Suspense>
+      )}
     </div>
   );
 }
