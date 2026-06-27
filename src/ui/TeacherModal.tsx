@@ -4,7 +4,7 @@ import { t } from "../game/systems/i18n";
 import { useLang } from "./useLang";
 import { getProfile } from "../state/profile";
 import { Sfx } from "../audio/sfx";
-import { cloudEnabled, fetchClassProgress, type ClassRow } from "../cloud/api";
+import { cloudEnabled, fetchClassProgress, classRowsToCsv, type ClassRow } from "../cloud/api";
 
 type Status = "form" | "loading" | "ok" | "error";
 
@@ -21,6 +21,25 @@ export default function TeacherModal({ open, onClose }: { open: boolean; onClose
 
   const reset = () => { setStatus("form"); setRows([]); setErr(""); };
   const close = () => { reset(); setCode(""); onClose(); };
+
+  // 匯出 CSV(教師登分/課後分析):前端產檔下載,不經雲端。
+  const exportCsv = () => {
+    try {
+      Sfx.click();
+      const csv = classRowsToCsv(rows);
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `class-${classCode.trim() || "export"}-${new Date().toISOString().slice(0, 10)}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch {
+      // 忽略(極少數瀏覽器限制)
+    }
+  };
 
   const submit = async () => {
     if (!classCode.trim() || !code.trim()) { setErr(t({ zh: "請輸入班級碼與教師碼", en: "Enter class code & teacher code" })); return; }
@@ -75,7 +94,10 @@ export default function TeacherModal({ open, onClose }: { open: boolean; onClose
             <>
               <div style={{ display: "flex", alignItems: "center", marginBottom: 10 }}>
                 <div style={{ color: C.goldText, fontWeight: 900, fontFamily: FONT_SERIF, fontSize: 15 }}>{t({ zh: "班級", en: "Class" })} {classCode} · {rows.length} {t({ zh: "位學生", en: "students" })}</div>
-                <button onClick={reset} style={{ marginLeft: "auto", padding: "6px 12px", borderRadius: 5, border: "1px solid rgba(214,167,84,.5)", background: "rgba(15,40,50,.82)", color: C.cream, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>{t({ zh: "← 重新查詢", en: "← New query" })}</button>
+                {rows.length > 0 && (
+                  <button onClick={exportCsv} style={{ marginLeft: "auto", padding: "6px 12px", borderRadius: 5, border: "1px solid rgba(127,206,142,.5)", background: "rgba(127,206,142,.14)", color: C.green, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>⬇ {t({ zh: "匯出 CSV", en: "Export CSV" })}</button>
+                )}
+                <button onClick={reset} style={{ marginLeft: rows.length > 0 ? 8 : "auto", padding: "6px 12px", borderRadius: 5, border: "1px solid rgba(214,167,84,.5)", background: "rgba(15,40,50,.82)", color: C.cream, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>{t({ zh: "← 重新查詢", en: "← New query" })}</button>
               </div>
               {rows.length === 0 ? (
                 <div style={{ color: C.mist, fontSize: 13, padding: "24px 0", textAlign: "center" }}>{t({ zh: "此班尚無學生存檔資料。", en: "No student saves for this class yet." })}</div>
