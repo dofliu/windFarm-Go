@@ -166,6 +166,86 @@ export const CASE_STUDIES: CaseStudy[] = [
     sources: ["https://www.mdpi.com/2077-1312/11/6/1153", "https://www.dnv.com/expert-story/maritime-impact/Offshore-wind-JIP-lays-ground-for-jack-up-installation-standards-as-industry-expands/"],
     weight: 1, sensitivity: "low",
   },
+
+  // ───────── 第二批(去識別技術重現:皆為業界公認、文獻充分的真實現象,以中性代稱呈現)─────────
+  {
+    id: "cs_tp_coating_corrosion", framing: "anonymized-technical", category: "foundation", discipline: "structural", minTier: 2,
+    title: { zh: "過渡段塗層劣化與飛濺區腐蝕(去識別)", en: "Transition-piece coating breakdown & splash-zone corrosion (anonymized)" },
+    scenario: { zh: "某北海風場數年後檢查發現,多支過渡段在飛濺/浪花區的防蝕塗層因鹽霧、紫外線與機械磨損大面積剝落,鋼材開始鏽蝕;陰極保護不涵蓋大氣/飛濺區,該區僅靠塗層。", en: "A North Sea fleet's inspection found the protective coating on many transition pieces had failed across the splash zone (salt spray, UV, abrasion), exposing steel to rust; cathodic protection doesn't cover the atmospheric/splash zone — coating is the only barrier there." },
+    lesson: { zh: "飛濺區是全結構腐蝕最嚴酷處:設計時就要加強該區塗層等級;運維定期做近接目視/塗層厚度量測,及早局部修補遠比整段重塗便宜;確認 CP 涵蓋範圍與飛濺區防護分工。", en: "The splash zone is the harshest corrosion environment: specify a higher coating spec there by design; do recurring close-visual/coating-thickness surveys and patch early — far cheaper than a full re-coat; confirm what CP covers vs what coating must." },
+    choices: [
+      { label: { zh: "定期塗層檢查 + 早期局部修補,確認 CP 涵蓋", en: "Recurring coating surveys + early patch repair; verify CP coverage" }, good: true, feedback: { zh: "✓ 飛濺區靠塗層,趨勢檢查 + 早修才不會演成結構性腐蝕。", en: "✓ The splash zone relies on coating — survey & early patch before it becomes structural." }, eff: { a: 2, b: -300000 } },
+      { label: { zh: "等大面積生鏽再一次處理", en: "Wait until widespread rust, then deal with it" }, good: false, feedback: { zh: "✗ 屆時可能已危及結構,需昂貴的繩索/平台整段重塗。", en: "✗ By then it may threaten the structure — an expensive full re-coat." }, eff: { a: -3, s: 1 } },
+    ],
+    relatesTo: { faultId: "tower_corrosion", incidentId: "corrosion" },
+    sources: ["業界公認現象:飛濺區腐蝕與塗層維護(去識別技術重現) / Well-documented industry phenomenon (anonymized)"],
+    weight: 2, sensitivity: "low",
+  },
+  {
+    id: "cs_ice_throw", framing: "anonymized-technical", category: "ice", discipline: "hse", minTier: 2,
+    title: { zh: "結冰甩冰公安風險(去識別)", en: "Ice throw / ice-fall hazard (anonymized)" },
+    scenario: { zh: "某寒冷氣候風場冬季葉片結冰:運轉時冰塊可被甩出達數百公尺,停機時也可能自塔上墜落,危及人員、車輛與鄰近設施。功率曲線異常與振動是結冰的早期訊號。", en: "At a cold-climate site, winter blade icing means ice can be thrown hundreds of metres while running, or fall from the tower when stopped — endangering people, vehicles and nearby assets. Power-curve deviation and vibration are early icing tells." },
+    lesson: { zh: "結冰是可預期的季節風險:以結冰偵測(功率/振動異常或結冰感測器)觸發自動停機/降載;設管制半徑與警示;考慮葉片加熱/疏冰塗層;運維人員冬季進場前先確認無結冰。安全永遠優先於發電。", en: "Icing is a predictable seasonal risk: trigger auto stop/derate via ice detection (power/vibration anomaly or ice sensors); set a signed exclusion radius; consider blade heating / ice-phobic coatings; verify ice-free before winter access. Safety always before output." },
+    choices: [
+      { label: { zh: "裝結冰偵測 → 自動停機/降載 + 設管制半徑警示", en: "Add ice detection → auto stop/derate + signed exclusion radius" }, good: true, feedback: { zh: "✓ 安全優先:偵測結冰即停機、劃管制區,冬季進場先確認無結冰。", en: "✓ Safety first: detect icing → stop, mark an exclusion zone, verify ice-free before winter access." }, eff: { a: 1, s: -1 } },
+      { label: { zh: "照常運轉,進場也不特別管結冰", en: "Keep running; don't manage icing during access" }, good: false, feedback: { zh: "✗ 甩冰/墜冰是真實傷亡風險,且結冰運轉增加載荷與磨損。", en: "✗ Thrown/falling ice is a real injury risk, and iced operation adds loads & wear." }, eff: { a: -2, s: 2 } },
+    ],
+    relatesTo: {},
+    sources: ["業界公認現象:冷氣候結冰甩冰風險與停機策略(去識別) / Cold-climate ice-throw guidance (anonymized)"],
+    weight: 1, sensitivity: "low",
+  },
+  {
+    id: "cs_export_cable_outage", framing: "anonymized-technical", category: "cable", discipline: "electrical", minTier: 3,
+    title: { zh: "出口海纜單點故障 → 長期停電(去識別)", en: "Export-cable single-point failure → long outage (anonymized)" },
+    scenario: { zh: "某風場唯一出口海纜發生故障,整場併網中斷。海纜維修需專業敷纜船 + 備纜 + 天氣窗,停電長達數月;在 OFTO/可用率制度下另遭收入調整重罰。", en: "A farm's sole export cable failed, cutting the whole site off-grid. Subsea cable repair needs a specialist cable-lay vessel + spare cable + weather window, so the outage ran for months; under an availability/OFTO regime it also drew a heavy revenue adjustment." },
+    lesson: { zh: "出口海纜是單點故障風險最高的資產:備援(N-1/雙迴路)、備纜庫存、與敷纜船的框架合約、快速定位(TDR/分散式測溫)都是縮短停電的關鍵;把『長停電損失』計入設計與保險取捨。", en: "The export cable is the highest single-point-of-failure risk: redundancy (N-1), spare-cable stock, a framework agreement with a cable-lay vessel, and fast fault location (TDR/DTS) all cut outage time; price the long-outage loss into design & insurance." },
+    choices: [
+      { label: { zh: "備纜 + 敷纜船框架合約 + 快速定位能力", en: "Spare cable + cable-vessel framework + fast fault-location" }, good: true, feedback: { zh: "✓ 縮短停電靠事前準備:備纜、船期、定位手段缺一不可。", en: "✓ Shorter outages come from preparation: spare, vessel access, locating tools." }, eff: { a: 3, b: -1000000 } },
+      { label: { zh: "不做備援,出事再臨時找船", en: "No redundancy; find a vessel only after it fails" }, good: false, feedback: { zh: "✗ 敷纜船與備纜前置期長,臨時找=數月停電與重罰。", en: "✗ Cable vessels & spares have long lead times — improvising means months offline." }, eff: { a: -6, s: 1, g: -120 } },
+    ],
+    relatesTo: { faultId: "cable_insulation", incidentId: "cable" },
+    sources: ["業界公認風險:出口海纜單點故障與長停電(去識別) / Export-cable single-point-failure risk (anonymized)"],
+    weight: 1, sensitivity: "low",
+  },
+  {
+    id: "cs_ctv_transfer_collision", framing: "anonymized-technical", category: "vessel", discipline: "hse", minTier: 3,
+    title: { zh: "CTV 頂靠/人員轉移碰撞(去識別)", en: "CTV bump-on / crew-transfer collision (anonymized)" },
+    scenario: { zh: "某人員轉移船(CTV)在頂靠基礎登乘平台時,因海象偏高、操作或 SIMOPS 協調不良發生碰撞,造成人員受傷與結構/船艏損傷。", en: "A crew-transfer vessel (CTV) collided while bumping onto the boat-landing — driven by marginal sea state, handling, or poor SIMOPS coordination — injuring crew and damaging the structure/bow fender." },
+    lesson: { zh: "人員轉移是離岸傷害熱點:嚴守作業海象限值(Hs)、標準頂靠程序、三點接觸登乘、SIMOPS 協調與船員訓練不可省;安全限值不可為趕工而放寬。", en: "Crew transfer is an injury hotspot: respect the sea-state (Hs) limit, standard bump-on procedure, three-points-of-contact, SIMOPS coordination and crew training — never relax limits to save time." },
+    choices: [
+      { label: { zh: "遵守 Hs 限值 + SIMOPS 協調 + 標準登乘程序", en: "Respect Hs limit + SIMOPS coordination + standard transfer SOP" }, good: true, feedback: { zh: "✓ 轉移安全靠限值與程序,海象超標就改期或遠端處理。", en: "✓ Transfer safety is limits + procedure; over-limit → reschedule or go remote." }, eff: { s: -1 } },
+      { label: { zh: "海象超標仍硬頂趕工", en: "Bump on over-limit to keep the schedule" }, good: false, feedback: { zh: "✗ 趕工放寬限值是傷亡與停工的直接成因。", en: "✗ Relaxing limits to chase schedule directly causes injuries & downtime." }, eff: { s: 2, a: -2 } },
+    ],
+    relatesTo: {},
+    sources: ["業界公認風險:CTV 人員轉移作業安全(去識別) / CTV crew-transfer safety (anonymized)"],
+    weight: 1, sensitivity: "medium",
+  },
+  {
+    id: "cs_cable_burial_depth", framing: "anonymized-technical", category: "cable", discipline: "electrical", minTier: 3,
+    title: { zh: "海纜埋設深度不足 → 外露風險(去識別)", en: "Insufficient cable burial depth → exposure risk (anonymized)" },
+    scenario: { zh: "某風場部分海纜因海床條件與敷設工法,埋設深度不足甚至外露,易受拋錨、拖網與沖刷威脅,事後需拋石/加套管的補救工程,成本高昂。", en: "Owing to seabed conditions and the lay method, parts of a farm's cable ended up under-buried or exposed — vulnerable to anchors, trawling and scour — needing costly rock-dump / mattress remediation later." },
+    lesson: { zh: "埋設深度(DoL)應依海床移動性與漁業/航運風險評估(CBRA/BAS)決定;敷後以 ROV/測深驗證『實際』DoL,不足處及早補救;外露海纜屬高風險,主動巡檢勝過被動等故障。", en: "Depth-of-lowering should follow a cable burial risk assessment (seabed mobility + fishing/shipping); verify AS-LAID depth by ROV/survey, remediate shortfalls early; exposed cable is high-risk — proactive survey beats waiting for a fault." },
+    choices: [
+      { label: { zh: "敷後驗證實際埋深 + 不足段及早補救", en: "Verify as-laid burial + remediate shortfalls early" }, good: true, feedback: { zh: "✓ 信任但要驗證:ROV 量實際 DoL,外露段趁未受損先保護。", en: "✓ Trust but verify: ROV-measure actual DoL; protect exposed runs before damage." }, eff: { a: 2, b: -700000 } },
+      { label: { zh: "相信敷設程序,不另行驗證", en: "Trust the lay procedure; don't survey" }, good: false, feedback: { zh: "✗ 實際埋深常與計畫有落差,外露段遲早被勾損跳機。", en: "✗ As-laid depth often differs from plan — exposed runs eventually get snagged." }, eff: { a: -4, s: 1 } },
+    ],
+    relatesTo: { faultId: "cable_insulation", incidentId: "cable" },
+    sources: ["業界公認風險:海纜埋設深度與外露(去識別) / Cable burial-depth & exposure risk (anonymized)"],
+    weight: 1, sensitivity: "low",
+  },
+  {
+    id: "cs_jackup_tow_stability", framing: "anonymized-technical", category: "vessel", discipline: "hse", minTier: 4,
+    title: { zh: "自升船拖航/就位穩定性事故(去識別)", en: "Jack-up tow & positioning stability incident (anonymized)" },
+    scenario: { zh: "某自升式作業船在拖航或就位過程,因壓載計畫、天氣窗判斷或海床評估不足,發生觸底/傾斜事故,造成延誤與損失。", en: "During tow or positioning, a jack-up vessel suffered a grounding/listing incident from inadequate ballast planning, weather-window judgment or seabed assessment — causing delay and loss." },
+    lesson: { zh: "與『spudcan 穿刺』案例互補:下海與在海上都要把海床與海象當主要安全系統。海事作業檢驗(MWS)、拖航穩定性與天氣窗、壓載計畫、就位海床評估缺一不可。", en: "Complements the spudcan punch-through case: at sea and on station, treat seabed & metocean as primary safety systems. Marine warranty survey (MWS), tow stability & weather windows, ballast planning and on-station geotech are all essential." },
+    choices: [
+      { label: { zh: "MWS 審查 + 拖航穩定性/天氣窗 + 壓載計畫", en: "MWS review + tow stability/weather window + ballast plan" }, good: true, feedback: { zh: "✓ 海事作業靠審查與計畫,別賭天氣與海床。", en: "✓ Marine ops rely on review & planning — don't gamble weather or seabed." }, eff: { a: 2, b: -500000 } },
+      { label: { zh: "趕天氣窗略過海事審查", en: "Skip the marine survey to chase the window" }, good: false, feedback: { zh: "✗ 略過 MWS 是觸底/傾覆與重大損失的常見前因。", en: "✗ Skipping MWS is a common precursor to grounding/capsize and major loss." }, eff: { a: -6, s: 2 } },
+    ],
+    relatesTo: { incidentId: "lift" },
+    sources: ["業界公認風險:自升船拖航/就位穩定性(去識別) / Jack-up tow & positioning stability (anonymized)"],
+    weight: 1, sensitivity: "low",
+  },
 ];
 
 export const caseAt = (id: string | undefined): CaseStudy | undefined => CASE_STUDIES.find((c) => c.id === id);

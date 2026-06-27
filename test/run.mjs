@@ -1298,7 +1298,7 @@ test("content expansion: new tier-gated faults/incidents/parts slot in cleanly (
 // ───────────────────────── 真實案例研究事件（case studies） ─────────────────────────
 test("case studies: catalog complete & well-formed", () => {
   const C = cs.CASE_STUDIES;
-  ok(C.length >= 9, `>=9 cases (got ${C.length})`);
+  ok(C.length >= 16, `>=16 cases incl. 2nd batch (got ${C.length})`);
   const ids = C.map((c) => c.id);
   eq(ids.length, new Set(ids).size, "case ids unique");
   const cats = new Set(["foundation", "gearbox_bearing", "blade", "cable", "electrical_fire", "vessel", "bolt", "ice"]);
@@ -1385,6 +1385,10 @@ test("pwa: manifest valid, app-like display, icons exist, base-agnostic", () => 
   ok(Array.isArray(m.icons) && m.icons.length >= 1, "manifest has icons");
   for (const ic of m.icons) ok(existsSync("public/" + ic.src), `icon '${ic.src}' exists in public/`);
   ok(m.icons.some((ic) => /maskable/.test(ic.purpose || "")), "has a maskable icon");
+  // PNG 圖示(iOS/通用):存在且為真 PNG;apple-touch-icon 亦為 PNG
+  const isPng = (p) => { const b = readFileSync(p); return b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4e && b[3] === 0x47; };
+  for (const f of ["public/icon-192.png", "public/icon-512.png", "public/apple-touch-icon-180.png"]) { ok(existsSync(f), `${f} exists`); ok(isPng(f), `${f} is a valid PNG`); }
+  ok(m.icons.some((ic) => ic.type === "image/png"), "manifest references PNG icons");
   // 相對 start_url/scope → 同時相容本機(/)與 GitHub Pages 子路徑(/windFarm-Go/)
   eq(m.start_url, ".", "relative start_url");
   eq(m.scope, ".", "relative scope");
