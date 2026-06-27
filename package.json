@@ -32,7 +32,8 @@
     "typecheck": "tsc --noEmit",
     "test": "node test/run.mjs",
     "sim": "node test/sim.mjs",
-    "stress": "node test/stress.mjs"
+    "stress": "node test/stress.mjs",
+    "live-check": "node test/live-check.mjs"
   },
   "dependencies": {
     "react": "^18.3.1",
