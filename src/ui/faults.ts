@@ -701,6 +701,102 @@ export const FAULTS: Record<string, Fault> = {
     part: "cable_joint",
     discipline: "electrical",
   },
+
+  // ───────── #2 HSE 科別加厚:LOTO 能量隔離 / 高處墜落防護 / SIMOPS 同時作業 ─────────
+  // 工安情境的「正確處置」不是修零件,而是判斷安全程序——安全永遠優先於發電。
+  loto_violation: {
+    id: "loto_violation",
+    name: { zh: "能量隔離(LOTO)缺失", en: "LOTO isolation gap" },
+    severityTemp: { zh: "未上鎖掛牌即進場 · 帶電/儲能風險", en: "Entry before lockout · live/stored-energy risk" },
+    warns: [
+      { zh: "警戒 · 隔離點未驗電", en: "Warn · Isolation not verified" },
+      { zh: "警戒 · 個人鎖未上", en: "Warn · Personal lock missing" },
+    ],
+    quiz: {
+      question: { zh: "準備進入機艙更換組件,發現隔離開關僅『關閉』但未上鎖掛牌、也未驗電,正確做法?", en: "About to enter the nacelle for a part swap — the isolator is OFF but not locked/tagged and not verified. Correct action?" },
+      options: [
+        { zh: "A. 既然已關閉,直接進場作業", en: "A. It's off — just go in and work" },
+        { zh: "B. 完成上鎖+掛牌+驗電確認零能量後再進場", en: "B. Lock + tag + verify zero energy, then enter" },
+        { zh: "C. 請同事站在開關旁看著別人誤動", en: "C. Have a colleague guard the switch" },
+        { zh: "D. 加快作業以縮短暴露時間", en: "D. Work faster to cut exposure" },
+      ],
+      correct: 1,
+      ok: { zh: "✓ 正確!LOTO 須『上鎖+掛牌+驗電』確認零能量,任何人不得繞過——能量會傷人。", en: "✓ Correct! LOTO requires lock + tag + verify zero energy; no one bypasses it — stored energy kills." },
+      no: { zh: "✗ HSE 鐵則:未完成上鎖掛牌與驗電前,絕不進入帶電或儲能設備作業。", en: "✗ HSE rule: never enter live/stored-energy work before lockout, tagout and verification are complete." },
+    },
+    sop: [
+      { zh: "確認天氣作業窗", en: "Confirm weather window" },
+      { zh: "辨識所有能量來源(電/液壓/彈簧/儲能)", en: "Identify all energy sources (elec/hydraulic/spring/stored)" },
+      { zh: "逐一隔離、上個人鎖並掛牌", en: "Isolate each, apply personal lock & tag" },
+      { zh: "驗電/洩壓確認零能量狀態", en: "Verify zero energy (test dead / bleed pressure)" },
+      { zh: "作業後依序解鎖並回報 SCADA", en: "Remove locks in order & report to SCADA" },
+    ],
+    knowledge_point: "loto_isolation",
+    part: "loto_kit",
+    discipline: "hse",
+  },
+  fall_protection: {
+    id: "fall_protection",
+    name: { zh: "高處作業墜落防護失效", en: "Fall-protection failure" },
+    severityTemp: { zh: "高處墜落風險 · 防墜系統不合格", en: "Fall-from-height risk · arrest system unfit" },
+    warns: [
+      { zh: "警戒 · 安全帶織帶磨損", en: "Warn · Harness webbing worn" },
+      { zh: "警戒 · 合規錨點不足", en: "Warn · No rated anchor" },
+    ],
+    quiz: {
+      question: { zh: "機艙頂高處作業,發現安全帶織帶磨損、附近找不到合規錨點,該怎麼做?", en: "Working at height on the nacelle roof — harness webbing is worn and no rated anchor is reachable. What do you do?" },
+      options: [
+        { zh: "A. 作業時間短,可不繫安全帶", en: "A. It's quick — skip the harness" },
+        { zh: "B. 把掛鉤繫在管路或欄杆上將就", en: "B. Clip to a pipe or handrail to make do" },
+        { zh: "C. 停止作業,更換合規防墜裝備並設合格錨點後再進行", en: "C. Stop; replace gear & set a rated anchor before proceeding" },
+        { zh: "D. 由同事在旁徒手拉著保護", en: "D. Have a colleague hold you by hand" },
+      ],
+      correct: 2,
+      ok: { zh: "✓ 正確!裝備或錨點不合格即停工,更換/設置合格系統,全程 100% 繫掛雙鉤接續。", en: "✓ Correct! If gear or anchor is unfit, stop — replace/set a rated system and stay 100% tied-off with twin lanyards." },
+      no: { zh: "✗ 高處作業『100% 繫掛、合格錨點、雙鉤接續』缺一不可,絕不可將就。", en: "✗ At height, 100% tie-off, a rated anchor and twin-lanyard transfer are non-negotiable — never improvise." },
+    },
+    sop: [
+      { zh: "確認天氣作業窗與風速限值", en: "Confirm weather window & wind limit" },
+      { zh: "檢查安全帶/SRL 織帶與扣件", en: "Inspect harness/SRL webbing & connectors" },
+      { zh: "確認合格錨點與雙鉤接續路徑", en: "Confirm rated anchors & twin-lanyard route" },
+      { zh: "更換不合格防墜裝備", en: "Replace any unfit fall-arrest gear" },
+      { zh: "全程 100% 繫掛並備妥墜落救援預案", en: "Stay 100% tied-off; have a rescue plan ready" },
+    ],
+    knowledge_point: "fall_protection",
+    part: "fall_arrest_kit",
+    discipline: "hse",
+  },
+  simops_conflict: {
+    id: "simops_conflict",
+    name: { zh: "SIMOPS 同時作業衝突", en: "SIMOPS conflict" },
+    severityTemp: { zh: "吊裝與人員作業未隔離 · 路徑重疊", en: "Lift & crew work not segregated · overlapping zones" },
+    warns: [
+      { zh: "警戒 · 吊重通過人員上方", en: "Warn · Load over personnel" },
+      { zh: "警戒 · 作業許可衝突", en: "Warn · Permit-to-work clash" },
+    ],
+    quiz: {
+      question: { zh: "同一機組甲板正進行吊裝,另一組要同時登塔維修,兩作業區域重疊,正確協調方式?", en: "A deck lift is underway while another crew wants to climb the same turbine — the zones overlap. Correct way to coordinate?" },
+      options: [
+        { zh: "A. 兩組各做各的,效率優先", en: "A. Both proceed independently — efficiency first" },
+        { zh: "B. 暫停其一/設淨空隔離區,經作業許可協調後分時分區執行", en: "B. Pause one; set an exclusion zone; sequence by permit after coordination" },
+        { zh: "C. 登塔組戴好安全帽即可在吊重下通過", en: "C. Climbers just wear helmets and pass under the load" },
+        { zh: "D. 加快吊裝先做完再說", en: "D. Rush the lift to finish first" },
+      ],
+      correct: 1,
+      ok: { zh: "✓ 正確!SIMOPS 須以作業許可協調、設淨空/隔離區,嚴禁人員處於吊重下方或路徑重疊。", en: "✓ Correct! SIMOPS needs permit-led coordination and exclusion zones; never put people under a suspended load or in overlapping paths." },
+      no: { zh: "✗ 同時作業的核心是隔離與許可協調——人員絕不可停留吊重下方,作業不可路徑重疊。", en: "✗ The core of SIMOPS is segregation and permit coordination — never under the load, never overlapping paths." },
+    },
+    sop: [
+      { zh: "盤點同時段所有作業與其危害", en: "List all concurrent jobs & their hazards" },
+      { zh: "召開 SIMOPS 協調會與作業許可審查", en: "Hold a SIMOPS meeting & permit review" },
+      { zh: "設置淨空/隔離區與警示標示", en: "Set exclusion zones & warning signage" },
+      { zh: "以對講機建立統一指揮與停工訊號", en: "Use radios for a single command & stop signal" },
+      { zh: "確認無重疊後分時/分區執行並記錄", en: "Sequence by time/zone with no overlap & log it" },
+    ],
+    knowledge_point: "simops_coordination",
+    part: "comms_radio",
+    discipline: "hse",
+  },
 };
 
 // ───────── 知識圖鑑解說（圖鑑擴充）：每個故障的深度排查知識 ─────────
@@ -868,6 +964,27 @@ export const CODEX: Record<string, CodexEntry> = {
     consequence: { zh: "持續過熱會燒損接頭、最終演變成接地故障停電。", en: "Sustained overheating burns the joint and eventually escalates to a ground-fault outage." },
     tip: { zh: "以熱影像/接觸電阻定位過熱接頭,重做端接或更換後做溫升測試。", en: "Use thermal imaging / resistance to locate the hot joint, re-terminate or replace, then load-heat test." },
   },
+  loto_violation: {
+    mechanism: { zh: "設備殘留電能、液壓、彈簧或重力等儲能;未上鎖掛牌與驗電即作業,儲能可能突然釋放傷人。", en: "Equipment retains electrical, hydraulic, spring or gravitational energy; working before lockout/tagout and verification risks a sudden release." },
+    symptom: { zh: "隔離點未上個人鎖/未掛牌、未驗電確認零能量,作業許可缺 LOTO 簽核。", en: "No personal lock/tag at the isolation point, no zero-energy verification, and the permit lacks LOTO sign-off." },
+    differential: { zh: "這是『程序』缺失而非硬體故障——關鍵在隔離與驗電是否完成,不靠換零件解決。", en: "This is a procedural gap, not a hardware fault — the tell is whether isolation & verification are done, not a part swap." },
+    consequence: { zh: "意外送電/洩壓會造成電擊、夾傷或噴濺,屬可致命的重大工安事故。", en: "An unexpected re-energization/release causes shock, crushing or spray — a potentially fatal HSE incident." },
+    tip: { zh: "辨識所有能量源→逐一隔離上鎖掛牌→驗電/洩壓確認零能量→作業後依序解鎖。", en: "Identify all energy sources → isolate, lock & tag each → verify zero energy → remove locks in order afterwards." },
+  },
+  fall_protection: {
+    mechanism: { zh: "高處作業的防墜系統(安全帶/SRL/錨點)磨損或不合格,一旦墜落無法有效制動。", en: "At height, a worn or unfit fall-arrest system (harness/SRL/anchor) cannot arrest a fall." },
+    symptom: { zh: "安全帶織帶磨損、扣件變形、附近無合規額定錨點,卻仍計畫高處作業。", en: "Worn harness webbing, deformed connectors, no rated anchor nearby — yet work at height is planned." },
+    differential: { zh: "屬人員防護(PPE/錨點)問題,與『升降機』機械故障不同——這裡風險是墜落而非載具失效。", en: "A personal-protection (PPE/anchor) issue, distinct from a service-lift mechanical fault — the risk here is falling, not a lift failure." },
+    consequence: { zh: "高處墜落多為致命或重傷,且常牽連二次傷害與救援風險。", en: "A fall from height is usually fatal or severe, often with secondary harm and rescue risk." },
+    tip: { zh: "檢查並更換不合格裝備、設置合格錨點,全程 100% 繫掛雙鉤接續,並備墜落救援預案。", en: "Inspect/replace unfit gear, set rated anchors, stay 100% tied-off with twin lanyards, and keep a rescue plan." },
+  },
+  simops_conflict: {
+    mechanism: { zh: "同一時段、同一區域有多項作業(如吊裝＋登塔)互相干擾,缺乏協調即產生交叉危害。", en: "Multiple jobs in the same place and time (e.g. lifting + climbing) interfere; without coordination they create cross-hazards." },
+    symptom: { zh: "吊重通過人員上方、作業許可衝突、無淨空/隔離區、無統一指揮。", en: "Loads pass over people, permits clash, no exclusion zone, and no single point of command." },
+    differential: { zh: "這是『作業協調』問題而非單一設備故障——靠許可、隔離區與分時分區化解,不是換零件。", en: "This is a coordination problem, not a single-equipment fault — resolved by permits, exclusion zones and sequencing, not a part swap." },
+    consequence: { zh: "交叉作業易釀落物打擊、夾擠或連鎖事故,後果可能波及多人。", en: "Cross-operations invite dropped-object strikes, crushing or chain incidents that can harm several people." },
+    tip: { zh: "開 SIMOPS 協調會、審查作業許可、設淨空隔離區並以對講機統一指揮,分時分區執行。", en: "Run a SIMOPS meeting, review permits, set exclusion zones, command via radio, and sequence by time/zone." },
+  },
 };
 
 // ───────── 元件分組（多重根因題組）：同一元件可由多種根因造成不同故障 ─────────
@@ -889,7 +1006,7 @@ export const COMPONENTS: ComponentGroup[] = [
   { id: "tower", name: { zh: "塔架 / 結構", en: "Tower / Structure" }, icon: "🏗️", faultIds: ["tower_bolt_loose", "tower_corrosion"] },
   { id: "transformer", name: { zh: "機組變壓器", en: "Turbine Transformer" }, icon: "🔋", faultIds: ["transformer_overtemp", "transformer_bushing"] },
   { id: "sensor", name: { zh: "量測 / 控制", en: "Sensors / Control" }, icon: "📡", faultIds: ["anemometer_fault", "controller_comm"] },
-  { id: "lift", name: { zh: "升降機 / 工安", en: "Service Lift / HSE" }, icon: "🚧", faultIds: ["lift_fault"] },
+  { id: "lift", name: { zh: "升降機 / 工安 HSE", en: "Service Lift / HSE" }, icon: "🚧", faultIds: ["lift_fault", "loto_violation", "fall_protection", "simops_conflict"] },
 ];
 
 // 具多重根因（≥2 種故障）的元件——可生成鑑別診斷題組
@@ -927,6 +1044,9 @@ export const FAULT_LOCATION: Record<string, RepairLocation> = {
   tower_corrosion: "deck",
   transformer_bushing: "tower",
   cable_joint_heat: "deck",
+  loto_violation: "tower",
+  fall_protection: "nacelle",
+  simops_conflict: "deck",
 };
 export const locationOf = (faultId: string): RepairLocation => FAULT_LOCATION[faultId] ?? "nacelle";
 
@@ -945,6 +1065,8 @@ export const FAULT_TIER: Record<string, number> = {
   lift_fault: 2, gen_overtemp: 2,
   // Tier 2：結構防蝕
   tower_corrosion: 2,
+  // Tier 2：HSE 工安情境（LOTO / 墜落防護 / SIMOPS）
+  loto_violation: 2, fall_protection: 2, simops_conflict: 2,
   // Tier 3：較大組件
   gen_vibration: 3, converter_igbt: 3, cable_insulation: 3, transformer_bushing: 3, cable_joint_heat: 3,
   // Tier 4：最大組件更換（重吊/安裝船）
