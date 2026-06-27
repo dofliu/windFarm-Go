@@ -1297,6 +1297,58 @@ test("content expansion: new tier-gated faults/incidents/parts slot in cleanly (
   ok(data.PARTS.length >= 30, `parts >= 30 (got ${data.PARTS.length})`);
 });
 
+// ───────────────────────── HSE 科別加厚（#2）─────────────────────────
+test("HSE thickening: LOTO/fall/SIMOPS faults are well-formed HSE-discipline content (#2)", () => {
+  const hseFaults = ["loto_violation", "fall_protection", "simops_conflict"];
+  for (const id of hseFaults) {
+    const f = flt.FAULTS[id];
+    ok(f, `fault ${id} exists`);
+    eq(f.discipline, "hse", `fault ${id} is HSE discipline`);
+    eq(f.quiz.options.length, 4, `fault ${id} quiz has 4 options`);
+    ok(f.quiz.correct >= 0 && f.quiz.correct < 4, `fault ${id} correct index valid`);
+    eq(f.sop.length, 5, `fault ${id} has 5 SOP steps`);
+    ok(flt.CODEX[id], `fault ${id} has codex`);
+    eq(flt.faultTier(id), 2, `fault ${id} unlocks at Tier 2 (with HSE discipline)`);
+    // 備品存在且 tier 與故障同調
+    const p = data.PARTS.find((pp) => pp.id === f.part);
+    ok(p, `fault ${id} part ${f.part} exists`);
+    ok((p.minTier ?? 1) <= 2, `fault ${id} part reachable by Tier 2`);
+  }
+  // HSE 元件群現為多重根因(≥4),可做工安鑑別診斷練習
+  const hse = flt.COMPONENTS.find((c) => c.id === "lift");
+  ok(hse && hse.faultIds.length >= 4, `HSE component now multi-cause (got ${hse?.faultIds.length})`);
+  for (const id of hseFaults) ok(hse.faultIds.includes(id), `HSE component includes ${id}`);
+  // 戰情室 HSE 事件:需 HSE 技師,且不在入門池(Tier 2 解鎖)
+  const t1 = new Set(inc.incidentsForTier(1).map((x) => x.id));
+  for (const id of ["loto", "fall", "simops"]) {
+    const x = inc.INCIDENTS.find((i) => i.id === id);
+    ok(x, `incident ${id} exists`);
+    eq(x.discipline, "hse", `incident ${id} needs HSE technician`);
+    ok(!t1.has(id), `incident ${id} not in Tier-1 entry pool`);
+    ok(inc.incidentsForTier(2).some((i) => i.id === id), `incident ${id} unlocks by T2`);
+  }
+});
+
+// ───────────────────────── 直升機進場 / 電網限電（#3）─────────────────────────
+test("real-ops tradeoffs: helicopter-access & grid-curtailment judgment tasks (#3)", () => {
+  const byId = Object.fromEntries(tasks.TASKS.map((t) => [t.id, t]));
+  const heli = ["e_heli_access", "d_heli_costbenefit", "f_heli_logistics", "e_heli_window"];
+  const grid = ["d_neg_price", "d_curtail_comp", "g_grid_voltage_dip", "d_curtail_maint"];
+  for (const id of [...heli, ...grid]) {
+    const t = byId[id];
+    ok(t, `task ${id} exists`);
+    ok(t.choices.length >= 2, `task ${id} offers a real choice`);
+    ok(t.choices.some((c) => c.good) && t.choices.some((c) => !c.good), `task ${id} has both a good & a bad option (a genuine tradeoff)`);
+    // 判斷型任務:每個選項都有教學回饋(雙語)
+    for (const c of t.choices) ok(c.feedback?.zh && c.feedback?.en, `task ${id} option explains why`);
+  }
+  // 直升機任務應落在天候/物流/營運(教權衡),非單純診斷
+  for (const id of heli) ok(["E", "F", "D"].includes(byId[id].cat), `heli task ${id} is a weather/logistics/ops decision`);
+  // 負電價的較佳解：降載換取避免倒貼(b 為正、g 為負),教真實市場訊號
+  const neg = byId["d_neg_price"].choices.find((c) => c.good);
+  ok((neg.eff.b ?? 0) > 0 && (neg.eff.g ?? 0) < 0, "negative-price best move trades output for avoided cost");
+});
+
 // ───────────────────────── 真實案例研究事件（case studies） ─────────────────────────
 test("case studies: catalog complete & well-formed", () => {
   const C = cs.CASE_STUDIES;

@@ -47,6 +47,10 @@ export const PARTS: Part[] = [
   { id: "gearbox_filter", n: { zh: "齒輪箱濾芯", en: "Gearbox Filter" }, stars: 1, idx: 98, qty: 130, price: "30,000", minTier: 1 },
   { id: "coolant", n: { zh: "冷卻液", en: "Coolant" }, stars: 1, idx: 101, qty: 180, price: "25,000", minTier: 1 },
   { id: "grease", n: { zh: "潤滑脂", en: "Grease" }, stars: 1, idx: 100, qty: 240, price: "20,000", minTier: 1 },
+  // ── 工安/HSE 耗材（#2 HSE 科別加厚）──
+  { id: "fall_arrest_kit", n: { zh: "墜落防護組(安全帶/SRL)", en: "Fall-arrest Kit (harness/SRL)" }, stars: 1, idx: 100, qty: 64, price: "45,000", minTier: 2 },
+  { id: "comms_radio", n: { zh: "防爆對講機組", en: "ATEX Comms Radio Set" }, stars: 1, idx: 100, qty: 70, price: "35,000", minTier: 2 },
+  { id: "loto_kit", n: { zh: "上鎖掛牌組(LOTO)", en: "Lockout/Tagout Kit" }, stars: 1, idx: 100, qty: 96, price: "28,000", minTier: 2 },
 ];
 // 取 ≤ tier 的備品子集（#76）：交易所/倉儲漸進揭露
 export const partsForTier = (tier: number): Part[] => PARTS.filter((p) => (p.minTier ?? 1) <= tier);

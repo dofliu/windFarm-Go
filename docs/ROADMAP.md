@@ -16,7 +16,7 @@
   *Single-source economy: revenue & availability from live fleet uptime; quarterly SLA, storage spoilage, fatigue, vessel wear, multi-turn overhaul.*
 - **風場戰情室（活體營運層）**：4 風場 × 24 機組、並行工單派遣、遠端重啟、預防性定檢、船舶並行上限。
   *Live Fleet Ops: parallel dispatch, remote reset, preventive inspection.*
-- **雙層架構**：主線 7 關（每週開放、計分）＋自由營運沙盒（151 題判斷型任務、7 類、即時輔助圖、付費進階檢測）。
+- **雙層架構**：主線 7 關（每週開放、計分）＋自由營運沙盒（159 題判斷型任務、7 類、即時輔助圖、付費進階檢測）。
 - **擬真系統**：微觀天氣三日預報、機組健康度與連鎖反應、突發事件、安全 KPI、綜合績效分。
 - **互動式新手教學（莉莉聚光燈導覽）**：首次進場由莉莉以手機遊戲式 coach-mark（高亮當下按鈕、其餘變暗）手把手帶完一次完整工單循環（接單→出海→出勤檢查→登塔→診斷→SOP→完工）；可跳過、可從 ⚙ 選單重新播放。
   *First-time interactive coach-mark onboarding by Lily; skippable & replayable.*
@@ -25,8 +25,14 @@
   *Student-ID accounts + server-verified passcode; cloud-first saves/records with offline cache.*
 - **學習歷程・成就・個人檔案頁**：15 項里程碑成就（任務/戰役/番外篇/圖鑑/發電/戰情室/風場/零事故/SLA/船隊/績效），個人最佳紀錄（只增不減）跨裝置同步；右上角頭像開啟個人檔案頁。
 - **遊戲內教師檢視面板**：⚙ 課程模式 →「教師檢視」，輸入**班級碼＋教師碼**唯讀檢視全班績效/天數/可用率/發電量/更新時間。
-- **故障型錄與備品擴充**：故障 19 種(涵蓋機械/電氣/控制/結構/HSE 五大科別、「同元件不同根因」)、備品 28 種、戰情室故障池 20 種,並串接課程週次。
-  *Expanded to 19 faults across all 5 disciplines, 28 parts, 20 fleet incidents.*
+- **故障型錄與備品擴充**：故障 25 種(涵蓋機械/電氣/控制/結構/HSE 五大科別、「同元件不同根因」)、備品 33 種、戰情室故障池 25 種,並串接課程週次。
+  *Expanded to 25 faults across all 5 disciplines, 33 parts, 25 fleet incidents.*
+- **HSE 科別加厚**：新增 LOTO 能量隔離、高處墜落防護、SIMOPS 同時作業三類工安情境(完整診斷測驗＋SOP＋圖鑑五欄＋戰情室事件＋需 HSE 技師);HSE 元件群成為多重根因,可做工安鑑別診斷練習。安全永遠優先於發電。
+  *HSE depth: LOTO / fall-protection / SIMOPS scenarios with full quiz, SOP, codex & fleet incidents — safety before output.*
+- **知識點掌握度**：統計學生各科別/各任務類型的答題正確率,於個人檔案頁顯示掌握度並給弱點補強建議(導向圖鑑複習/沙盒多練)。
+  *Knowledge-point mastery: per-discipline/category accuracy with weakness-remediation hints.*
+- **直升機進場 / 電網限電真實權衡任務**：自由營運沙盒新增 8 題真實運維判斷——直升機吊掛進場(封船海象/遠海急件/作業限值/成本效益)與電網限電(負電價降載/限電補償/低電壓穿越 FRT/順勢維修)。
+  *Real-ops tradeoffs: helicopter access & grid-curtailment judgment tasks.*
 - **呈現**：三模式背景（模擬/實境/漫畫）、60° 俯瞰、多場景登塔（機艙/塔架/輪轂/甲板，含實景/漫畫情境圖與出海/大修場景影片）、Web Audio 音效音樂、中英雙語。母港左側「設施／風場動態」面板可各自獨立收合，設施項目皆有專屬圖示（含技師人物立繪）。
 - **工程**：自動化測試 `npm test`、平衡模擬器 `npm run sim`、PR CI（typecheck/test/build）。
 
@@ -57,7 +63,7 @@
 
 擴充內容深度與教學可衡量性：
 
-- **更多故障型錄與科別** — ✅ 首批已完成(19 故障 / 28 備品 / 五大科別,見上「近期已完成」);後續可再擴充更細的子型錄與圖鑑解說、針對單一元件的多重根因題組。
+- **更多故障型錄與科別** — ✅ 已完成(25 故障 / 33 備品 / 五大科別,含 HSE 加厚 LOTO・墜落防護・SIMOPS,見上「近期已完成」);後續可再擴充更細的子型錄與圖鑑解說、針對單一元件的多重根因題組。
 - **教師後台與班級報表強化** — ✅ 已完成雲端為主帳號(學號+通關碼後端驗證)與**遊戲內教師檢視面板**(班級碼+教師碼,唯讀檢視全班績效/天數/可用率/發電量,見 docs/CLOUD_SETUP.md);後續可再加 SLA 達成彙整與 CSV 匯出。
 - **成就 / 任務系統** — ✅ 首批里程碑成就(15 項:任務/戰役/番外篇/圖鑑/發電/戰情室/風場/零事故/SLA/船隊/績效)與**個人檔案頁**已完成,學習歷程跨裝置雲端同步;後續可再加每日/每週挑戰。
 - **資料分析儀表板** — ✅ 首版已完成(見上「營運趨勢儀表板 / 賽後復盤」);後續可再加每週/每關自動復盤頁與教師端彙整。

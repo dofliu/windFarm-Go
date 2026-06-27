@@ -45,6 +45,10 @@ export const INCIDENTS: IncidentType[] = [
   { id: "corrosion", name: { zh: "基礎/塔基防蝕劣化", en: "Foundation corrosion" }, discipline: "structural", repairDays: 2, part: "corrosion_anode", weight: 2, minTier: 2 },
   { id: "bushing", name: { zh: "變壓器套管劣化", en: "Transformer bushing fault" }, discipline: "electrical", repairDays: 2, part: "transformer_bushing", weight: 1, minTier: 3 },
   { id: "cable_joint_heat", name: { zh: "海纜接頭過熱", en: "Cable joint overheat" }, discipline: "electrical", repairDays: 2, part: "cable_joint", weight: 1, minTier: 3 },
+  // ── #2 HSE 科別加厚:工安情境(LOTO/墜落防護/SIMOPS)。需 HSE 技師,屬程序處置(repairDays 短) ──
+  { id: "loto", name: { zh: "能量隔離(LOTO)缺失", en: "LOTO isolation gap" }, discipline: "hse", repairDays: 1, part: "loto_kit", weight: 2, minTier: 2 },
+  { id: "fall", name: { zh: "高處墜落防護失效", en: "Fall-protection failure" }, discipline: "hse", repairDays: 1, part: "fall_arrest_kit", weight: 2, minTier: 2 },
+  { id: "simops", name: { zh: "SIMOPS 同時作業衝突", en: "SIMOPS conflict" }, discipline: "hse", repairDays: 1, part: "comms_radio", weight: 1, minTier: 2 },
 ];
 
 export const incidentAt = (id: string | undefined): IncidentType | undefined => INCIDENTS.find((x) => x.id === id);
