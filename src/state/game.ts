@@ -109,6 +109,14 @@ export function migrateVessels(s: GameData): GameData {
   return { ...s, ownedVessels: owned, activeVessel: active };
 }
 
+// 存檔遷移單一入口（#save-version）：補齊新欄位(以 INITIAL 為預設)、跑既有船隊遷移,並標記為現版。
+// 未來破壞性改版時,在此依 parsed.version 做欄位轉換後再回傳。集中於此 → 載入路徑只有一處可信來源。
+export function migrateSave(parsed: Partial<GameData>): GameData {
+  // const from = parsed.version ?? 0;  // 預留:依來源版本做逐版升級
+  const merged = migrateVessels({ ...INITIAL, ...parsed });
+  return { ...merged, version: SAVE_VERSION };
+}
+
 // 依擁有風場建立機組陣列（每座 farm.units 台，發電佔比 = genPerDay/units）
 export function buildFleetForFarm(f: number): Turbine[] {
   const farm = FARMS[f];
@@ -182,7 +190,11 @@ export interface Quest {
   rewardXp: number;
 }
 
+// 存檔結構版本（#save-version）：每次 GameData 形狀有破壞性變動時 +1,並在 migrateSave() 加對應遷移。
+export const SAVE_VERSION = 1;
+
 export interface GameData {
+  version?: number; // 存檔結構版本(舊檔無 → 視為 0,由 migrateSave 補欄位並標記為現版)
   budget: number; // ◎（頂部列顯示為「萬」）
   xp: number;
   day: number;
@@ -395,6 +407,7 @@ export function dailyRevenue(d: GameData): number {
 
 const INITIAL_FLEET = buildFleet(1); // 建一次,供 fleet 與 availability 共用 → 開局妥善率即與機隊自洽（#3）
 export const INITIAL: GameData = {
+  version: SAVE_VERSION,
   budget: 84_200_000,
   xp: 0,
   day: 21,
@@ -1017,7 +1030,7 @@ export function reducer(s: GameData, a: Action): GameData {
     case "GRANT_FUNDS":
       return { ...s, budget: s.budget + Math.max(0, a.amount) };
     case "LOAD_STATE":
-      return migrateVessels({ ...INITIAL, ...a.state });
+      return migrateSave(a.state);
     case "RESET":
       return { ...INITIAL };
     default:
