@@ -284,6 +284,8 @@ export default function RepairScreen({ setScreen, mode = "sim" }: { setScreen: (
                   onClick={() => {
                     if (failed || quizCorrect || i === pick) return; // 已答對/已撤離不可再動；點同一選項不重複扣窗
                     (i === q.correct ? Sfx.success : Sfx.error)();
+                    // 知識點掌握度(#mastery):僅記錄「第一次作答」的對錯,作為乾淨的學習訊號(重答不重複計)
+                    if (pick === null) dispatch({ type: "RECORD_ANSWER", keys: [`disc:${fault.discipline}`], correct: i === q.correct });
                     // 答錯多耗作業窗（可重新作答，但每次扣時段）
                     saveRepair({ pick: i, win: Math.max(0, win - (i === q.correct ? 1 : 3)) });
                   }}
