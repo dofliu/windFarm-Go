@@ -130,6 +130,24 @@ export async function fetchClassProgress(classCode: string, teacherCode: string)
   return getJson<TeacherResult>({ do: "teacher", classCode, code: teacherCode });
 }
 
+// 把班級進度列轉成 CSV（純函式，便於測試 + 教師登分/課後分析）。
+// 含 UTF-8 BOM(讓 Excel 正確開中文暱稱)、CRLF 換行;欄位含逗號/引號/換行時加引號跳脫。
+// days 與遊戲內顯示一致(營運天數 = day − 21);updatedAt 轉 ISO 便於排序。
+export function classRowsToCsv(rows: ClassRow[]): string {
+  const esc = (v: string | number): string => {
+    const s = String(v ?? "");
+    return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  };
+  const header = ["studentId", "nickname", "score", "days", "availability", "generation", "updatedAt"];
+  const lines = [header.join(",")];
+  for (const r of rows) {
+    const days = Math.max(0, (r.day || 0) - 21);
+    const updated = r.updatedAt ? new Date(r.updatedAt).toISOString() : "";
+    lines.push([esc(r.studentId), esc(r.nickname || ""), r.score || 0, days, r.availability || 0, r.generation || 0, esc(updated)].join(","));
+  }
+  return "﻿" + lines.join("\r\n"); // 前綴 UTF-8 BOM
+}
+
 // 由 Profile 取出雲端身分（保證 idOf 一致）
 export const identityOf = (p: { studentId: string; classCode: string; pinHash: string }): CloudIdentity => ({ studentId: p.studentId, classCode: p.classCode, pinHash: p.pinHash });
 export const cloudKey = (p: { studentId: string; classCode: string }): string => idOf(p);

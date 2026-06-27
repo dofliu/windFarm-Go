@@ -1407,6 +1407,25 @@ test("pwa: index.html wires manifest + theme-color + apple-touch; SW registered 
   ok(/import\.meta\.env\.BASE_URL/.test(main), "SW path uses BASE_URL (GitHub Pages subpath safe)");
 });
 
+// ───────────────────────── 教師面板 CSV 匯出 ─────────────────────────
+test("teacher csv: header, BOM, CRLF, days=day-21, escaping", () => {
+  const rows = [
+    { studentId: "S001", nickname: "阿明", score: 1500, day: 51, availability: 96, generation: 3200, updatedAt: 1000 },
+    { studentId: "S002", nickname: 'Bad, "name"', score: 800, day: 21, availability: 80, generation: 100, updatedAt: 0 },
+  ];
+  const csv = api.classRowsToCsv(rows);
+  eq(csv.charCodeAt(0), 0xfeff, "starts with UTF-8 BOM (Excel opens Chinese correctly)");
+  const lines = csv.slice(1).split("\r\n"); // 去 BOM、CRLF 換行
+  eq(lines[0], "studentId,nickname,score,days,availability,generation,updatedAt", "header row");
+  eq(lines.length, 3, "header + 2 data rows");
+  ok(lines[1].startsWith("S001,阿明,1500,30,96,3200,"), "days = day-21 (51-21=30): " + lines[1]);
+  ok(/"Bad, ""name"""/.test(lines[2]), "field with comma+quote is escaped: " + lines[2]);
+  ok(lines[1].includes("1970-01-01T00:00:01.000Z") , "updatedAt → ISO");
+  // 空清單 → 只有(帶 BOM 的)表頭
+  const empty = api.classRowsToCsv([]);
+  eq(empty.slice(1), "studentId,nickname,score,days,availability,generation,updatedAt", "empty → header only");
+});
+
 console.log(`\n${pass} passed, ${fail} failed (${pass + fail} total)`);
 if (fail) { console.log("\nFailures:"); for (const f of fails) console.log("  ✗ " + f); process.exit(1); }
 console.log("✓ all green");
