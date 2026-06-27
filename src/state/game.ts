@@ -3,6 +3,7 @@ import { FARMS } from "./farms";
 import { rollEvent, type EventStamp } from "./events";
 import { incidentAt, randomIncidentId } from "./incidents";
 import { rollCaseStudy } from "./caseStudies";
+import { buildTrendPoint, pushHistory, type TrendPoint } from "./trends";
 import { BUILD_STAGES, BUILD_STAGE_COUNT, BUILD_REWARD_BASE, BUILD_REWARD_PER_SCORE, BUILD_REWARD_XP } from "./construction";
 import { VESSELS, vesselSpec, type VesselClass } from "./vessels";
 
@@ -240,6 +241,7 @@ export interface GameData {
   lastServiceDay: number; // 上次計畫性定期保養的日（#81）：到期(間隔 SERVICE_INTERVAL_DAYS)才可再做
   seenCases: string[]; // 已解鎖/看過的真實案例研究 id（永久收錄於圖鑑案例檔）
   lastCase: { id: string; day: number } | null; // 最近偶發的案例快報（Hub 提示用）
+  history: TrendPoint[]; // 營運趨勢歷史（#5）：每次推進日累積一點,供趨勢圖/賽後復盤
 }
 
 // 每日任務狀態（#78）：綁遊戲內日；baseline 記錄當日起始累積值，達成以增量/當前狀態判定。
@@ -451,6 +453,7 @@ export const INITIAL: GameData = {
   lastServiceDay: 21, // = INITIAL.day（首次保養於 21 + 間隔 後到期）
   seenCases: [],
   lastCase: null,
+  history: [],
 };
 
 // 計畫性定期保養是否到期（#81）：距上次保養 ≥ 間隔天數
@@ -638,6 +641,13 @@ function advance(s: GameData, days = 1): Partial<GameData> {
   patch.budget = Math.max(0, s.budget + cash);
   ledger.net = patch.budget - s.budget;
   patch.lastLedger = ledger;
+  // 營運趨勢(#5):每次推進日累積一個 KPI 點(供趨勢圖 / 賽後復盤)
+  patch.history = pushHistory(s.history ?? [], buildTrendPoint(ledger, {
+    day,
+    availability: patch.availability ?? s.availability,
+    generationMWh: patch.generationMWh ?? s.generationMWh,
+    fleetHealth: patch.fleetHealth ?? s.fleetHealth,
+  }));
   return patch;
 }
 

@@ -15,6 +15,7 @@ import FleetOpsModal from "./ui/FleetOpsModal";
 import ConstructionModal from "./ui/ConstructionModal";
 import FacilityModal, { type Facility } from "./ui/FacilityModal";
 import CaseFileModal from "./ui/CaseFileModal";
+import TrendsModal from "./ui/TrendsModal";
 import Toaster from "./ui/Toaster";
 import { LedgerToaster } from "./ui/Ledger";
 import LoginScreen from "./ui/LoginScreen";
@@ -48,6 +49,7 @@ export default function App() {
   const [showProfile, setShowProfile] = useState(false);
   const [showTeacher, setShowTeacher] = useState(false);
   const [showCaseFile, setShowCaseFile] = useState(false);
+  const [showTrends, setShowTrends] = useState(false);
   const [facility, setFacility] = useState<Facility | null>(null);
   const [loggedIn, setLoggedIn] = useState(() => isAuthed(getProfile()));
   const [sceneId, setSceneId] = useState(getSceneId);
@@ -130,7 +132,7 @@ export default function App() {
         >
           {(mode !== "sim" || showSharedBg) && <SceneBackground sceneId={sceneId} aerial={aerial && screen === "hub"} mode={mode} imageFile={imageFile} />}
 
-          {screen === "hub" && <HubScreen setScreen={setScreen} accent={accent} onDispatch={() => setShowDispatch(true)} onFacility={(k) => setFacility(k)} sceneName={sceneName} onCycleScene={cycleScene} aerial={aerial} onToggleView={() => setAerial((v) => !v)} mode={mode} onCycleMode={cycleMode} onOps={() => setShowOps(true)} onFleet={() => setShowFleet(true)} onBuild={() => setShowBuild(true)} onCaseFile={() => setShowCaseFile(true)} week={week} />}
+          {screen === "hub" && <HubScreen setScreen={setScreen} accent={accent} onDispatch={() => setShowDispatch(true)} onFacility={(k) => setFacility(k)} sceneName={sceneName} onCycleScene={cycleScene} aerial={aerial} onToggleView={() => setAerial((v) => !v)} mode={mode} onCycleMode={cycleMode} onOps={() => setShowOps(true)} onFleet={() => setShowFleet(true)} onBuild={() => setShowBuild(true)} onCaseFile={() => setShowCaseFile(true)} onTrends={() => setShowTrends(true)} week={week} />}
           {screen === "market" && <MarketScreen accent={accent} />}
           {screen === "sail" && <SailScreen setScreen={setScreen} accent={accent} mode={mode} />}
           {screen === "repair" && <RepairScreen setScreen={setScreen} mode={mode} />}
@@ -145,6 +147,7 @@ export default function App() {
           <ConstructionModal open={showBuild} onClose={() => setShowBuild(false)} />
           <FacilityModal kind={facility} onClose={() => setFacility(null)} />
           <CaseFileModal open={showCaseFile} onClose={() => setShowCaseFile(false)} />
+          <TrendsModal open={showTrends} onClose={() => setShowTrends(false)} />
           <ProfileModal open={showProfile} onClose={() => setShowProfile(false)} />
           <TeacherModal open={showTeacher} onClose={() => setShowTeacher(false)} />
           <ScoreSync />

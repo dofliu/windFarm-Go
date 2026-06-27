@@ -67,7 +67,7 @@ function PanelHead({ title, open, onToggle }: { title: I18n; open: boolean; onTo
   );
 }
 
-export default function HubScreen({ setScreen, accent, onDispatch, onFacility, sceneName, onCycleScene, aerial, onToggleView, mode = "sim", onCycleMode, onOps, onFleet, onBuild, onCaseFile, week = 1 }: { setScreen: (s: Screen) => void; accent: string; onDispatch?: () => void; onFacility?: (k: "vessel" | "tech" | "tool" | "codex" | "ranking" | "farms") => void; sceneName?: I18n; onCycleScene?: () => void; aerial?: boolean; onToggleView?: () => void; mode?: SceneMode; onCycleMode?: () => void; onOps?: () => void; onFleet?: () => void; onBuild?: () => void; onCaseFile?: () => void; week?: number }) {
+export default function HubScreen({ setScreen, accent, onDispatch, onFacility, sceneName, onCycleScene, aerial, onToggleView, mode = "sim", onCycleMode, onOps, onFleet, onBuild, onCaseFile, onTrends, week = 1 }: { setScreen: (s: Screen) => void; accent: string; onDispatch?: () => void; onFacility?: (k: "vessel" | "tech" | "tool" | "codex" | "ranking" | "farms") => void; sceneName?: I18n; onCycleScene?: () => void; aerial?: boolean; onToggleView?: () => void; mode?: SceneMode; onCycleMode?: () => void; onOps?: () => void; onFleet?: () => void; onBuild?: () => void; onCaseFile?: () => void; onTrends?: () => void; week?: number }) {
   useLang();
   const { data, dispatch } = useGame();
   const { say } = useDialogue();
@@ -501,6 +501,7 @@ export default function HubScreen({ setScreen, accent, onDispatch, onFacility, s
               {/* 今日收支（莉莉財報）：推進一天後彙整當日各項現金流，幫忙看懂錢的去向 */}
               <OpsBlock title={{ zh: "今日收支 · 莉莉財報", en: "Daily Ledger · Lili" }}>
                 <LedgerView ledger={data.lastLedger} />
+                <button onClick={() => { Sfx.click(); onTrends?.(); }} style={{ width: "100%", marginTop: 6, padding: "6px 0", borderRadius: 4, border: "1px solid rgba(95,168,217,.45)", background: "rgba(95,168,217,.12)", color: "#9fd0ec", fontWeight: 700, fontSize: 12, cursor: "pointer" }}>📈 {t({ zh: "營運趨勢 · 賽後復盤", en: "Trends · After-Action" })}</button>
               </OpsBlock>
             </div>
           )}

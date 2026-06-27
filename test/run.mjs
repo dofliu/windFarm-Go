@@ -55,6 +55,7 @@ const daily = await load("src/state/dailyTasks.ts");
 const weekly = await load("src/state/weeklyChallenges.ts");
 const pack = await load("src/state/scenarioPack.ts");
 const cs = await load("src/state/caseStudies.ts");
+const trends = await load("src/state/trends.ts");
 const R = g.reducer, I = g.INITIAL;
 
 // ───────────────────────── INITIAL 不變量 ─────────────────────────
@@ -1428,6 +1429,43 @@ test("teacher csv: header, BOM, CRLF, days=day-21, escaping", () => {
   // 空清單 → 只有(帶 BOM 的)表頭
   const empty = api.classRowsToCsv([]);
   eq(empty.slice(1), "studentId,nickname,score,days,availability,generation,updatedAt", "empty → header only");
+});
+
+// ───────────────────────── 營運趨勢 / 賽後復盤(#5) ─────────────────────────
+test("trends: buildTrendPoint maps ledger (opex=Σ|costs|, revenue=sale+fix, net signed)", () => {
+  const ledger = { day: 30, days: 1, revenue: 1000, fixPay: 120, payroll: -100, storage: -50, downtime: -30, demurrage: -400, slaPenalty: 0, event: 0, net: 540 };
+  const p = trends.buildTrendPoint(ledger, { day: 30, availability: 92.4, generationMWh: 3000.6, fleetHealth: 81.7 });
+  eq(p.day, 30); eq(p.avail, 92); eq(p.gen, 3001); eq(p.health, 82);
+  eq(p.revenue, 1120, "revenue = sale + fixPay");
+  eq(p.opex, 580, "opex = 100+50+30+400");
+  eq(p.net, 540, "net signed from ledger");
+});
+test("trends: pushHistory keeps newest within HISTORY_CAP", () => {
+  let h = [];
+  for (let i = 0; i < trends.HISTORY_CAP + 5; i++) h = trends.pushHistory(h, { day: i, avail: 90, gen: i, health: 80, revenue: 0, opex: 0, net: 0 });
+  eq(h.length, trends.HISTORY_CAP, "capped");
+  eq(h[h.length - 1].day, trends.HISTORY_CAP + 4, "last is newest");
+  eq(h[0].day, 5, "oldest dropped");
+});
+test("trends: summarizeHistory aggregates; empty → null", () => {
+  eq(trends.summarizeHistory([]), null, "empty → null");
+  const h = [
+    { day: 21, avail: 100, gen: 0, health: 88, revenue: 100, opex: 40, net: 60 },
+    { day: 22, avail: 80, gen: 120, health: 86, revenue: 200, opex: 60, net: 140 },
+  ];
+  const s = trends.summarizeHistory(h);
+  eq(s.n, 2); eq(s.days, 1); eq(s.avgAvail, 90); eq(s.minAvail, 80);
+  eq(s.totalRevenue, 300); eq(s.totalOpex, 100); eq(s.netTotal, 200);
+  eq(s.genDelta, 120, "gen end - start"); eq(s.endHealth, 86);
+});
+test("trends: advance() appends a history point each day-advance (#5)", () => {
+  seed(4);
+  eq((I.history || []).length, 0, "INITIAL has empty history");
+  const s1 = R(I, { type: "REST" });
+  eq(s1.history.length, 1, "one point after a day advance");
+  eq(s1.history[0].day, I.day + 1, "point tagged with new day");
+  const s2 = R(s1, { type: "REST" });
+  eq(s2.history.length, 2, "accumulates across advances");
 });
 
 console.log(`\n${pass} passed, ${fail} failed (${pass + fail} total)`);
