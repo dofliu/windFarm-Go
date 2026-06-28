@@ -16,6 +16,11 @@ const CAT_LABEL: Record<CaseCategory, I18n> = {
   vessel: { zh: "船舶/作業", en: "Vessel/Ops" },
   bolt: { zh: "螺栓/結構", en: "Bolt/Structure" },
   ice: { zh: "結冰", en: "Ice" },
+  yaw: { zh: "偏航", en: "Yaw" },
+  pitch: { zh: "變槳", en: "Pitch" },
+  lightning: { zh: "雷擊", en: "Lightning" },
+  grid: { zh: "電網", en: "Grid" },
+  transformer: { zh: "變壓器", en: "Transformer" },
 };
 
 function CaseCard({ c, seen }: { c: CaseStudy; seen: boolean }) {

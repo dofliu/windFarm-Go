@@ -9,7 +9,7 @@ import type { I18n } from "../game/systems/types";
 import type { Discipline } from "./game";
 
 export type CaseFraming = "named-with-sources" | "anonymized-technical";
-export type CaseCategory = "foundation" | "gearbox_bearing" | "blade" | "cable" | "electrical_fire" | "vessel" | "bolt" | "ice";
+export type CaseCategory = "foundation" | "gearbox_bearing" | "blade" | "cable" | "electrical_fire" | "vessel" | "bolt" | "ice" | "yaw" | "pitch" | "lightning" | "grid" | "transformer";
 
 export interface CaseChoice {
   label: I18n;
@@ -246,6 +246,112 @@ export const CASE_STUDIES: CaseStudy[] = [
     sources: ["業界公認風險:自升船拖航/就位穩定性(去識別) / Jack-up tow & positioning stability (anonymized)"],
     weight: 1, sensitivity: "low",
   },
+
+  // ───────── 第三批(更多真實/擬真案例):涵蓋偏航、變槳軸承、雷擊、電網、變壓器、螺栓、次結構、潤滑 ─────────
+  {
+    id: "cs_yaw_static_misalignment", framing: "named-with-sources", category: "yaw", discipline: "control", minTier: 2, year: "2019-2021",
+    title: { zh: "系統性偏航靜態誤差吃掉發電量(光達量測普遍發現)", en: "Systematic static yaw misalignment silently costs AEP (LiDAR field findings)" },
+    scenario: { zh: "以機艙光達/前視光達量測的多項研究普遍發現:風機存在數度的『靜態偏航誤差』(風向標安裝/校正偏差累積),長期偏離最佳迎風角。功率隨對風偏差約以 cos² 下滑,系統性 3–8° 誤差可使單機 AEP 少約 1–3%,並增加不對稱載荷與疲勞。", en: "Nacelle/forward-looking LiDAR campaigns widely find a multi-degree 'static yaw error' (accumulated vane install/calibration bias) keeping turbines off the optimal wind heading. Power falls roughly with cos² of the error, so a systematic 3–8° bias can cut a turbine's AEP by ~1–3% and add asymmetric loads & fatigue." },
+    lesson: { zh: "偏航靜態誤差是『看不到卻持續漏電』的隱性損失:以光達/SCADA 長期統計診斷對風準度,定期校正風向標零點與偏航控制邏輯,並把『對風準度』納入績效指標。修正成本低、回收快——常是 CP 最高的優化之一。", en: "Static yaw error is invisible-but-constant lost output: diagnose pointing accuracy with LiDAR/SCADA statistics, periodically re-zero the vane & yaw control logic, and make pointing accuracy a KPI. The fix is cheap with fast payback — often one of the highest-ROI optimisations." },
+    choices: [
+      { label: { zh: "以光達/SCADA 統計診斷並定期校正風向標零點", en: "Diagnose via LiDAR/SCADA stats & re-zero the vane periodically" }, good: true, feedback: { zh: "✓ 系統性偏差非隨機散布,校正零點直接回收 AEP。", en: "✓ A systematic bias isn't random scatter — re-zeroing recovers AEP directly." }, eff: { g: 120, b: -100000 } },
+      { label: { zh: "認為風向標出廠已校正、不再追蹤", en: "Assume the vane was factory-calibrated, never track it" }, good: false, feedback: { zh: "✗ 安裝/漂移會累積誤差,長年 AEP 持續流失。", en: "✗ Install/drift accumulate; AEP keeps leaking for years." }, eff: { g: -120 } },
+    ],
+    relatesTo: { faultId: "yaw_misalign", incidentId: "yaw" },
+    sources: ["https://www.nrel.gov/wind/", "https://wes.copernicus.org/"],
+    weight: 2, sensitivity: "low",
+  },
+  {
+    id: "cs_pitch_bearing_wear", framing: "anonymized-technical", category: "pitch", discipline: "mechanical", minTier: 3,
+    title: { zh: "變槳/葉根軸承漸增磨耗與裂紋(去識別)", en: "Pitch/blade-root bearing progressive wear & cracking (anonymized)" },
+    scenario: { zh: "某大型機隊隨運轉年限增加,變槳(葉根)軸承出現滾道磨耗、裂紋與潤滑劣化,變槳力矩上升、偶發卡澀。葉根軸承一旦失效屬大組件級維修(常需吊裝),且早期徵兆隱晦,易被當成偶發變槳錯誤。", en: "As an aging fleet accumulates hours, pitch (blade-root) bearings develop raceway wear, cracks and grease degradation — pitch torque rises with occasional stiction. A blade-bearing failure is a major-component repair (often a crane job), and early signs are subtle, easily dismissed as random pitch faults." },
+    lesson: { zh: "變槳軸承是逐漸浮現的高成本失效:監測變槳力矩/電流趨勢、自動潤滑系統健康、軸承游隙與滾道內視鏡;依狀態提前在天氣窗安排再潤滑或更換,別等卡死才反應。", en: "Pitch bearings are a slowly emerging high-cost failure: trend pitch torque/current, auto-lube health, bearing clearance and raceway borescope; plan re-greasing or replacement in a weather window on condition — don't wait for seizure." },
+    choices: [
+      { label: { zh: "監測變槳力矩/潤滑趨勢並依狀態提前處理", en: "Trend pitch torque/lube & act early on condition" }, good: true, feedback: { zh: "✓ 提前在天氣窗處理遠比卡死後緊急吊裝便宜。", en: "✓ Acting early in a window beats an emergency crane job after seizure." }, eff: { a: 3, b: -500000 } },
+      { label: { zh: "當成偶發變槳錯誤、復歸了事", en: "Treat as a random pitch fault and just reset" }, good: false, feedback: { zh: "✗ 軸承劣化會惡化成卡死/裂紋,演成大修。", en: "✗ Bearing degradation worsens to seizure/cracking — a major overhaul." }, eff: { a: -5, s: 1 } },
+    ],
+    relatesTo: { faultId: "pitch_hydraulic_leak", incidentId: "pitch" },
+    sources: ["業界公認現象:變槳/葉根軸承漸進失效(去識別技術重現) / Pitch-bearing progressive failure (anonymized)"],
+    weight: 2, sensitivity: "low",
+  },
+  {
+    id: "cs_blade_lightning_lps", framing: "anonymized-technical", category: "lightning", discipline: "structural", minTier: 2,
+    title: { zh: "雷擊葉片損傷與接閃系統失效(去識別)", en: "Blade lightning damage & LPS failure (anonymized)" },
+    scenario: { zh: "雷擊造成的葉片損傷在風機保險理賠中佔很高比例。當接閃接收器/down-conductor 失效或電位連接不良時,雷電能量會在葉片內部閃絡,造成分層、爆裂甚至起火;離岸高聳機組尤其暴露。某機雷後出現葉片異音與接閃系統電阻異常。", en: "Lightning-caused blade damage is a large share of turbine insurance claims. When receptors/down-conductors fail or bonding is poor, the strike arcs inside the blade, causing delamination, blow-out or even fire; tall offshore units are especially exposed. After a storm one unit shows blade noise and abnormal LPS resistance." },
+    lesson: { zh: "把雷電防護系統(LPS)當定期維護項目而非碰運氣:依 IEC 61400-24 量測 down-conductor 連續性與接收器電阻、雷後即查受擊葉片;裝雷擊計數/定位有助鎖定受擊機組優先檢查。早抓導通失效可避免整支葉片報廢。", en: "Treat the lightning-protection system (LPS) as scheduled maintenance, not luck: per IEC 61400-24, measure down-conductor continuity & receptor resistance, inspect struck blades right after storms; lightning counters/location help prioritise hit units. Catching a broken conduction path early can save a whole blade." },
+    choices: [
+      { label: { zh: "定期量測 LPS 連續性、雷後優先檢查受擊葉片", en: "Periodically test LPS continuity; inspect struck blades after storms" }, good: true, feedback: { zh: "✓ 導通完好才能把雷電安全導走;雷後即查防止損傷擴大。", en: "✓ An intact conduction path safely diverts the strike; post-storm checks limit damage." }, eff: { a: 2, b: -200000 } },
+      { label: { zh: "把雷擊當隨機天災、不維護接閃系統", en: "Treat lightning as random fate, don't maintain the LPS" }, good: false, feedback: { zh: "✗ 接閃系統失效會把可修小傷變成整支葉片報廢甚至起火。", en: "✗ A failed LPS turns a repairable hit into a scrapped blade or a fire." }, eff: { a: -4, s: 1 } },
+    ],
+    relatesTo: { faultId: "blade_crack", incidentId: "blade" },
+    sources: ["業界標準:IEC 61400-24 風機雷電防護(去識別技術重現) / IEC 61400-24 lightning protection (anonymized)"],
+    weight: 2, sensitivity: "low",
+  },
+  {
+    id: "cs_grid_frequency_mass_trip", framing: "anonymized-technical", category: "grid", discipline: "electrical", minTier: 3,
+    title: { zh: "電網頻率擾動引發機組大量同時跳脫(去識別)", en: "Grid frequency disturbance triggers mass simultaneous trips (anonymized)" },
+    scenario: { zh: "某次電網事故造成頻率/電壓擾動,一座大型離岸風場因保護設定與故障穿越(FRT/LVRT)參數未完全契合電網規範,大量機組在擾動中同時跳脫離網,反而加深了系統不平衡、擴大停電。", en: "During a grid event, frequency/voltage disturbed the system; at a large offshore farm, protection settings and fault-ride-through (FRT/LVRT) parameters weren't fully aligned with grid code, so many units tripped offline simultaneously — deepening the imbalance and widening the outage." },
+    lesson: { zh: "故障穿越是併網責任而非選項:確認 LVRT/FRT 與頻率/電壓保護設定符合最新電網規範並定期複測;避免『一擾動就全跳』的同時性失效。大量同時掉網會把局部事故放大成系統事件。", en: "Ride-through is a grid obligation, not an option: verify LVRT/FRT and frequency/voltage protection meet current grid code and re-test periodically; avoid a 'one disturbance trips all' common-mode failure. Mass simultaneous disconnection amplifies a local fault into a system event." },
+    choices: [
+      { label: { zh: "校驗 FRT/LVRT 與保護設定符合電網規範並定期複測", en: "Verify FRT/LVRT & protection meet grid code; re-test periodically" }, good: true, feedback: { zh: "✓ 正解:設定契合規範才能穿越擾動、支撐而非惡化電網。", en: "✓ Code-aligned settings ride through and support — not worsen — the grid." }, eff: { a: 2, b: -300000 } },
+      { label: { zh: "保護從嚴、一有擾動就全場跳脫最安全", en: "Set protection aggressive — trip the whole farm on any disturbance" }, good: false, feedback: { zh: "✗ 同時大量掉網違反規範且放大系統事故,恐受罰。", en: "✗ Mass tripping breaches code, amplifies the event, and risks penalties." }, eff: { a: -4, s: 1, g: -120 } },
+    ],
+    relatesTo: { faultId: "converter_fault", incidentId: "converter" },
+    sources: ["業界公認風險:電網擾動下的故障穿越與同時跳脫(去識別) / Grid ride-through & mass-trip risk (anonymized)"],
+    weight: 1, sensitivity: "medium",
+  },
+  {
+    id: "cs_oss_transformer_failure", framing: "anonymized-technical", category: "transformer", discipline: "electrical", minTier: 3,
+    title: { zh: "海上變電站主變壓器失效→長期降容(去識別)", en: "Offshore substation main-transformer failure → prolonged derate (anonymized)" },
+    scenario: { zh: "某海上變電站(OSS)一台主變壓器因絕緣劣化/套管或分接開關故障失效,全場輸出受限數月;大型電力變壓器交期極長、需特殊重吊船更換,期間僅能以剩餘容量降容運轉,收入大減。", en: "At an offshore substation (OSS), a main transformer failed (insulation degradation / bushing or tap-changer fault), capping farm output for months; large power transformers have very long lead times and need a heavy-lift vessel to replace, forcing reduced-capacity operation and a big revenue hit meanwhile." },
+    lesson: { zh: "OSS 主變壓器是單點高衝擊資產:落實油中溶解氣體(DGA)與套管/分接開關監測、紅外線熱影像;評估備援容量或備品策略(共用備援變壓器、框架運輸合約),並把『長交期+重吊更換』計入風險與保險。", en: "An OSS main transformer is a single-point, high-impact asset: run DGA, bushing/tap-changer monitoring and IR thermography; evaluate redundancy or a spare strategy (shared spare transformer, framework transport contracts), and price the long-lead + heavy-lift replacement into risk and insurance." },
+    choices: [
+      { label: { zh: "DGA/套管監測 + 備援容量或備品策略", en: "DGA/bushing monitoring + redundancy or spare strategy" }, good: true, feedback: { zh: "✓ 提早抓內部劣化、預先安排備品,縮短數月降容。", en: "✓ Catch internal degradation early & pre-arrange a spare to cut months of derate." }, eff: { a: 3, b: -900000 } },
+      { label: { zh: "變壓器很可靠,不監測也不備援", en: "Transformers are reliable — no monitoring, no spare" }, good: false, feedback: { zh: "✗ 一旦失效=數月降容+超長交期+重吊,代價極高。", en: "✗ A failure means months of derate, a very long lead time and a heavy lift — hugely costly." }, eff: { a: -6, s: 1, g: -120 } },
+    ],
+    relatesTo: { faultId: "transformer_bushing", incidentId: "bushing" },
+    sources: ["業界公認風險:海上變電站主變壓器失效與備援(去識別) / OSS main-transformer failure & redundancy (anonymized)"],
+    weight: 1, sensitivity: "medium",
+  },
+  {
+    id: "cs_flange_bolt_fatigue", framing: "anonymized-technical", category: "bolt", discipline: "structural", minTier: 2,
+    title: { zh: "塔段/法蘭螺栓預拉力流失與疲勞裂紋(去識別)", en: "Tower/flange bolt preload loss & fatigue cracking (anonymized)" },
+    scenario: { zh: "某機隊例行檢查發現多處塔段法蘭螺栓預拉力衰減,個別出現疲勞裂紋;循環彎矩下若預緊不足,螺栓承受過大應力幅而加速疲勞,鬆動會引發法蘭縫隙位移與低頻振動,嚴重時危及連接。", en: "Routine checks across a fleet find reduced preload on many tower-flange bolts, with isolated fatigue cracks; under cyclic bending, insufficient preload exposes bolts to large stress ranges that accelerate fatigue, and loosening drives flange-gap movement and low-frequency vibration — in severe cases threatening the joint." },
+    lesson: { zh: "螺栓連接靠『預拉力』而非『鎖緊感』:依規範用張力法/超音波量測伸長量設定並複檢預緊,定期抽檢扭力/伸長趨勢與裂紋;鬆動是結構安全前兆,發現一處應擴大同型抽查。", en: "Bolted joints rely on preload, not 'feel-tight': set and re-check preload by tensioning/ultrasonic elongation per spec, trend torque/elongation and inspect for cracks; loosening is a structural-safety precursor — one finding should widen the sampling on same-type joints." },
+    choices: [
+      { label: { zh: "用張力/超音波量測設定預緊,定期複檢趨勢", en: "Set preload by tensioning/ultrasonic; re-check trend periodically" }, good: true, feedback: { zh: "✓ 量測伸長量才確認真實預緊;趨勢複檢早抓鬆動與疲勞。", en: "✓ Measuring elongation confirms real preload; trending catches loosening & fatigue early." }, eff: { a: 2, b: -150000 } },
+      { label: { zh: "目視沒鬆就好,不量測不複檢", en: "Looks tight — no measurement, no re-check" }, good: false, feedback: { zh: "✗ 預拉力衰減肉眼看不出,疲勞裂紋會在無聲中擴展。", en: "✗ Preload loss is invisible; fatigue cracks grow silently." }, eff: { a: -4, s: 1 } },
+    ],
+    relatesTo: { faultId: "tower_bolt_loose", incidentId: "tower_bolt" },
+    sources: ["業界公認現象:法蘭螺栓預拉力與疲勞(去識別技術重現) / Flange-bolt preload & fatigue (anonymized)"],
+    weight: 2, sensitivity: "low",
+  },
+  {
+    id: "cs_secondary_steel_cracks", framing: "anonymized-technical", category: "foundation", discipline: "structural", minTier: 2,
+    title: { zh: "登靠平台/次結構鋼疲勞裂紋(去識別)", en: "Boat-landing / secondary-steel fatigue cracks (anonymized)" },
+    scenario: { zh: "某風場登靠平台、爬梯、纜線托架等『次結構』焊接處出現疲勞裂紋:CTV 反覆頂靠衝擊與波浪載荷集中於這些附屬鋼件,常因被視為非主結構而巡檢不足,卻直接關係到人員登乘安全。", en: "At one farm, welds on 'secondary steel' (boat-landing, ladders, cable brackets) develop fatigue cracks: repeated CTV bump-on impacts and wave loads concentrate on these appurtenances, which are often under-inspected as 'non-primary' — yet they directly affect crew-access safety." },
+    lesson: { zh: "次結構不是次要:把登靠平台/爬梯/托架納入定期近接目視與焊道檢查,特別是高衝擊的 CTV 頂靠點;早期裂紋補焊/補強便宜,且攸關登乘安全。安全與結構完整性並重。", en: "Secondary steel isn't secondary: include boat-landings/ladders/brackets in recurring close-visual and weld inspections, especially high-impact CTV bump points; early crack repair/reinforcement is cheap and crew-access-critical. Safety and integrity go together." },
+    choices: [
+      { label: { zh: "把次結構納入定期焊道檢查,早期補強", en: "Include secondary steel in recurring weld inspections; reinforce early" }, good: true, feedback: { zh: "✓ 高衝擊點優先檢查;早補焊便宜又保登乘安全。", en: "✓ Prioritise high-impact points; early repair is cheap and keeps access safe." }, eff: { a: 1, b: -120000, s: -1 } },
+      { label: { zh: "次結構非主結構,巡檢時略過", en: "Skip it — secondary steel isn't primary structure" }, good: false, feedback: { zh: "✗ 登靠平台裂紋直接威脅人員登乘安全,不可輕忽。", en: "✗ Boat-landing cracks directly threaten crew-transfer safety — don't ignore." }, eff: { s: 2, a: -2 } },
+    ],
+    relatesTo: { faultId: "tower_corrosion", incidentId: "corrosion" },
+    sources: ["業界公認現象:次結構/登靠平台疲勞(去識別技術重現) / Secondary-steel fatigue (anonymized)"],
+    weight: 2, sensitivity: "low",
+  },
+  {
+    id: "cs_gearbox_lube_contamination", framing: "anonymized-technical", category: "gearbox_bearing", discipline: "mechanical", minTier: 2,
+    title: { zh: "齒輪箱潤滑油劣化/進水/過濾失效(去識別)", en: "Gearbox lube degradation / water ingress / filtration failure (anonymized)" },
+    scenario: { zh: "某機隊齒輪箱油液分析顯示含水量與顆粒數上升、添加劑耗盡。進水與污染會破壞油膜、誘發軸承微點蝕與白蝕裂紋(WEC)前期損傷,卻常因『還沒到換油里程』而被延後。", en: "A fleet's gearbox oil analysis shows rising water content and particle counts with depleted additives. Water and contamination break down the oil film and seed bearing micro-pitting and early white-etching-crack (WEC) damage — yet it's often deferred because 'the oil-change interval isn't up yet'." },
+    lesson: { zh: "依『油況』而非『里程』管理潤滑:線上顆粒/含水監測 + 定期油液分析,維護離線過濾與除水系統、呼吸器乾燥劑與油封;乾淨乾燥的油是齒輪箱壽命最便宜的保險。", en: "Manage lube by condition, not calendar: online particle/water monitoring + periodic oil analysis, maintain offline filtration/dewatering, breather desiccant and seals; clean dry oil is the cheapest insurance for gearbox life." },
+    choices: [
+      { label: { zh: "依油況監測管理潤滑,維護過濾與除水", en: "Manage lube by condition; maintain filtration & dewatering" }, good: true, feedback: { zh: "✓ 乾淨乾燥的油保住油膜,直接延後昂貴的軸承失效。", en: "✓ Clean dry oil preserves the film and defers costly bearing failures." }, eff: { a: 2, b: -120000 } },
+      { label: { zh: "照里程換油就好,不看油況", en: "Just change oil on the calendar, ignore condition" }, good: false, feedback: { zh: "✗ 進水/污染不等里程,期間已誘發軸承次表層損傷。", en: "✗ Water/contamination don't wait for the interval — subsurface bearing damage sets in meanwhile." }, eff: { a: -3, s: 1 } },
+    ],
+    relatesTo: { faultId: "gearbox_overheat", incidentId: "gearbox" },
+    sources: ["業界公認現象:齒輪箱潤滑污染與油況管理(去識別技術重現) / Gearbox lube contamination & condition-based management (anonymized)"],
+    weight: 2, sensitivity: "low",
+  },
 ];
 
 export const caseAt = (id: string | undefined): CaseStudy | undefined => CASE_STUDIES.find((c) => c.id === id);
@@ -262,6 +368,18 @@ export function rollCaseStudy(tier: number, seen: string[]): CaseStudy | null {
   const seenSet = new Set(seen);
   const pool = casesForTier(tier).filter((c) => !seenSet.has(c.id));
   if (!pool.length) return null;
+  const total = pool.reduce((a, c) => a + c.weight, 0);
+  let r = Math.random() * total;
+  for (const c of pool) { r -= c.weight; if (r <= 0) return c; }
+  return pool[0];
+}
+
+// 自由營運中心「案例演練」抽題:**略過 Tier 解鎖限制**(教師/玩家進中心即可練),
+// 優先抽本局未演練過的案例(weighted),全部練過後才允許重複,讓案例自然出現在任務清單。
+export function randomCaseDrill(seen: string[] = []): CaseStudy {
+  const seenSet = new Set(seen);
+  const fresh = CASE_STUDIES.filter((c) => !seenSet.has(c.id));
+  const pool = fresh.length ? fresh : CASE_STUDIES;
   const total = pool.reduce((a, c) => a + c.weight, 0);
   let r = Math.random() * total;
   for (const c of pool) { r -= c.weight; if (r <= 0) return c; }
