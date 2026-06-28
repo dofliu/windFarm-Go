@@ -34,7 +34,7 @@
 - **直升機進場 / 電網限電真實權衡任務**：自由營運沙盒新增 8 題真實運維判斷——直升機吊掛進場(封船海象/遠海急件/作業限值/成本效益)與電網限電(負電價降載/限電補償/低電壓穿越 FRT/順勢維修)。
   *Real-ops tradeoffs: helicopter access & grid-curtailment judgment tasks.*
 - **呈現**：三模式背景（模擬/實境/漫畫）、60° 俯瞰、多場景登塔（機艙/塔架/輪轂/甲板，含實景/漫畫情境圖與出海/大修場景影片）、Web Audio 音效音樂、中英雙語。母港左側「設施／風場動態」面板可各自獨立收合，設施項目皆有專屬圖示（含技師人物立繪）。
-- **工程**：自動化測試 `npm test`、平衡模擬器 `npm run sim`、PR CI（typecheck/test/build）。
+- **工程**：自動化測試 `npm test`（140 項）、平衡模擬器 `npm run sim`、併發壓力測試 `npm run stress`、PR CI（typecheck/test/build）。完整系統測試紀錄見 [TEST_REPORT.md](TEST_REPORT.md)、壓測細節見 [STRESS_TEST.md](STRESS_TEST.md)。
 
 ---
 
