@@ -7,8 +7,32 @@ import { useGame } from "../state/GameContext";
 import { toWan, DIAG_COST } from "../state/game";
 import { Sfx } from "../audio/sfx";
 import { CAT_LABEL, generateTask, type TaskChoice, type TaskInstance } from "../state/tasks";
+import { randomCaseDrill, visibleSources, type CaseStudy, type CaseChoice } from "../state/caseStudies";
+import type { I18n } from "../game/systems/types";
 
 const CAT_COLOR: Record<string, string> = { A: "#dc6450", B: "#5fa8d9", C: "#7fce8e", D: "#e3ad42", E: "#b08adf", F: "#e89a5b", G: "#d98ac0" };
+
+// 案例演練在任務清單中自然出現的比例(略過 Tier;~1/4 抽到案例,不洗版)
+const CASE_DRILL_PROB = 0.24;
+const CASE_DRILL_XP = 90; // 案例演練較紮實,XP 較高
+const CASE_CAT_LABEL: Record<string, I18n> = {
+  foundation: { zh: "基礎/結構", en: "Foundation" }, gearbox_bearing: { zh: "齒輪箱/軸承", en: "Gearbox/Bearing" },
+  blade: { zh: "葉片", en: "Blade" }, cable: { zh: "海纜", en: "Cable" }, electrical_fire: { zh: "電氣火災", en: "Electrical fire" },
+  vessel: { zh: "船舶/海事", en: "Vessel" }, bolt: { zh: "螺栓連接", en: "Bolting" }, ice: { zh: "結冰", en: "Icing" },
+  yaw: { zh: "偏航", en: "Yaw" }, pitch: { zh: "變槳", en: "Pitch" }, lightning: { zh: "雷擊", en: "Lightning" },
+  grid: { zh: "電網", en: "Grid" }, transformer: { zh: "變壓器", en: "Transformer" },
+};
+
+// 每次抽題:略過 Tier,以固定機率抽「案例演練」,否則抽一般判斷任務 → 案例自然進入任務清單。
+type Draw = { kind: "task"; task: TaskInstance } | { kind: "case"; cs: CaseStudy; unit: string };
+function makeDraw(seenCases: string[]): Draw {
+  if (Math.random() < CASE_DRILL_PROB) {
+    const cs = randomCaseDrill(seenCases);
+    const unit = "CH-" + String(1 + Math.floor(Math.random() * 40)).padStart(2, "0");
+    return { kind: "case", cs, unit };
+  }
+  return { kind: "task", task: generateTask() };
+}
 
 // 動態時鐘：驅動 SCADA 即時饋送動畫（#scada）
 function useTick(ms: number) {
@@ -120,28 +144,46 @@ function shell(title: string, onClose: () => void, body: ReactNode) {
 export default function OpsCenterModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   useLang();
   const { data, dispatch } = useGame();
-  const [task, setTask] = useState<TaskInstance>(() => generateTask());
+  const [draw, setDraw] = useState<Draw>(() => makeDraw(data.seenCases ?? []));
   const [picked, setPicked] = useState<number | null>(null);
   const [count, setCount] = useState(0);
   if (!open) return null;
 
-  const tpl = task.template;
-  // #4 接圖：B/D/E 類預設帶輔助圖（個別 template.chart 可覆寫）
+  const isCase = draw.kind === "case";
+  // #4 接圖：B/D/E 類預設帶輔助圖（個別 template.chart 可覆寫）；案例演練不帶 SCADA 圖
   const DEFAULT_CHART: Record<string, string> = { B: "trend", D: "bars", E: "radar" };
-  const chart = tpl.chart ?? DEFAULT_CHART[tpl.cat];
-  const resolve = (ci: number, c: TaskChoice) => {
+  const chart = draw.kind === "task" ? (draw.task.template.chart ?? DEFAULT_CHART[draw.task.template.cat]) : undefined;
+  const resolve = (ci: number, c: TaskChoice | CaseChoice) => {
     if (picked !== null) return;
     (c.good ? Sfx.success : Sfx.error)();
     setPicked(ci);
+    if (draw.kind === "case") {
+      const cs = draw.cs;
+      const dHealth = c.good ? 2 : -3;
+      dispatch({ type: "RESOLVE_TASK", dAvail: c.eff.a ?? 0, dBudget: c.eff.b ?? 0, dSafety: c.eff.s ?? 0, dGen: c.eff.g ?? 0, dHealth, xp: CASE_DRILL_XP });
+      // 知識點掌握度:案例演練記錄到對應「科別」;同時收錄進圖鑑案例檔
+      dispatch({ type: "RECORD_ANSWER", keys: [`disc:${cs.discipline}`], correct: c.good });
+      dispatch({ type: "MARK_CASE_SEEN", id: cs.id });
+      return;
+    }
+    const tpl = draw.task.template;
     // 健康度：好的預防/監控決策回復較多；壞決策加速劣化（#1）
     const dHealth = c.good ? (tpl.cat === "C" || tpl.cat === "B" ? 3 : 1) : -3;
     dispatch({ type: "RESOLVE_TASK", dAvail: c.eff.a ?? 0, dBudget: c.eff.b ?? 0, dSafety: c.eff.s ?? 0, dGen: c.eff.g ?? 0, dHealth, xp: tpl.xp });
     // 知識點掌握度(#mastery):記錄此任務類型的決策對錯
     dispatch({ type: "RECORD_ANSWER", keys: [`cat:${tpl.cat}`], correct: c.good });
   };
-  const nextTask = () => { Sfx.click(); setTask(generateTask()); setPicked(null); setCount((n) => n + 1); };
+  const nextTask = () => { Sfx.click(); setDraw(makeDraw(data.seenCases ?? [])); setPicked(null); setCount((n) => n + 1); };
 
-  const effLabel = (c: TaskChoice) => {
+  // 統一取出本次抽題的呈現欄位(任務 vs 案例)
+  const view = isCase
+    ? { title: draw.cs.title, scenario: draw.cs.scenario, choices: draw.cs.choices as (TaskChoice | CaseChoice)[], unit: draw.unit,
+        badge: `📁 ${t({ zh: "案例演練", en: "Case Drill" })}`, catLabel: t(CASE_CAT_LABEL[draw.cs.category] ?? { zh: draw.cs.category, en: draw.cs.category }),
+        color: "#d9a441" }
+    : { title: draw.task.template.title, scenario: draw.task.template.scenario, choices: draw.task.template.choices as (TaskChoice | CaseChoice)[], unit: draw.task.unit,
+        badge: `${draw.task.template.cat} · ${t(CAT_LABEL[draw.task.template.cat])}`, catLabel: "", color: CAT_COLOR[draw.task.template.cat] };
+
+  const effLabel = (c: TaskChoice | CaseChoice) => {
     const parts: string[] = [];
     if (c.eff.a) parts.push(`${t({ zh: "可用率", en: "Avail" })} ${c.eff.a > 0 ? "+" : ""}${c.eff.a}`);
     if (c.eff.b) parts.push(`◎ ${c.eff.b > 0 ? "+" : ""}${Math.round(c.eff.b / 10000)}萬`);
@@ -170,17 +212,18 @@ export default function OpsCenterModal({ open, onClose }: { open: boolean; onClo
         )}
       </div>
 
-      {/* 任務卡 */}
-      <div style={{ borderRadius: 8, border: `1px solid ${CAT_COLOR[tpl.cat]}55`, background: "rgba(255,255,255,.03)", overflow: "hidden" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", background: `${CAT_COLOR[tpl.cat]}22`, borderBottom: `1px solid ${CAT_COLOR[tpl.cat]}44` }}>
-          <span style={{ padding: "2px 8px", borderRadius: 3, background: CAT_COLOR[tpl.cat], color: "#10222b", fontSize: 11, fontWeight: 900 }}>{tpl.cat} · {t(CAT_LABEL[tpl.cat])}</span>
-          <span style={{ color: C.cream, fontSize: 14, fontWeight: 700 }}>{t(tpl.title)}</span>
-          <span style={{ marginLeft: "auto", fontSize: 11, color: C.mist }}>{task.unit}</span>
+      {/* 任務卡 / 案例演練卡 */}
+      <div style={{ borderRadius: 8, border: `1px solid ${view.color}55`, background: "rgba(255,255,255,.03)", overflow: "hidden" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", background: `${view.color}22`, borderBottom: `1px solid ${view.color}44` }}>
+          <span style={{ padding: "2px 8px", borderRadius: 3, background: view.color, color: "#10222b", fontSize: 11, fontWeight: 900 }}>{view.badge}</span>
+          {isCase && <span style={{ padding: "1px 6px", borderRadius: 10, border: "1px solid rgba(214,167,84,.45)", color: C.amber2, fontSize: 10 }}>{draw.cs.framing === "named-with-sources" ? t({ zh: "真實案例", en: "Real case" }) : t({ zh: "擬真案例", en: "Realistic" })} · {view.catLabel}</span>}
+          <span style={{ color: C.cream, fontSize: 14, fontWeight: 700, flex: 1 }}>{t(view.title)}</span>
+          <span style={{ fontSize: 11, color: C.mist, whiteSpace: "nowrap" }}>{view.unit}</span>
         </div>
         <div style={{ padding: "12px 14px" }}>
           {chart && <TaskChart kind={chart} diag={data.diagLevel > 0} />}
-          <div style={{ color: C.cream, fontSize: 13.5, lineHeight: 1.6, marginBottom: 12 }}>{t(tpl.scenario)}</div>
-          {tpl.choices.map((c, i) => {
+          <div style={{ color: C.cream, fontSize: 13.5, lineHeight: 1.6, marginBottom: 12 }}>{t(view.scenario)}</div>
+          {view.choices.map((c, i) => {
             const isPick = picked === i;
             let bd = "rgba(214,167,84,.3)", bg = "rgba(255,255,255,.04)";
             if (picked !== null) {
@@ -199,6 +242,21 @@ export default function OpsCenterModal({ open, onClose }: { open: boolean; onClo
               </div>
             );
           })}
+          {/* 案例演練:答後揭示 O&M 教訓 + 出處(具名案例),並收錄進圖鑑案例檔 */}
+          {isCase && picked !== null && (
+            <div style={{ marginTop: 4, padding: "10px 12px", borderRadius: 6, background: "rgba(217,164,65,.1)", border: "1px solid rgba(217,164,65,.34)" }}>
+              <div style={{ fontSize: 11, color: C.gold, fontWeight: 700, letterSpacing: ".05em" }}>📘 {t({ zh: "復盤教訓 O&M Lesson", en: "O&M Lesson" })}</div>
+              <div style={{ fontSize: 12.5, color: C.cream, lineHeight: 1.6, marginTop: 3 }}>{t(draw.cs.lesson)}</div>
+              {visibleSources(draw.cs).length > 0 && (
+                <div style={{ fontSize: 10.5, color: C.mist, marginTop: 7 }}>
+                  {t({ zh: "出處", en: "Sources" })}：{visibleSources(draw.cs).map((u, k) => (
+                    <a key={k} href={u} target="_blank" rel="noreferrer" style={{ color: C.amber2, marginRight: 8, wordBreak: "break-all" }}>[{k + 1}]</a>
+                  ))}
+                </div>
+              )}
+              <div style={{ fontSize: 10.5, color: C.green, marginTop: 6 }}>✓ {t({ zh: "已收錄進母港「案例檔」圖鑑", en: "Added to the Hub's Case Files" })}</div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -207,7 +265,7 @@ export default function OpsCenterModal({ open, onClose }: { open: boolean; onClo
           {t({ zh: "下一個狀況 →", en: "Next situation →" })}
         </button>
       )}
-      <div style={{ fontSize: 11, color: C.mist, marginTop: 10, textAlign: "center" }}>{t({ zh: "判斷型任務：多數選項各有取捨，回饋說明「為什麼」。", en: "Judgment tasks: most options have trade-offs; feedback explains why." })}</div>
+      <div style={{ fontSize: 11, color: C.mist, marginTop: 10, textAlign: "center" }}>{t({ zh: "判斷型任務 + 真實/擬真案例演練：多數選項各有取捨，回饋說明「為什麼」。", en: "Judgment tasks + real/realistic case drills: most options have trade-offs; feedback explains why." })}</div>
     </div>
   ));
 }

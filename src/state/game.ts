@@ -708,6 +708,7 @@ export type Action =
   | { type: "ROLL_WEEKLY"; weekly: WeeklyState } // 產生當週主題挑戰（#79，由 WeeklyTracker 於週推進時派發）
   | { type: "CLAIM_WEEKLY"; xp: number; cash: number } // 發放本週挑戰獎勵（#79）
   | { type: "RECORD_ANSWER"; keys: string[]; correct: boolean } // 記錄一次作答(知識點掌握度 #mastery)
+  | { type: "MARK_CASE_SEEN"; id: string; day?: number } // 案例演練完成→收錄進圖鑑案例檔(冪等)
   | { type: "RESET" };
 
 export const TEST_GRANT = 50_000_000; // 一次測試加值金額 ◎（測試/沙盒用）
@@ -1033,6 +1034,10 @@ export function reducer(s: GameData, a: Action): GameData {
     }
     case "RECORD_ANSWER":
       return { ...s, mastery: recordAnswer(s.mastery ?? {}, a.keys, a.correct) };
+    case "MARK_CASE_SEEN": {
+      const seen = s.seenCases.includes(a.id) ? s.seenCases : [...s.seenCases, a.id];
+      return { ...s, seenCases: seen, lastCase: { id: a.id, day: a.day ?? s.day } };
+    }
     case "GRANT_FUNDS":
       return { ...s, budget: s.budget + Math.max(0, a.amount) };
     case "LOAD_STATE":

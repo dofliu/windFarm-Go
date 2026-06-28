@@ -1355,7 +1355,7 @@ test("case studies: catalog complete & well-formed", () => {
   ok(C.length >= 16, `>=16 cases incl. 2nd batch (got ${C.length})`);
   const ids = C.map((c) => c.id);
   eq(ids.length, new Set(ids).size, "case ids unique");
-  const cats = new Set(["foundation", "gearbox_bearing", "blade", "cable", "electrical_fire", "vessel", "bolt", "ice"]);
+  const cats = new Set(["foundation", "gearbox_bearing", "blade", "cable", "electrical_fire", "vessel", "bolt", "ice", "yaw", "pitch", "lightning", "grid", "transformer"]);
   const discs = new Set(["mechanical", "electrical", "control", "structural", "hse"]);
   const effKeys = new Set(["a", "b", "s", "g"]);
   for (const c of C) {
@@ -1428,6 +1428,34 @@ test("case studies: advance() records a case into seenCases/lastCase when it rol
     }
   }
   ok(triggered, "some seed triggers a case study within 60 tries");
+});
+test("case studies: more cases added; randomCaseDrill bypasses Tier & prefers unseen (task-list drills)", () => {
+  // 第三批:案例數成長,且新增的類別/科別仍合法(catalog 測試已逐項驗證結構)
+  ok(cs.CASE_STUDIES.length >= 24, `cases grew to >=24 (got ${cs.CASE_STUDIES.length})`);
+  for (const id of ["cs_yaw_static_misalignment", "cs_pitch_bearing_wear", "cs_blade_lightning_lps", "cs_grid_frequency_mass_trip", "cs_oss_transformer_failure", "cs_flange_bolt_fatigue"]) {
+    ok(cs.caseAt(id), `new case ${id} exists`);
+  }
+  // randomCaseDrill 永遠回一則(略過 Tier:即使傳空 seen、不看 tier 也有案例)
+  seed(5);
+  for (let i = 0; i < 50; i++) { const d = cs.randomCaseDrill([]); ok(d && d.id, "drill always returns a case (Tier bypassed)"); }
+  // 優先抽未演練過的:把『除了一則』都標記已看,連抽多次應只會回那一則新案例
+  const all = cs.CASE_STUDIES.map((c) => c.id);
+  const onlyFresh = all[all.length - 1];
+  const seenMost = all.filter((id) => id !== onlyFresh);
+  seed(9);
+  for (let i = 0; i < 60; i++) eq(cs.randomCaseDrill(seenMost).id, onlyFresh, "drill prefers the only unseen case");
+  // 全部看過 → 仍回一則(允許重複,不會卡住任務清單)
+  seed(3);
+  for (let i = 0; i < 30; i++) { const d = cs.randomCaseDrill(all); ok(d && all.includes(d.id), "all-seen → still returns a case (repeats allowed)"); }
+});
+test("MARK_CASE_SEEN records the case into the codex (idempotent)", () => {
+  const id = cs.CASE_STUDIES[0].id;
+  const s1 = R({ ...I, seenCases: [], day: 12 }, { type: "MARK_CASE_SEEN", id });
+  ok(s1.seenCases.includes(id), "case added to seenCases");
+  eq(s1.lastCase?.id, id, "lastCase points to it");
+  eq(s1.lastCase?.day, 12, "lastCase day defaults to current day");
+  const s2 = R(s1, { type: "MARK_CASE_SEEN", id }); // 冪等:再標記不重複
+  eq(s2.seenCases.filter((x) => x === id).length, 1, "idempotent — no duplicate");
 });
 
 // ───────────────────────── PWA(階段 1) ─────────────────────────
