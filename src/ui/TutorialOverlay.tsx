@@ -7,6 +7,7 @@ import { useTutorial } from "../state/TutorialContext";
 import { TUTORIAL_STEPS } from "./tutorialSteps";
 import { exprUrl } from "./characters";
 import { Sfx } from "../audio/sfx";
+import { useIsMobile } from "./useIsMobile";
 import type { Screen } from "../App";
 
 const STAGE_W = 1600;
@@ -25,6 +26,7 @@ interface Rect {
 export default function TutorialOverlay({ screen }: { screen: Screen }) {
   useLang();
   const { data } = useGame();
+  const mobile = useIsMobile();
   const { running, step, total, getTarget, version, advance, skip } = useTutorial();
   const [rect, setRect] = useState<Rect | null>(null);
   const [grace, setGrace] = useState(false); // 行動步驟等待逾時 → 顯示「跳過此步」安全網，避免任何存檔狀態硬卡住
@@ -123,9 +125,9 @@ export default function TutorialOverlay({ screen }: { screen: Screen }) {
       )}
 
       {/* 莉莉 + 提示氣泡 */}
-      <div style={{ position: "absolute", left: "50%", top: bubbleTop, transform: "translateX(-50%)", display: "flex", alignItems: "flex-end", gap: 10, pointerEvents: "none", maxWidth: 760 }}>
-        <img src={exprUrl("narrator_girl", cur.expr ?? "smile")} alt="Lily" style={{ height: 168, width: "auto", objectFit: "contain", filter: "drop-shadow(0 10px 20px rgba(0,0,0,.6))" }} />
-        <div style={{ pointerEvents: "auto", width: 520, background: "linear-gradient(180deg, rgba(20,50,63,.98), rgba(13,36,46,.99))", border: "1px solid rgba(214,167,84,.7)", borderRadius: 12, padding: "14px 18px", boxShadow: "0 16px 44px rgba(0,0,0,.6)" }}>
+      <div style={{ position: "absolute", left: "50%", top: bubbleTop, transform: "translateX(-50%)", display: "flex", alignItems: "flex-end", gap: 10, pointerEvents: "none", maxWidth: mobile ? "96vw" : 760 }}>
+        {!mobile && <img src={exprUrl("narrator_girl", cur.expr ?? "smile")} alt="Lily" style={{ height: 168, width: "auto", objectFit: "contain", filter: "drop-shadow(0 10px 20px rgba(0,0,0,.6))" }} />}
+        <div style={{ pointerEvents: "auto", width: mobile ? "92vw" : 520, maxWidth: mobile ? "92vw" : undefined, background: "linear-gradient(180deg, rgba(20,50,63,.98), rgba(13,36,46,.99))", border: "1px solid rgba(214,167,84,.7)", borderRadius: 12, padding: "14px 18px", boxShadow: "0 16px 44px rgba(0,0,0,.6)" }}>
           <div style={{ display: "flex", alignItems: "center", marginBottom: 6 }}>
             <span style={{ fontFamily: FONT_SERIF, fontWeight: 900, fontSize: 16, color: C.goldText }}>{t({ zh: "莉莉", en: "Lily" })}</span>
             <span style={{ marginLeft: 8, fontSize: 11, color: C.mist2 }}>{t({ zh: "新手教學", en: "Tutorial" })} {step + 1}/{total}</span>
