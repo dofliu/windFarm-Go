@@ -46,7 +46,6 @@ export default function App() {
   const isMobile = useIsMobile();
   const [screen, setScreen] = useState<Screen>("hub");
   const [scale, setScale] = useState(1);
-  const [mScale, setMScale] = useState(() => (typeof window !== "undefined" ? window.innerWidth / 1600 : 0.24)); // 手機非母港畫面:依寬度縮放
   const [showCourse, setShowCourse] = useState(false);
   const [showDispatch, setShowDispatch] = useState(false);
   const [showOps, setShowOps] = useState(false);
@@ -89,7 +88,7 @@ export default function App() {
 
   // 1600×900 舞台等比縮放置中
   useEffect(() => {
-    const fit = () => { setScale(Math.min(window.innerWidth / 1600, window.innerHeight / 900, 1.2)); setMScale(window.innerWidth / 1600); };
+    const fit = () => setScale(Math.min(window.innerWidth / 1600, window.innerHeight / 900, 1.2));
     fit();
     window.addEventListener("resize", fit);
     return () => window.removeEventListener("resize", fit);
@@ -146,17 +145,14 @@ export default function App() {
       {isMobile ? (
         /* ───── 手機精簡版面(直向為主):單欄、可捲動、加大字體 ───── */
         <div className="wfg-mobile-root">
-          <MobileBar onGear={() => setShowCourse(true)} onProfile={() => setShowProfile(true)} onLogout={logout} />
+          <MobileBar screen={screen} setScreen={setScreen} onGear={() => setShowCourse(true)} onProfile={() => setShowProfile(true)} onLogout={logout} />
           <div className="wfg-mobile-scroll">
-            {screen === "hub" ? (
-              hubScreen(true)
-            ) : (
-              <div style={{ position: "relative", width: "100%", height: 900 * mScale, overflow: "hidden" }}>
-                <div style={{ position: "absolute", top: 0, left: 0, width: 1600, height: 900, transformOrigin: "top left", transform: `scale(${mScale})` }}>
-                  {stageScreens}
-                </div>
-              </div>
-            )}
+            {screen === "hub" && hubScreen(true)}
+            <Suspense fallback={null}>
+              {screen === "market" && <MarketScreen accent={accent} mobile />}
+              {screen === "sail" && <SailScreen setScreen={setScreen} accent={accent} mode={mode} mobile />}
+              {screen === "repair" && <RepairScreen setScreen={setScreen} mode={mode} mobile />}
+            </Suspense>
           </div>
           {/* 疊層為 root(fixed)的子元素 → 覆蓋可視區,不隨內容捲動 */}
           {overlays}

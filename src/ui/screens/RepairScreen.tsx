@@ -17,7 +17,7 @@ import { PARTS } from "../data";
 import { missionInstance } from "../campaign";
 import type { Screen } from "../../App";
 
-export default function RepairScreen({ setScreen, mode = "sim" }: { setScreen: (s: Screen) => void; mode?: "sim" | "real" | "comic" }) {
+export default function RepairScreen({ setScreen, mode = "sim", mobile = false }: { setScreen: (s: Screen) => void; mode?: "sim" | "real" | "comic"; mobile?: boolean }) {
   useLang();
   const { data, dispatch } = useGame();
   const { say } = useDialogue();
@@ -114,9 +114,9 @@ export default function RepairScreen({ setScreen, mode = "sim" }: { setScreen: (
   // #25 出勤就緒閘門：未抵達機組不可維修
   if (data.jobPhase !== "onsite") {
     return (
-      <div style={{ position: "absolute", inset: 0, zIndex: 2 }}>
-        <div style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg,#34435e 0%,#5a5d72 38%,#1c4151 100%)" }} />
-        <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <div style={mobile ? { position: "relative", padding: 16, minHeight: "60vh", display: "flex", alignItems: "center", justifyContent: "center" } : { position: "absolute", inset: 0, zIndex: 2 }}>
+        {!mobile && <div style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg,#34435e 0%,#5a5d72 38%,#1c4151 100%)" }} />}
+        <div style={mobile ? { display: "flex", alignItems: "center", justifyContent: "center" } : { position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
           <div style={{ ...panel, padding: "26px 30px", textAlign: "center", maxWidth: 420 }}>
             <div style={{ fontSize: 40, marginBottom: 8 }}>🔒</div>
             <div style={{ fontFamily: FONT_SERIF, fontSize: 18, fontWeight: 900, color: C.cream, marginBottom: 8 }}>{t({ zh: "尚未出勤抵達機組", en: "Not on site yet" })}</div>
@@ -133,9 +133,9 @@ export default function RepairScreen({ setScreen, mode = "sim" }: { setScreen: (
   // #33 登船事件：抵達後、開工前的登船場景（浪高可能延誤）
   if (!boarded) {
     return (
-      <div style={{ position: "absolute", inset: 0, zIndex: 2 }}>
-        {/* 登塔情境影片背景（取代原 CSS 平台/船隻） */}
-        <video
+      <div style={mobile ? { position: "relative", padding: "12px 12px 24px" } : { position: "absolute", inset: 0, zIndex: 2 }}>
+        {/* 登塔情境影片背景（取代原 CSS 平台/船隻）;手機隱藏 */}
+        {!mobile && <video
           key="boarding-video"
           src={`${import.meta.env.BASE_URL}assets/scenes/boarding.mp4`}
           poster={`${import.meta.env.BASE_URL}assets/scenes/real_boarding.jpg`}
@@ -144,10 +144,10 @@ export default function RepairScreen({ setScreen, mode = "sim" }: { setScreen: (
           muted
           playsInline
           style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
-        />
-        <div style={{ position: "absolute", inset: 0, background: "linear-gradient(90deg, rgba(6,18,24,.15) 0%, rgba(6,18,24,.05) 45%, rgba(6,18,24,.5) 100%)", pointerEvents: "none" }} />
+        />}
+        {!mobile && <div style={{ position: "absolute", inset: 0, background: "linear-gradient(90deg, rgba(6,18,24,.15) 0%, rgba(6,18,24,.05) 45%, rgba(6,18,24,.5) 100%)", pointerEvents: "none" }} />}
 
-        <div style={{ position: "absolute", right: 26, top: 92, width: 360 }}>
+        <div style={mobile ? { width: "100%" } : { position: "absolute", right: 26, top: 92, width: 360 }}>
           <div style={{ ...panel }}>
             <div style={{ ...panelHeader }}>
               <span style={panelTitle}>{t({ zh: "登船登塔", en: "Boarding" })}</span>
@@ -173,15 +173,15 @@ export default function RepairScreen({ setScreen, mode = "sim" }: { setScreen: (
           </div>
         </div>
 
-        <AdvisorPopup id="veteran_sailor" src={exprUrl("veteran_sailor", roughBoarding ? "alert" : "talking")} line={roughBoarding ? { zh: "抓浪間空檔上！手要穩，別硬跳。", en: "Step across on the lull — steady, don't jump." } : { zh: "海面平穩，登船吧。", en: "Calm water — let's board." }} style={{ left: 372, bottom: 12 }} portraitH={300} bubbleSide="left" />
+        {!mobile && <AdvisorPopup id="veteran_sailor" src={exprUrl("veteran_sailor", roughBoarding ? "alert" : "talking")} line={roughBoarding ? { zh: "抓浪間空檔上！手要穩，別硬跳。", en: "Step across on the lull — steady, don't jump." } : { zh: "海面平穩，登船吧。", en: "Calm water — let's board." }} style={{ left: 372, bottom: 12 }} portraitH={300} bubbleSide="left" />}
       </div>
     );
   }
 
   return (
-    <div style={{ position: "absolute", inset: 0, zIndex: 2 }}>
-      {/* 模擬模式：CSS 黃昏背景＋地點機械場景；實境/漫畫由背景圖呈現 */}
-      {mode === "sim" && (
+    <div style={mobile ? { position: "relative", padding: "12px 12px 24px", display: "flex", flexDirection: "column", gap: 12 } : { position: "absolute", inset: 0, zIndex: 2 }}>
+      {/* 模擬模式：CSS 黃昏背景＋地點機械場景；手機精簡版隱藏裝飾場景 */}
+      {!mobile && mode === "sim" && (
         <div style={{ position: "absolute", inset: 0 }}>
           <div style={{ position: "absolute", left: 0, right: 0, top: 0, height: "56%", background: "linear-gradient(180deg,#34435e 0%, #5a5d72 38%, #b08a6a 64%, #d8b487 75%)" }} />
           <div style={{ position: "absolute", left: 0, right: 0, top: 0, height: "60%", background: "radial-gradient(circle at 62% 90%, rgba(255,214,160,.7), rgba(255,214,160,0) 42%)" }} />
@@ -192,19 +192,19 @@ export default function RepairScreen({ setScreen, mode = "sim" }: { setScreen: (
       )}
 
       {/* 作業地點標籤（#33） */}
-      <div style={{ position: "absolute", left: 40, top: 92, padding: "7px 14px", borderRadius: 20, background: "rgba(10,28,36,.75)", border: "1px solid rgba(214,167,84,.4)", color: C.cream, fontSize: 13, fontWeight: 700, zIndex: 3 }}>
+      <div style={mobile ? { padding: "7px 14px", borderRadius: 20, background: "rgba(10,28,36,.75)", border: "1px solid rgba(214,167,84,.4)", color: C.cream, fontSize: 13, fontWeight: 700, alignSelf: "flex-start" } : { position: "absolute", left: 40, top: 92, padding: "7px 14px", borderRadius: 20, background: "rgba(10,28,36,.75)", border: "1px solid rgba(214,167,84,.4)", color: C.cream, fontSize: 13, fontWeight: 700, zIndex: 3 }}>
         <span style={{ color: C.gold }}>📍</span> {t({ zh: "作業地點", en: "Work area" })}：{t(LOCATION_LABEL[location])} · {quest.unit}
       </div>
 
-      {/* 依作業地點變化的場景（#5）：機艙內/塔架內/輪轂/甲板（僅模擬模式，作為情境圖載入失敗時的底層） */}
-      {mode === "sim" && <RepairScene location={location} alarm={fault.name} />}
+      {/* 依作業地點變化的場景（#5）;手機隱藏裝飾場景 */}
+      {!mobile && mode === "sim" && <RepairScene location={location} alarm={fault.name} />}
 
-      {/* 作業地點實景／情境圖（覆蓋 CSS 場景；漫畫模式用漫畫版；載入失敗自動隱藏回退） */}
-      <FallbackImg file={`${mode === "comic" ? "comic_" : ""}repair_${location}.jpg`} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />
-      <div style={{ position: "absolute", inset: 0, background: "radial-gradient(circle at 38% 42%, rgba(6,16,22,0) 46%, rgba(6,16,22,.5) 100%)", pointerEvents: "none" }} />
+      {/* 作業地點實景／情境圖;手機隱藏(改以純面板呈現) */}
+      {!mobile && <FallbackImg file={`${mode === "comic" ? "comic_" : ""}repair_${location}.jpg`} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />}
+      {!mobile && <div style={{ position: "absolute", inset: 0, background: "radial-gradient(circle at 38% 42%, rgba(6,16,22,0) 46%, rgba(6,16,22,.5) 100%)", pointerEvents: "none" }} />}
 
-      {/* left bottom cards */}
-      <div style={{ position: "absolute", left: 40, bottom: 28, width: 300, display: "flex", gap: 12 }}>
+      {/* 統計卡(可用率 / 作業窗) */}
+      <div style={mobile ? { display: "flex", gap: 12 } : { position: "absolute", left: 40, bottom: 28, width: 300, display: "flex", gap: 12 }}>
         <div style={{ ...panel, flex: 1, padding: "12px 14px", borderRadius: 6 }}>
           <div style={{ fontSize: 11, color: C.mist }}>{t(S.panel.availability)}</div>
           <div style={{ fontSize: 30, fontWeight: 900, color: C.amber2, fontFamily: FONT_SERIF, lineHeight: 1.1 }}>
@@ -241,8 +241,8 @@ export default function RepairScreen({ setScreen, mode = "sim" }: { setScreen: (
         </div>
       </div>
 
-      {/* right column */}
-      <div style={{ position: "absolute", right: 26, top: 92, bottom: 28, width: 392, display: "flex", flexDirection: "column", gap: 13 }}>
+      {/* right column(維修主面板:SCADA / 測驗 / SOP) */}
+      <div style={mobile ? { display: "flex", flexDirection: "column", gap: 12 } : { position: "absolute", right: 26, top: 92, bottom: 28, width: 392, display: "flex", flexDirection: "column", gap: 13 }}>
         {/* SCADA alarm */}
         <div style={{ ...panel, border: "1px solid rgba(220,100,80,.5)", boxShadow: "0 12px 30px rgba(0,0,0,.45)" }}>
           <div style={{ ...panelHeader, background: "linear-gradient(180deg, rgba(220,100,80,.25), rgba(220,100,80,.06))", borderBottom: "1px solid rgba(220,100,80,.4)" }}>
@@ -354,14 +354,14 @@ export default function RepairScreen({ setScreen, mode = "sim" }: { setScreen: (
         </div>
       </div>
 
-      {/* 維修工程師側邊跳出告警 */}
-      <AdvisorPopup
+      {/* 維修工程師側邊跳出告警;手機隱藏 */}
+      {!mobile && <AdvisorPopup
         id="repair_eng"
         line={{ zh: "主機有異常震動！先答對診斷題、完成 SOP 再回報！", en: "Abnormal vibration! Answer the quiz, finish the SOP, then report!" }}
         style={{ left: 372, bottom: 12 }}
         portraitH={300}
         bubbleSide="left"
-      />
+      />}
     </div>
   );
 }
