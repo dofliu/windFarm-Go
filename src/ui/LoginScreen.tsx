@@ -130,7 +130,7 @@ export default function LoginScreen({ onDone }: { onDone: () => void }) {
 
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", background: "radial-gradient(circle at 50% 40%, #14242d, #070d11 80%)", fontFamily: "'Noto Sans TC', sans-serif" }}>
-      <div style={{ ...panel, width: 420, padding: 0, overflow: "hidden" }}>
+      <div className="wfg-modal-panel" style={{ ...panel, width: 420, maxWidth: "94vw", padding: 0, overflow: "hidden" }}>
         <div style={{ textAlign: "center", padding: "16px 0", background: "linear-gradient(180deg,#e8c074,#cf9a35)", color: C.ink, fontFamily: FONT_SERIF, fontWeight: 900, fontSize: 20 }}>
           {t({ zh: "離岸風場・運維傳說", en: "Offshore O&M Legend" })}
         </div>

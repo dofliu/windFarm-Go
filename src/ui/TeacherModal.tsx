@@ -67,7 +67,7 @@ export default function TeacherModal({ open, onClose }: { open: boolean; onClose
 
   return (
     <div onClick={close} style={{ position: "absolute", inset: 0, zIndex: 65, background: "rgba(6,16,22,.6)", display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(2px)" }}>
-      <div onClick={(e) => e.stopPropagation()} style={{ ...panel, width: status === "ok" ? 720 : 460, maxHeight: 760, overflow: "auto", padding: 0 }}>
+      <div onClick={(e) => e.stopPropagation()} className="wfg-modal-panel" style={{ ...panel, width: status === "ok" ? 720 : 460, maxHeight: 760, overflow: "auto", padding: 0 }}>
         <div style={{ display: "flex", alignItems: "center", padding: "12px 16px", background: "linear-gradient(180deg, rgba(217,164,65,.22), rgba(217,164,65,.05))", borderBottom: "1px solid rgba(214,167,84,.35)" }}>
           <span style={{ fontFamily: FONT_SERIF, fontWeight: 900, fontSize: 16, color: C.cream }}>👩‍🏫 {t({ zh: "教師檢視 · 班級進度", en: "Instructor · Class Progress" })}</span>
           <span style={{ marginLeft: "auto", cursor: "pointer", color: C.mist, fontSize: 18 }} onClick={close}>✕</span>

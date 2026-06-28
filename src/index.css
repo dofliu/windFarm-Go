@@ -20,6 +20,32 @@ body {
   overflow: hidden;
 }
 
+/* 手機精簡版面:固定全螢幕的直向欄;頂列固定、內容區自行捲動,
+   彈窗/對話/教學疊層為 root 的絕對定位子元素 → 永遠覆蓋可視區(不隨內容捲走)。 */
+.wfg-mobile-root {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  background: radial-gradient(circle at 50% 20%, #14242d, #070d11 80%);
+  font-family: "Noto Sans TC", sans-serif;
+}
+.wfg-mobile-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* 手機上的彈窗面板:不超出畫面、可內部捲動(覆寫各 modal 的固定 width/maxHeight) */
+@media (max-width: 760px) {
+  .wfg-modal-panel {
+    width: 94vw !important;
+    max-width: 94vw !important;
+    max-height: 88vh !important;
+  }
+}
+
 /* 設計稿動畫：葉片旋轉、地點浮動、告警脈動 */
 @keyframes spin {
   to {

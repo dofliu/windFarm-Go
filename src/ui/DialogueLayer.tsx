@@ -51,7 +51,7 @@ export default function DialogueLayer() {
     <div onClick={handle} style={{ position: "absolute", inset: 0, zIndex: 50, display: "flex", alignItems: "flex-end", justifyContent: "center", paddingBottom: 24, cursor: "pointer" }}>
       <div style={{ display: "flex", alignItems: "flex-end", gap: 10 }}>
         <img src={img} alt={current.speaker} style={{ height: 200, width: "auto", objectFit: "contain", objectPosition: "bottom center", filter: "drop-shadow(0 10px 20px rgba(0,0,0,.6))" }} />
-        <div style={{ width: 560, background: "linear-gradient(180deg, rgba(20,50,63,.97), rgba(13,36,46,.98))", border: "1px solid rgba(214,167,84,.6)", borderRadius: 10, padding: "14px 18px", boxShadow: "0 16px 40px rgba(0,0,0,.6)" }}>
+        <div style={{ width: 560, maxWidth: "92vw", background: "linear-gradient(180deg, rgba(20,50,63,.97), rgba(13,36,46,.98))", border: "1px solid rgba(214,167,84,.6)", borderRadius: 10, padding: "14px 18px", boxShadow: "0 16px 40px rgba(0,0,0,.6)" }}>
           <div style={{ fontFamily: FONT_SERIF, fontWeight: 900, fontSize: 16, color: C.goldText, marginBottom: 6 }}>{ch ? t(ch.name) : current.speaker}</div>
           <div style={{ fontSize: 15, lineHeight: 1.6, color: C.cream, minHeight: 48 }}>
             {shown}

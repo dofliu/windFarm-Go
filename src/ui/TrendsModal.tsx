@@ -54,7 +54,7 @@ export default function TrendsModal({ open, onClose }: { open: boolean; onClose:
 
   return (
     <div onClick={onClose} style={{ position: "absolute", inset: 0, zIndex: 62, background: "rgba(6,16,22,.6)", display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(2px)" }}>
-      <div onClick={(e) => e.stopPropagation()} style={{ ...panel, width: 600, maxHeight: 780, overflow: "auto", padding: 0 }}>
+      <div onClick={(e) => e.stopPropagation()} className="wfg-modal-panel" style={{ ...panel, width: 600, maxHeight: 780, overflow: "auto", padding: 0 }}>
         <div style={{ display: "flex", alignItems: "center", padding: "12px 16px", background: "linear-gradient(180deg, rgba(217,164,65,.22), rgba(217,164,65,.05))", borderBottom: "1px solid rgba(214,167,84,.35)", position: "sticky", top: 0 }}>
           <span style={{ fontFamily: FONT_SERIF, fontWeight: 900, fontSize: 16, color: C.cream }}>📈 {t({ zh: "營運趨勢 · 賽後復盤", en: "Operations Trends · After-Action" })}</span>
           <span style={{ marginLeft: "auto", cursor: "pointer", color: C.mist, fontSize: 18 }} onClick={onClose}>✕</span>

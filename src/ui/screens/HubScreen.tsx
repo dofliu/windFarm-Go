@@ -67,7 +67,7 @@ function PanelHead({ title, open, onToggle }: { title: I18n; open: boolean; onTo
   );
 }
 
-export default function HubScreen({ setScreen, accent, onDispatch, onFacility, sceneName, onCycleScene, aerial, onToggleView, mode = "sim", onCycleMode, onOps, onFleet, onBuild, onCaseFile, onTrends, week = 1 }: { setScreen: (s: Screen) => void; accent: string; onDispatch?: () => void; onFacility?: (k: "vessel" | "tech" | "tool" | "codex" | "ranking" | "farms") => void; sceneName?: I18n; onCycleScene?: () => void; aerial?: boolean; onToggleView?: () => void; mode?: SceneMode; onCycleMode?: () => void; onOps?: () => void; onFleet?: () => void; onBuild?: () => void; onCaseFile?: () => void; onTrends?: () => void; week?: number }) {
+export default function HubScreen({ setScreen, accent, onDispatch, onFacility, sceneName, onCycleScene, aerial, onToggleView, mode = "sim", onCycleMode, onOps, onFleet, onBuild, onCaseFile, onTrends, week = 1, mobile = false }: { setScreen: (s: Screen) => void; accent: string; onDispatch?: () => void; onFacility?: (k: "vessel" | "tech" | "tool" | "codex" | "ranking" | "farms") => void; sceneName?: I18n; onCycleScene?: () => void; aerial?: boolean; onToggleView?: () => void; mode?: SceneMode; onCycleMode?: () => void; onOps?: () => void; onFleet?: () => void; onBuild?: () => void; onCaseFile?: () => void; onTrends?: () => void; week?: number; mobile?: boolean }) {
   useLang();
   const { data, dispatch } = useGame();
   const { say } = useDialogue();
@@ -181,11 +181,15 @@ export default function HubScreen({ setScreen, accent, onDispatch, onFacility, s
   const seaColor = data.seaState === "workable" ? C.green : data.seaState === "caution" ? C.amber : C.red;
 
   return (
-    <div style={{ position: "absolute", inset: 0, zIndex: 2 }}>
+    <div style={mobile
+      ? { display: "flex", flexDirection: "column", gap: 12, padding: "12px 12px 96px" }
+      : { position: "absolute", inset: 0, zIndex: 2 }}>
       {/* 中央：風場風景由 SceneBackground 提供，這裡僅放大型出海 CTA */}
 
       {/* ───── 左側：設施 + 風場動態（單一可捲動欄，避免重疊） ───── */}
-      <div style={{ position: "absolute", left: 26, top: 84, width: 292, bottom: 28, overflowY: "auto", overflowX: "hidden", display: "flex", flexDirection: "column", gap: 12 }}>
+      <div style={mobile
+        ? { display: "flex", flexDirection: "column", gap: 12, order: 3 }
+        : { position: "absolute", left: 26, top: 84, width: 292, bottom: 28, overflowY: "auto", overflowX: "hidden", display: "flex", flexDirection: "column", gap: 12 }}>
       <div style={{ ...panel, flex: "none" }}>
         <PanelHead title={{ zh: "設施", en: "Facilities" }} open={facOpen} onToggle={() => setFacOpen((v) => !v)} />
         {facOpen && (
@@ -336,11 +340,11 @@ export default function HubScreen({ setScreen, accent, onDispatch, onFacility, s
       </div>
 
       {/* ───── 右側：我的營運（可收納抽屜 #6）───── */}
-      <div style={{ position: "absolute", right: 26, top: 84, width: 300 }}>
+      <div style={mobile ? { order: 2 } : { position: "absolute", right: 26, top: 84, width: 300 }}>
         <div style={{ ...panel }}>
           <PanelHead title={{ zh: "我的營運", en: "My Operations" }} open={opsOpen} onToggle={() => setOpsOpen((v) => !v)} />
           {opsOpen && (
-            <div style={{ padding: "12px 14px", maxHeight: 540, overflowY: "auto" }}>
+            <div style={{ padding: "12px 14px", maxHeight: mobile ? undefined : 540, overflowY: mobile ? undefined : "auto" }}>
               {/* 待處理工單 / 故障 */}
               <OpsBlock title={{ zh: "待處理工單", en: "Work Order" }}>
                 {stage === "available" || stage === "active" || stage === "done" ? (
@@ -508,8 +512,8 @@ export default function HubScreen({ setScreen, accent, onDispatch, onFacility, s
         </div>
       </div>
 
-      {/* 視角 / 海域背景切換（#32） */}
-      <div style={{ position: "absolute", left: "50%", top: 92, transform: "translateX(-50%)", display: "flex", alignItems: "center", gap: 8 }}>
+      {/* 視角 / 海域背景切換（#32）。手機精簡版隱藏(非核心) */}
+      <div style={mobile ? { display: "none" } : { position: "absolute", left: "50%", top: 92, transform: "translateX(-50%)", display: "flex", alignItems: "center", gap: 8 }}>
         <div onClick={() => { Sfx.click(); onToggleView?.(); }} style={{ display: "flex", alignItems: "center", gap: 7, padding: "7px 15px", borderRadius: 20, background: aerial ? "linear-gradient(180deg,#e8c074,#d9a441)" : "rgba(10,28,36,.72)", border: "1px solid rgba(214,167,84,.5)", color: aerial ? C.ink : C.cream, fontSize: 13, fontWeight: 700, cursor: "pointer", backdropFilter: "blur(3px)", whiteSpace: "nowrap" }}>
           <span style={{ fontSize: 15 }}>{aerial ? "🏝" : "🛰"}</span>
           {aerial ? t({ zh: "港景視角", en: "Port view" }) : t({ zh: "俯瞰全景", en: "Aerial view" })}
@@ -529,17 +533,21 @@ export default function HubScreen({ setScreen, accent, onDispatch, onFacility, s
         )}
       </div>
 
-      {/* ───── 中央底部：主要動作 ───── */}
-      <div style={{ position: "absolute", left: "50%", bottom: 36, transform: "translateX(-50%)", display: "flex", gap: 16, alignItems: "center" }}>
-        <SecBtn icon="🛰" label={t({ zh: "遠端巡檢", en: "Remote Check" })} onClick={() => { Sfx.click(); dispatch({ type: "REMOTE_CHECK" }); say({ speaker: "scada_eng", expr: "neutral", line: { zh: "遠端 SCADA 巡檢完成：早期徵兆已記錄，今天就這樣（+經驗）。", en: "Remote SCADA sweep done — early signs logged. A day well spent (+XP)." } }); }} />
-        <div ref={setSailRef} onClick={() => { Sfx.click(); goSail(); }} style={{ padding: "16px 46px", borderRadius: 6, background: primaryBg(accent), border: "1px solid rgba(255,236,196,.6)", color: C.ink, fontFamily: FONT_SERIF, fontSize: 21, fontWeight: 900, letterSpacing: ".1em", whiteSpace: "nowrap", cursor: "pointer", boxShadow: "0 8px 22px rgba(217,164,65,.35), inset 0 1px 0 rgba(255,255,255,.4)" }}>
+      {/* ───── 中央底部：主要動作（手機改為固定底部動作列）───── */}
+      <div style={mobile
+        ? { position: "fixed", left: 0, right: 0, bottom: 0, zIndex: 40, display: "flex", gap: 8, alignItems: "stretch", padding: "10px 12px calc(10px + env(safe-area-inset-bottom))", background: "linear-gradient(0deg, rgba(8,24,31,.98), rgba(8,24,31,.82))", borderTop: "1px solid rgba(214,167,84,.3)" }
+        : { position: "absolute", left: "50%", bottom: 36, transform: "translateX(-50%)", display: "flex", gap: 16, alignItems: "center" }}>
+        <SecBtn icon="🛰" label={t({ zh: "遠端巡檢", en: "Remote Check" })} mobile={mobile} onClick={() => { Sfx.click(); dispatch({ type: "REMOTE_CHECK" }); say({ speaker: "scada_eng", expr: "neutral", line: { zh: "遠端 SCADA 巡檢完成：早期徵兆已記錄，今天就這樣（+經驗）。", en: "Remote SCADA sweep done — early signs logged. A day well spent (+XP)." } }); }} />
+        <div ref={setSailRef} onClick={() => { Sfx.click(); goSail(); }} style={mobile
+          ? { flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: "14px 0", borderRadius: 6, background: primaryBg(accent), border: "1px solid rgba(255,236,196,.6)", color: C.ink, fontFamily: FONT_SERIF, fontSize: 18, fontWeight: 900, letterSpacing: ".06em", whiteSpace: "nowrap", cursor: "pointer", boxShadow: "0 6px 16px rgba(217,164,65,.35)" }
+          : { padding: "16px 46px", borderRadius: 6, background: primaryBg(accent), border: "1px solid rgba(255,236,196,.6)", color: C.ink, fontFamily: FONT_SERIF, fontSize: 21, fontWeight: 900, letterSpacing: ".1em", whiteSpace: "nowrap", cursor: "pointer", boxShadow: "0 8px 22px rgba(217,164,65,.35), inset 0 1px 0 rgba(255,255,255,.4)" }}>
           {t(S.btn.setSail)}
         </div>
-        <SecBtn icon="⚓" label={t(S.btn.restPort)} onClick={() => { Sfx.click(); dispatch({ type: "REST" }); say({ speaker: "narrator_girl", expr: "smile", line: { zh: "靠港休整一天，重新評估海象～", en: "Rested a day in port — sea state re-assessed." } }); }} />
+        <SecBtn icon="⚓" label={t(S.btn.restPort)} mobile={mobile} onClick={() => { Sfx.click(); dispatch({ type: "REST" }); say({ speaker: "narrator_girl", expr: "smile", line: { zh: "靠港休整一天，重新評估海象～", en: "Rested a day in port — sea state re-assessed." } }); }} />
       </div>
 
-      {/* 母港常駐顧問莉莉：動態提示/建議、可收起（不再固定一句、不擋底部按鈕） */}
-      <HubAdvisor />
+      {/* 母港常駐顧問莉莉：動態提示/建議、可收起（手機精簡版隱藏，避免擋住內容）*/}
+      {!mobile && <HubAdvisor />}
     </div>
   );
 }
@@ -553,9 +561,11 @@ function FacRowMini({ icon, label, onClick }: { icon: ReactNode; label: I18n; on
   );
 }
 
-function SecBtn({ icon, label, onClick }: { icon: string; label: string; onClick?: () => void }) {
+function SecBtn({ icon, label, onClick, mobile = false }: { icon: string; label: string; onClick?: () => void; mobile?: boolean }) {
   return (
-    <div onClick={onClick} style={{ padding: "13px 22px", borderRadius: 5, background: "rgba(15,40,50,.82)", border: "1px solid rgba(214,167,84,.45)", color: C.cream, fontSize: 15, fontWeight: 700, cursor: "pointer", backdropFilter: "blur(3px)", display: "flex", alignItems: "center", gap: 8, whiteSpace: "nowrap" }}>
+    <div onClick={onClick} style={mobile
+      ? { flex: "none", padding: "10px 12px", borderRadius: 6, background: "rgba(15,40,50,.9)", border: "1px solid rgba(214,167,84,.45)", color: C.cream, fontSize: 13, fontWeight: 700, cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 2, whiteSpace: "nowrap", minWidth: 64 }
+      : { padding: "13px 22px", borderRadius: 5, background: "rgba(15,40,50,.82)", border: "1px solid rgba(214,167,84,.45)", color: C.cream, fontSize: 15, fontWeight: 700, cursor: "pointer", backdropFilter: "blur(3px)", display: "flex", alignItems: "center", gap: 8, whiteSpace: "nowrap" }}>
       <span style={{ color: C.gold, fontSize: 17 }}>{icon}</span> {label}
     </div>
   );
