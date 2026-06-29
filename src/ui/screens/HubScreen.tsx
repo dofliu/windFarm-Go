@@ -28,6 +28,7 @@ import { missionWeek } from "../../state/course";
 import { dailyDef } from "../../state/dailyTasks";
 import { themeById } from "../../state/weeklyChallenges";
 import { caseAt } from "../../state/caseStudies";
+import { portLevel, PORT_MAX_LEVEL } from "../../state/port";
 import type { I18n } from "../../game/systems/types";
 import type { Screen } from "../../App";
 
@@ -67,7 +68,7 @@ function PanelHead({ title, open, onToggle }: { title: I18n; open: boolean; onTo
   );
 }
 
-export default function HubScreen({ setScreen, accent, onDispatch, onFacility, sceneName, onCycleScene, aerial, onToggleView, mode = "sim", onCycleMode, onOps, onFleet, onBuild, onCaseFile, onTrends, week = 1, mobile = false }: { setScreen: (s: Screen) => void; accent: string; onDispatch?: () => void; onFacility?: (k: "vessel" | "tech" | "tool" | "codex" | "ranking" | "farms") => void; sceneName?: I18n; onCycleScene?: () => void; aerial?: boolean; onToggleView?: () => void; mode?: SceneMode; onCycleMode?: () => void; onOps?: () => void; onFleet?: () => void; onBuild?: () => void; onCaseFile?: () => void; onTrends?: () => void; week?: number; mobile?: boolean }) {
+export default function HubScreen({ setScreen, accent, onDispatch, onFacility, sceneName, onCycleScene, aerial, onToggleView, mode = "sim", onCycleMode, onOps, onFleet, onBuild, onCaseFile, onTrends, onPort, week = 1, mobile = false }: { setScreen: (s: Screen) => void; accent: string; onDispatch?: () => void; onFacility?: (k: "vessel" | "tech" | "tool" | "codex" | "ranking" | "farms") => void; sceneName?: I18n; onCycleScene?: () => void; aerial?: boolean; onToggleView?: () => void; mode?: SceneMode; onCycleMode?: () => void; onOps?: () => void; onFleet?: () => void; onBuild?: () => void; onCaseFile?: () => void; onTrends?: () => void; onPort?: () => void; week?: number; mobile?: boolean }) {
   useLang();
   const { data, dispatch } = useGame();
   const { say } = useDialogue();
@@ -203,6 +204,7 @@ export default function HubScreen({ setScreen, accent, onDispatch, onFacility, s
           <FacRow icon={<FacGlyph name="vessel" />} label={{ zh: "船隊整備廠", en: "Fleet Yard" }} stat={{ zh: `${vSpec.icon} ${vSpec.short.zh} · ${data.ownedVessels.length} 艘 · Lv.${data.vesselLevel}`, en: `${vSpec.icon} ${vSpec.short.en} · ${data.ownedVessels.length} ships · Lv.${data.vesselLevel}` }} onClick={() => { Sfx.click(); onFacility?.("vessel"); }} />
           <FacRow icon={<FacGlyph name="farms" />} label={{ zh: "風場拓展", en: "Expand Farms" }} stat={{ zh: `營運 ${data.farmsOwned}/${FARMS.length} 座風場`, en: `${data.farmsOwned}/${FARMS.length} farms operating` }} onClick={() => { Sfx.click(); onFacility?.("farms"); }} />
           <FacRow icon={<FacGlyph name="build" />} label={{ zh: "風場建置（番外篇）", en: "Build a Farm (Side)" }} stat={data.buildDone ? { zh: `🎉 已完工 · 品質 ${data.buildScore}`, en: `🎉 Built · quality ${data.buildScore}` } : { zh: `EPC 建置短戰役 · 階段 ${data.buildStage}/${BUILD_STAGE_COUNT}`, en: `EPC build campaign · phase ${data.buildStage}/${BUILD_STAGE_COUNT}` }} onClick={() => { Sfx.click(); onBuild?.(); }} />
+          <FacRow icon={<span style={{ fontSize: 16 }}>🏗</span>} label={{ zh: "母港建設", en: "Port Development" }} stat={{ zh: `視覺成長 · 母港 Lv ${portLevel(data.portUpgrades ?? {})}/${PORT_MAX_LEVEL}`, en: `Visual growth · Port Lv ${portLevel(data.portUpgrades ?? {})}/${PORT_MAX_LEVEL}` }} onClick={() => { Sfx.click(); onPort?.(); }} />
           <div style={{ display: "flex", gap: 6 }}>
             <FacRowMini icon={<FacGlyph name="codex" />} label={{ zh: "圖鑑", en: "Codex" }} onClick={() => { Sfx.click(); onFacility?.("codex"); }} />
             <FacRowMini icon={<FacGlyph name="ranking" />} label={{ zh: "排行", en: "Ranking" }} onClick={() => { Sfx.click(); onFacility?.("ranking"); }} />

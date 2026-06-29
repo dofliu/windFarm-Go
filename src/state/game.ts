@@ -5,6 +5,7 @@ import { incidentAt, randomIncidentId } from "./incidents";
 import { rollCaseStudy } from "./caseStudies";
 import { buildTrendPoint, pushHistory, type TrendPoint } from "./trends";
 import { recordAnswer, addMistake, reviewMistake, type Mastery, type Mistake } from "./mastery";
+import { portFacility } from "./port";
 import { BUILD_STAGES, BUILD_STAGE_COUNT, BUILD_REWARD_BASE, BUILD_REWARD_PER_SCORE, BUILD_REWARD_XP } from "./construction";
 import { VESSELS, vesselSpec, type VesselClass } from "./vessels";
 
@@ -257,6 +258,7 @@ export interface GameData {
   history: TrendPoint[]; // 營運趨勢歷史（#5）：每次推進日累積一點,供趨勢圖/賽後復盤
   mastery: Mastery; // 知識點掌握度（#mastery）：依科別/任務類型統計作答正確率,找弱點補強
   mistakes: Mistake[]; // 錯題本（#mistake-log）：答錯的情境/選擇/正解/教訓,供複習與反思
+  portUpgrades: Record<string, number>; // 母港建設（#port）：各設施視覺成長等級
 }
 
 // 每日任務狀態（#78）：綁遊戲內日；baseline 記錄當日起始累積值，達成以增量/當前狀態判定。
@@ -472,6 +474,7 @@ export const INITIAL: GameData = {
   history: [],
   mastery: {},
   mistakes: [],
+  portUpgrades: {},
 };
 
 // 計畫性定期保養是否到期（#81）：距上次保養 ≥ 間隔天數
@@ -712,6 +715,7 @@ export type Action =
   | { type: "RECORD_ANSWER"; keys: string[]; correct: boolean } // 記錄一次作答(知識點掌握度 #mastery)
   | { type: "RECORD_MISTAKE"; mk: Omit<Mistake, "id" | "reviewed" | "reflection"> } // 答錯→記入錯題本
   | { type: "REVIEW_MISTAKE"; id: string; reflection: string } // 複習錯題並寫反思
+  | { type: "UPGRADE_PORT"; id: string; cost: number } // 母港建設升級(#port):扣預算、設施 +1 級
   | { type: "MARK_CASE_SEEN"; id: string; day?: number } // 案例演練完成→收錄進圖鑑案例檔(冪等)
   | { type: "RESET" };
 
@@ -1044,6 +1048,13 @@ export function reducer(s: GameData, a: Action): GameData {
     }
     case "REVIEW_MISTAKE":
       return { ...s, mistakes: reviewMistake(s.mistakes ?? [], a.id, a.reflection) };
+    case "UPGRADE_PORT": {
+      const u = s.portUpgrades ?? {};
+      const f = portFacility(a.id);
+      const lv = u[a.id] ?? 0;
+      if (!f || lv >= f.max || s.budget < a.cost) return s; // 守門:設施存在、未滿級、預算足夠
+      return { ...s, budget: s.budget - a.cost, portUpgrades: { ...u, [a.id]: lv + 1 } };
+    }
     case "MARK_CASE_SEEN": {
       const seen = s.seenCases.includes(a.id) ? s.seenCases : [...s.seenCases, a.id];
       return { ...s, seenCases: seen, lastCase: { id: a.id, day: a.day ?? s.day } };
