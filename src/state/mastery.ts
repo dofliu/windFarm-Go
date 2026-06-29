@@ -35,3 +35,26 @@ export function weakest(rows: MasteryRow[], minN = 2): MasteryRow | null {
 
 // 總作答數(判斷是否已有足夠資料可顯示)。
 export const totalAnswered = (m: Mastery): number => Object.values(m || {}).reduce((a, c) => a + (c.n || 0), 0);
+
+// ───────── 錯題本(#mistake-log):答錯即記錄情境/你的選擇/正解/教訓,供事後複習與反思 ─────────
+export interface Mistake {
+  id: string;        // 唯一 id(reducer 指派)
+  topic: string;     // "disc:<科別>" / "cat:<任務類型>"
+  question: I18n;    // 題目/情境
+  chosen: I18n;      // 你的(錯誤)選擇
+  correct: I18n;     // 正解
+  lesson?: I18n;     // 為什麼 / O&M 教訓
+  day: number;       // 遊戲內天數
+  reviewed?: boolean;
+  reflection?: string; // 學生的維修檢討/反思(形成性評量)
+}
+export const MISTAKES_CAP = 60; // 僅保留最近 N 筆,避免無限成長
+
+export function addMistake(list: Mistake[], mk: Mistake, cap = MISTAKES_CAP): Mistake[] {
+  const next = [...(list || []), mk];
+  return next.length > cap ? next.slice(next.length - cap) : next;
+}
+export function reviewMistake(list: Mistake[], id: string, reflection: string): Mistake[] {
+  return (list || []).map((x) => (x.id === id ? { ...x, reviewed: true, reflection } : x));
+}
+export const pendingMistakes = (list: Mistake[]): number => (list || []).filter((x) => !x.reviewed).length;
