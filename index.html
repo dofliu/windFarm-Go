@@ -19,9 +19,53 @@
       href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@500;700;900&family=Noto+Sans+TC:wght@400;500;700;900&family=Cinzel:wght@600;700&display=swap"
       rel="stylesheet"
     />
+    <!-- 啟動安全網:若 JS(主程式包)在 React 掛載前就載入/執行失敗,把空白白畫面換成可讀訊息,
+         並提供「重新載入 / 清除快取並重載」。捕捉 script 載入錯誤與執行期例外(忽略字型/圖片)。 -->
+    <script>
+      (function () {
+        var shown = false;
+        window.__bootErr = function (msg) {
+          var root = document.getElementById("root");
+          if (shown || !root || !document.getElementById("wfg-boot")) return; // React 已掛載則不顯示
+          shown = true;
+          root.innerHTML =
+            '<div style="position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:radial-gradient(circle at 50% 30%,#14242d,#070d11 80%);padding:16px;font-family:\'Noto Sans TC\',sans-serif;color:#f4ead2">' +
+            '<div style="max-width:460px;width:90vw;background:linear-gradient(180deg,#14323f,#0d242e);border:1px solid rgba(214,167,84,.5);border-radius:10px;padding:24px 22px;text-align:center">' +
+            '<div style="font-size:38px;margin-bottom:8px">⚓️</div>' +
+            '<div style="font-size:18px;font-weight:900;margin-bottom:8px">畫面載入失敗 / Failed to load</div>' +
+            '<div style="font-size:13px;color:#9fb9c2;line-height:1.6;margin-bottom:16px">請先「重新載入」;若仍異常,點「清除快取並重載」。<br>Try reload; if it persists, clear cache &amp; reload.</div>' +
+            '<button onclick="location.reload()" style="padding:11px 18px;border-radius:6px;border:1px solid rgba(255,236,196,.6);background:linear-gradient(180deg,#e8c074,#d9a441);color:#3a2708;font-weight:900;font-size:14px;cursor:pointer;margin:4px">重新載入 / Reload</button>' +
+            '<button onclick="__wfgClear()" style="padding:11px 18px;border-radius:6px;border:1px solid rgba(214,167,84,.5);background:rgba(255,255,255,.08);color:#f4ead2;font-weight:900;font-size:14px;cursor:pointer;margin:4px">清除快取並重載 / Clear cache</button>' +
+            '<div style="font-size:11px;color:#6f8b95;margin-top:14px;word-break:break-word">' + (msg || "") + "</div></div></div>";
+        };
+        window.__wfgClear = function () {
+          var done = function () { location.reload(); };
+          try {
+            var ps = [];
+            if (window.caches) ps.push(caches.keys().then(function (k) { return Promise.all(k.map(function (x) { return caches.delete(x); })); }));
+            if (navigator.serviceWorker) ps.push(navigator.serviceWorker.getRegistrations().then(function (rs) { return Promise.all(rs.map(function (r) { return r.unregister(); })); }));
+            Promise.all(ps).then(done, done);
+          } catch (e) { done(); }
+        };
+        window.addEventListener("error", function (e) {
+          var t = e && e.target;
+          if (t && (t.tagName === "LINK" || t.tagName === "IMG")) return; // 忽略字型/圖片載入錯誤
+          window.__bootErr((e && e.message) || (t && t.src && "資源載入失敗: " + t.src) || "script error");
+        }, true);
+        window.addEventListener("unhandledrejection", function (e) {
+          window.__bootErr((e && e.reason && (e.reason.message || e.reason)) || "promise rejection");
+        });
+        // 啟動逾時:8 秒後若仍停在 boot 畫面(React 未掛載),顯示提示
+        setTimeout(function () { window.__bootErr("啟動逾時 / Boot timeout（資源可能未載入）"); }, 8000);
+      })();
+    </script>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <div id="wfg-boot" style="position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:radial-gradient(circle at 50% 30%,#14242d,#070d11 80%);color:#9fb9c2;font-family:'Noto Sans TC',sans-serif;font-size:15px">
+        載入中… Loading…
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
