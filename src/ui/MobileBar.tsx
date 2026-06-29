@@ -8,12 +8,19 @@ import { useGame } from "../state/GameContext";
 import { toWan, type SeaState } from "../state/game";
 import { getProfile } from "../state/profile";
 import { S } from "../i18n/strings";
+import type { Screen } from "../App";
 
 const SEA_COLOR: Record<SeaState, string> = { workable: C.greenBright, caution: C.amber, closed: C.red };
+const NAV: { key: Screen; label: typeof S.nav.home }[] = [
+  { key: "hub", label: S.nav.home },
+  { key: "market", label: S.nav.market },
+  { key: "sail", label: S.nav.sail },
+  { key: "repair", label: S.nav.repair },
+];
 
-// 手機精簡頂列:標題 + 海象/天數/技師/預算 晶片(自動換行) + 語言/靜音/設定/個人檔/登出。
+// 手機精簡頂列:標題 + 海象/天數/技師/預算 晶片(自動換行) + 語言/靜音/設定/個人檔/登出 + 導覽分頁。
 // 取代桌機版固定寬的 TopBar,改用可換行、加大字體的版面。
-export default function MobileBar({ onGear, onProfile, onLogout }: { onGear?: () => void; onProfile?: () => void; onLogout?: () => void }) {
+export default function MobileBar({ screen, setScreen, onGear, onProfile, onLogout }: { screen?: Screen; setScreen?: (s: Screen) => void; onGear?: () => void; onProfile?: () => void; onLogout?: () => void }) {
   useLang();
   const { data } = useGame();
   const profile = getProfile();
@@ -54,6 +61,19 @@ export default function MobileBar({ onGear, onProfile, onLogout }: { onGear?: ()
           </div>
         )}
       </div>
+      {/* 第三列:導覽分頁(母港/交易所/出海/維修)——取代桌機 TopBar 的分頁,提供返回母港等切換 */}
+      {setScreen && (
+        <div style={{ display: "flex", gap: 4, background: "rgba(10,28,36,.6)", border: "1px solid rgba(214,167,84,.25)", borderRadius: 8, padding: 4 }}>
+          {NAV.map((tab) => {
+            const on = screen === tab.key;
+            return (
+              <div key={tab.key} onClick={() => { Sfx.click(); setScreen(tab.key); }} style={{ flex: 1, textAlign: "center", padding: "8px 0", borderRadius: 5, fontFamily: FONT_SERIF, fontSize: 14, fontWeight: 700, cursor: "pointer", color: on ? C.ink : C.cream, background: on ? "linear-gradient(180deg,#e8c074,#d9a441)" : "transparent" }}>
+                {t(tab.label)}
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

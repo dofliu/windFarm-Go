@@ -18,7 +18,7 @@ const leadOf = (p: { price: string }) => {
   return n < 100_000 ? 0 : n < 1_000_000 ? 1 : n < 3_000_000 ? 2 : 3; // 越貴(大型組件)前置期越長
 };
 
-export default function MarketScreen({ accent }: { accent: string }) {
+export default function MarketScreen({ accent, mobile = false }: { accent: string; mobile?: boolean }) {
   useLang();
   const { data, dispatch } = useGame();
   const { say } = useDialogue();
@@ -68,12 +68,12 @@ export default function MarketScreen({ accent }: { accent: string }) {
   };
 
   return (
-    <div style={{ position: "absolute", inset: 0, zIndex: 2 }}>
-      <div style={{ position: "absolute", inset: 0, background: "rgba(7,20,26,.55)", backdropFilter: "blur(2px)" }} />
+    <div style={mobile ? { position: "relative", padding: "12px 12px 24px" } : { position: "absolute", inset: 0, zIndex: 2 }}>
+      {!mobile && <div style={{ position: "absolute", inset: 0, background: "rgba(7,20,26,.55)", backdropFilter: "blur(2px)" }} />}
 
-      <div style={{ position: "absolute", left: 40, right: 40, top: 90, bottom: 30, display: "flex", gap: 18 }}>
+      <div style={mobile ? { display: "flex", flexDirection: "column", gap: 14 } : { position: "absolute", left: 40, right: 40, top: 90, bottom: 30, display: "flex", gap: 18 }}>
         {/* LEFT: parts grid */}
-        <div style={{ ...panel, flex: 1, boxShadow: "0 16px 40px rgba(0,0,0,.5)", display: "flex", flexDirection: "column" }}>
+        <div style={mobile ? { ...panel, display: "flex", flexDirection: "column" } : { ...panel, flex: 1, boxShadow: "0 16px 40px rgba(0,0,0,.5)", display: "flex", flexDirection: "column" }}>
           <div style={{ display: "flex", alignItems: "center", padding: "12px 18px", borderBottom: "1px solid rgba(214,167,84,.3)" }}>
             <div style={{ display: "flex", gap: 6 }}>
               {(["buy", "sell"] as const).map((mo) => (
@@ -112,7 +112,7 @@ export default function MarketScreen({ accent }: { accent: string }) {
           </div>
 
           {mode === "buy" ? (
-            <div style={{ flex: 1, padding: 18, display: "grid", gridTemplateColumns: "repeat(3,1fr)", gridAutoRows: "min-content", gap: 14, overflow: "auto" }}>
+            <div style={{ flex: 1, padding: mobile ? 12 : 18, display: "grid", gridTemplateColumns: `repeat(${mobile ? 2 : 3},1fr)`, gridAutoRows: "min-content", gap: mobile ? 10 : 14, overflow: mobile ? "visible" : "auto" }}>
               {buyParts.map((p) => {
                 const up = p.idx >= 100;
                 const locked = (p.minTier ?? 1) > tier; // 顯示全部時，未解鎖品標示但仍可購（非阻擋）
@@ -139,7 +139,7 @@ export default function MarketScreen({ accent }: { accent: string }) {
               })}
             </div>
           ) : (
-            <div style={{ flex: 1, padding: 18, display: "grid", gridTemplateColumns: "repeat(3,1fr)", gridAutoRows: "min-content", gap: 14, overflow: "auto" }}>
+            <div style={{ flex: 1, padding: mobile ? 12 : 18, display: "grid", gridTemplateColumns: `repeat(${mobile ? 2 : 3},1fr)`, gridAutoRows: "min-content", gap: mobile ? 10 : 14, overflow: mobile ? "visible" : "auto" }}>
               {owned.length === 0 && <div style={{ gridColumn: "1 / -1", textAlign: "center", color: C.mist, padding: 40 }}>{t({ zh: "貨艙中沒有可賣出的備品。", en: "No parts in cargo to sell." })}</div>}
               {owned.map((p) => (
                 <div key={p.id} onClick={() => sellOne(p.id)} style={{ background: "rgba(225,237,242,.07)", border: "1px solid rgba(214,167,84,.35)", borderRadius: 5, padding: "11px 12px", cursor: "pointer" }}>
@@ -163,11 +163,13 @@ export default function MarketScreen({ accent }: { accent: string }) {
         </div>
 
         {/* RIGHT: NPC + cargo/tax */}
-        <div style={{ width: 392, flex: "none", display: "flex", flexDirection: "column", gap: 14 }}>
+        <div style={mobile ? { width: "100%", flex: "none", display: "flex", flexDirection: "column", gap: 14 } : { width: 392, flex: "none", display: "flex", flexDirection: "column", gap: 14 }}>
+          {!mobile && (
           <div style={{ flex: 1, position: "relative", borderRadius: 6, border: "1px solid rgba(214,167,84,.4)", background: "radial-gradient(circle at 50% 28%, #1c4f5f, #0e2a36)", overflow: "hidden", boxShadow: "0 16px 40px rgba(0,0,0,.5)" }}>
             <Portrait id="owner" style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }} />
             <div style={{ position: "absolute", left: 14, top: 14, padding: "5px 12px", background: "rgba(12,30,38,.85)", border: "1px solid rgba(214,167,84,.45)", borderRadius: 3, color: C.cream, fontSize: 13, fontWeight: 700 }}>{t(S.market.director)}</div>
           </div>
+          )}
 
           <div style={{ ...panel, padding: "14px 16px", boxShadow: "0 12px 30px rgba(0,0,0,.45)" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>

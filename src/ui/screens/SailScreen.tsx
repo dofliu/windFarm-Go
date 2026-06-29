@@ -39,7 +39,7 @@ function Check({ ok, label, hint }: { ok: boolean; label: string; hint?: string 
   );
 }
 
-export default function SailScreen({ setScreen, accent, mode = "sim" }: { setScreen: (s: Screen) => void; accent: string; mode?: "sim" | "real" | "comic" }) {
+export default function SailScreen({ setScreen, accent, mode = "sim", mobile = false }: { setScreen: (s: Screen) => void; accent: string; mode?: "sim" | "real" | "comic"; mobile?: boolean }) {
   useLang();
   const { data, dispatch } = useGame();
   const active = data.questStage === "active";
@@ -83,9 +83,9 @@ export default function SailScreen({ setScreen, accent, mode = "sim" }: { setScr
   const startRepairRef = useCoachTarget("startrepair");
 
   return (
-    <div style={{ position: "absolute", inset: 0, zIndex: 2 }}>
-      {/* 模擬模式：CSS 海面＋風機＋船；實境/漫畫模式由背景圖呈現，只保留航行中的船 */}
-      {mode === "sim" ? (
+    <div style={mobile ? { position: "relative", padding: "12px 12px 24px", display: "flex", flexDirection: "column", gap: 12 } : { position: "absolute", inset: 0, zIndex: 2 }}>
+      {/* 模擬模式：CSS 海面＋風機＋船;手機精簡版隱藏裝飾場景 */}
+      {!mobile && (mode === "sim" ? (
         <div style={{ position: "absolute", inset: 0 }}>
           <div style={{ position: "absolute", left: 0, right: 0, top: 0, height: "34%", background: "linear-gradient(180deg,#a9cfe0 0%, #cfe1de 55%, #ece4cd 100%)" }} />
           <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: "66%", background: "linear-gradient(180deg,#50b4c5 0%, #2f93ab 28%, #1f6f88 68%, #134e61 100%)" }} />
@@ -99,15 +99,15 @@ export default function SailScreen({ setScreen, accent, mode = "sim" }: { setScr
         </div>
       ) : (
         <CtvShip left="42%" top={392} scale={1.25} opacity={1} type={fleetType} />
-      )}
+      ))}
 
-      {/* 場景影片:出海航行(enroute)鋪底 —— 漫畫模式用大航海動畫版,其餘用寫實版 */}
-      {data.jobPhase === "enroute" && <SceneVideo file={mode === "comic" ? "comic_sailing.mp4" : "sailing.mp4"} poster={mode === "comic" ? "comic_sailing.jpg" : "real_sailing.jpg"} />}
+      {/* 場景影片:出海航行(enroute)鋪底 —— 漫畫模式用大航海動畫版,其餘用寫實版;手機隱藏 */}
+      {!mobile && data.jobPhase === "enroute" && <SceneVideo file={mode === "comic" ? "comic_sailing.mp4" : "sailing.mp4"} poster={mode === "comic" ? "comic_sailing.jpg" : "real_sailing.jpg"} />}
       {/* 大修進行中:安裝船吊裝場景鋪底 */}
-      {!!data.overhaul && data.jobPhase === "office" && <SceneVideo file="overhaul.mp4" poster="real_overhaul.jpg" />}
+      {!mobile && !!data.overhaul && data.jobPhase === "office" && <SceneVideo file="overhaul.mp4" poster="real_overhaul.jpg" />}
 
       {/* destination chip */}
-      <div style={{ position: "absolute", left: 40, top: 96, padding: "9px 16px", borderRadius: 6, background: "rgba(10,28,36,.82)", border: "1px solid rgba(214,167,84,.4)", backdropFilter: "blur(3px)", display: "flex", alignItems: "center", gap: 10 }}>
+      <div style={mobile ? { padding: "9px 14px", borderRadius: 6, background: "rgba(10,28,36,.82)", border: "1px solid rgba(214,167,84,.4)", display: "flex", alignItems: "center", gap: 10 } : { position: "absolute", left: 40, top: 96, padding: "9px 16px", borderRadius: 6, background: "rgba(10,28,36,.82)", border: "1px solid rgba(214,167,84,.4)", backdropFilter: "blur(3px)", display: "flex", alignItems: "center", gap: 10 }}>
         <span style={{ color: accent, fontSize: 16 }}>⚑</span>
         <div>
           <div style={{ color: C.cream, fontSize: 14, fontWeight: 700 }}>{t({ zh: "航向", en: "Heading" })} · {active ? quest.unit : "—"}</div>
@@ -117,13 +117,13 @@ export default function SailScreen({ setScreen, accent, mode = "sim" }: { setScr
 
       {/* 出海動態航線俯瞰圖（Phase A #1）：航行中顯示港口→風場的船隻移動 */}
       {data.jobPhase === "enroute" && (
-        <div style={{ position: "absolute", left: "calc(50% - 30px)", top: "46%", transform: "translate(-50%,-50%)", zIndex: 3 }}>
+        <div style={mobile ? { display: "flex", justifyContent: "center" } : { position: "absolute", left: "calc(50% - 30px)", top: "46%", transform: "translate(-50%,-50%)", zIndex: 3 }}>
           <RouteMap progress={progress} unit={quest.unit} vessel={fleetType} />
         </div>
       )}
 
       {/* 出勤就緒 / 航行 / 抵達 面板 */}
-      <div style={{ position: "absolute", right: 26, top: 92, width: 320, background: "linear-gradient(180deg, rgba(20,50,63,.95), rgba(13,36,46,.97))", border: "1px solid rgba(214,167,84,.5)", borderRadius: 8, boxShadow: "0 14px 36px rgba(0,0,0,.5)", overflow: "hidden" }}>
+      <div style={mobile ? { width: "100%", background: "linear-gradient(180deg, rgba(20,50,63,.95), rgba(13,36,46,.97))", border: "1px solid rgba(214,167,84,.5)", borderRadius: 8, overflow: "hidden" } : { position: "absolute", right: 26, top: 92, width: 320, background: "linear-gradient(180deg, rgba(20,50,63,.95), rgba(13,36,46,.97))", border: "1px solid rgba(214,167,84,.5)", borderRadius: 8, boxShadow: "0 14px 36px rgba(0,0,0,.5)", overflow: "hidden" }}>
         <div style={{ textAlign: "center", padding: "9px 0", background: "linear-gradient(180deg,#e8c074,#cf9a35)", color: C.ink, fontFamily: FONT_SERIF, fontWeight: 900, fontSize: 16 }}>
           {data.jobPhase === "office" ? t({ zh: "出勤就緒檢查", en: "Mobilization Check" }) : data.jobPhase === "enroute" ? t({ zh: "航行中…", en: "En route…" }) : t({ zh: "已抵達機組", en: "On site" })}
         </div>
@@ -175,7 +175,7 @@ export default function SailScreen({ setScreen, accent, mode = "sim" }: { setScr
         </div>
       </div>
 
-      {active && data.jobPhase === "office" && (
+      {!mobile && active && data.jobPhase === "office" && (
         <AdvisorPopup id="veteran_sailor" src={exprUrl("veteran_sailor", "talking")} line={{ zh: "出海前再確認一次：船、人、料、天氣，缺一不可。", en: "Before sailing, double-check: vessel, crew, parts, weather — all of them." }} style={{ left: 600, bottom: 12 } as CSSProperties} portraitH={260} bubbleSide="right" />
       )}
     </div>
