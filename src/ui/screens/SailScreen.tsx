@@ -8,7 +8,7 @@ import { exprUrl } from "../characters";
 import { useGame } from "../../state/GameContext";
 import { useCoachTarget } from "../../state/TutorialContext";
 import { Sfx } from "../../audio/sfx";
-import { SEA_INDEX, seaTolOf, activeVesselSpec, availableEngineer } from "../../state/game";
+import { SEA_INDEX, seaTolOf, activeVesselSpec, availableEngineer, tierOf } from "../../state/game";
 import { FAULTS, isMajorFault } from "../faults";
 import { missionInstance } from "../campaign";
 import { DISC, hasEngineer } from "../disc";
@@ -143,10 +143,12 @@ export default function SailScreen({ setScreen, accent, mode = "sim", mobile = f
               <Check ok={true} label={`${t({ zh: "工具", en: "Tools" })} Lv.${data.toolLevel}`} />
               <Check ok={partOk} label={`${t({ zh: "備品", en: "Part" })}：${t(part?.n ?? { zh: fault?.part ?? "", en: fault?.part ?? "" })}`} hint={t({ zh: "去交易所購買", en: "buy at Market" })} />
               <Check ok={seaOk} label={`${t({ zh: "天氣窗", en: "Weather" })}：${data.seaState === "workable" ? t({ zh: "可作業", en: "OK" }) : data.seaState === "caution" ? t({ zh: "警戒", en: "Caution" }) : t({ zh: "停航", en: "Closed" })}`} hint={t({ zh: "需 SOV 或靠港休整", en: "need SOV or rest" })} />
-              {/* 微觀天氣預報（#2）：協助決定「現在出航」或「靠港等更好的天氣窗」 */}
-              <div style={{ fontSize: 11, color: C.mist2, margin: "6px 0 4px" }}>{t({ zh: "三日預報", en: "3-Day Forecast" })}</div>
-              <ForecastStrip forecast={data.forecast} compact />
-              <StormWarning forecast={data.forecast} />
+              {/* 微觀天氣預報（#2）：協助決定「現在出航」或「靠港等更好的天氣窗」。漸進揭露(#77):Tier 1 先看「今日海象」即可。 */}
+              {tierOf(data) >= 2 && (<>
+                <div style={{ fontSize: 11, color: C.mist2, margin: "6px 0 4px" }}>{t({ zh: "三日預報", en: "3-Day Forecast" })}</div>
+                <ForecastStrip forecast={data.forecast} compact />
+                <StormWarning forecast={data.forecast} />
+              </>)}
               <button
                 ref={departRef}
                 disabled={!ready}

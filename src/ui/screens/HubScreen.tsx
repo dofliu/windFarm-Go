@@ -237,10 +237,18 @@ export default function HubScreen({ setScreen, accent, onDispatch, onFacility, s
             </div>
           </div>
           <div style={kvRow}><span style={{ color: C.mist }}>{t({ zh: "海象（今日）", en: "Sea (today)" })}</span><span style={{ color: seaColor, fontWeight: 700 }}>{t(seaLabel)}</span></div>
-          {/* 微觀天氣預報（#2）：未來三日 + 風暴警示 */}
-          <div style={{ fontSize: 11, color: C.mist2, margin: "4px 0 4px" }}>{t({ zh: "三日預報", en: "3-Day Forecast" })}</div>
-          <ForecastStrip forecast={data.forecast} />
-          <StormWarning forecast={data.forecast} />
+          {/* 微觀天氣預報（#2）：未來三日 + 風暴警示。漸進揭露(#77)：Tier 1 先專注「今日海象」,Tier 2 起解鎖三日預報降低新手認知負荷。 */}
+          {tier >= 2 ? (
+            <>
+              <div style={{ fontSize: 11, color: C.mist2, margin: "4px 0 4px" }}>{t({ zh: "三日預報", en: "3-Day Forecast" })}</div>
+              <ForecastStrip forecast={data.forecast} />
+              <StormWarning forecast={data.forecast} />
+            </>
+          ) : (
+            <div style={{ marginTop: 6, padding: "6px 9px", borderRadius: 4, background: "rgba(95,168,217,.08)", border: "1px dashed rgba(95,168,217,.28)", fontSize: 10.5, color: C.mist2 }}>
+              🔒 {t({ zh: "三日天氣預報於運維層級 2 解鎖。先看「今日海象」決定出不出海就好。", en: "3-day forecast unlocks at Ops Tier 2. For now, just use today's sea state to decide whether to sail." })}
+            </div>
+          )}
           {/* 合約 SLA（#3）：季度可用率底線 + 違約金。Tier 1 入門隱藏(漸進揭露 #77)，Tier 2 起顯示。 */}
           {tier < 2 ? (
             <div style={{ marginTop: 10, padding: "7px 9px", borderRadius: 4, background: "rgba(95,168,217,.08)", border: "1px dashed rgba(95,168,217,.28)", fontSize: 10.5, color: C.mist2 }}>
@@ -467,11 +475,17 @@ export default function HubScreen({ setScreen, accent, onDispatch, onFacility, s
                 })()}
               </OpsBlock>
 
-              {/* 技師（含疲勞 #7） */}
+              {/* 技師（含疲勞 #7）。漸進揭露(#77)：Tier 1 只顯示技師名單/科別,Tier 2 起才顯示疲勞細節,降低新手認知負荷。 */}
               <OpsBlock title={{ zh: "技師", en: "Engineers" }}>
                 {data.engineers.length === 0 ? <div style={{ color: C.mist, fontSize: 12 }}>{t({ zh: "尚無技師", en: "None" })}</div> : data.engineers.map((e) => {
                   const f = Math.round(fatigueOf(e));
                   const fc = f >= FATIGUE_LIMIT ? C.red : f >= 55 ? C.amber : C.green;
+                  if (tier < 2) return (
+                    <div key={e.id} style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: C.cream, padding: "3px 0" }}>
+                      <span>{e.name} <span style={{ color: C.mist2, fontSize: 11 }}>{t(DISC[e.discipline])}·Lv.{e.level}</span></span>
+                      {f >= FATIGUE_LIMIT && <span style={{ color: C.red, fontWeight: 700, fontSize: 11.5 }}>{t({ zh: "需休整", en: "Rest" })}</span>}
+                    </div>
+                  );
                   return (
                     <div key={e.id} style={{ padding: "3px 0" }}>
                       <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: C.cream }}>
@@ -482,6 +496,7 @@ export default function HubScreen({ setScreen, accent, onDispatch, onFacility, s
                     </div>
                   );
                 })}
+                {tier < 2 && <div style={{ fontSize: 10.5, color: C.mist2, marginTop: 3 }}>🔒 {t({ zh: "技師疲勞管理於運維層級 2 解鎖。", en: "Crew fatigue management unlocks at Ops Tier 2." })}</div>}
               </OpsBlock>
 
               {/* 備品庫存（含倉儲維持費 #warehouse） */}

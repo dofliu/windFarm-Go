@@ -807,6 +807,7 @@ export interface CodexEntry {
   differential: I18n; // 鑑別重點：如何與同元件的其他根因區分
   consequence: I18n;  // 若不處理的後果
   tip: I18n;          // 維修 / 安全提示
+  metaphor?: I18n;    // 生活化比喻（#1.2）：用日常事物幫無背景玩家秒懂(僅入門常見故障填寫)
 }
 
 export const CODEX: Record<string, CodexEntry> = {
@@ -816,6 +817,7 @@ export const CODEX: Record<string, CodexEntry> = {
     differential: { zh: "油溫高但金屬碎屑正常 → 散熱/潤滑問題（本症）；若油溫正常卻碎屑驟增 → 屬『軸承磨耗』。", en: "High temp with normal debris → cooling/lubrication (this); normal temp but debris spike → it's 'bearing wear'." },
     consequence: { zh: "持續過熱會加速齒面與軸承劣化，最終演變為金屬剝離的大修。", en: "Sustained overheating accelerates gear/bearing wear, eventually escalating to a spalling overhaul." },
     tip: { zh: "先補油/換濾芯與齒輪油即可復歸，屬例行可作業範圍。", en: "Top up oil, replace filter & gear oil to reset — a routine workable job." },
+    metaphor: { zh: "就像汽車引擎:機油太少或變質,潤滑與散熱變差,水溫(油溫)就會飆高。", en: "Like a car engine — too little or degraded oil means poor lubrication & cooling, so it 'runs hot'." },
   },
   gearbox_bearing_wear: {
     mechanism: { zh: "內部軸承或齒面長期疲勞剝離（spalling），金屬顆粒進入油路、高頻振動上升。", en: "Long-term fatigue spalling of internal bearings/gear teeth sheds metal particles into the oil and raises HF vibration." },
@@ -830,6 +832,7 @@ export const CODEX: Record<string, CodexEntry> = {
     differential: { zh: "煞車未釋放屬『控制/煞車』面；若可動但有異音與背隙則屬『齒盤磨損』機械面。", en: "An unreleased brake is the control/brake path; movable but noisy with backlash is the mechanical ring-gear-wear path." },
     consequence: { zh: "長期失準使機組偏離最佳迎風角，發電量下滑、載荷不均。", en: "Chronic misalignment keeps the rotor off optimal yaw, cutting output and unevenly loading the structure." },
     tip: { zh: "確認煞車液壓完全洩除、釋放卡滯片並潤滑齒盤後複歸定位。", en: "Confirm full hydraulic release, free the stuck pads, re-grease the ring gear, then re-home." },
+    metaphor: { zh: "偏航就像風向雞要轉去正對風;煞車沒放開硬轉,如同沒鬆手煞車就開車——卡住又費力。", en: "Yaw is like a weathervane turning to face the wind; turning with the brake on is like driving with the handbrake — it jams and strains." },
   },
   yaw_gear_wear: {
     mechanism: { zh: "偏航齒輪/齒盤齒面長期磨損、潤滑不足，造成背隙過大與運轉異音。", en: "Long-term wear and poor lubrication of the yaw gear/ring teeth cause excessive backlash and running noise." },
@@ -844,6 +847,7 @@ export const CODEX: Record<string, CodexEntry> = {
     differential: { zh: "BPFI 突波＝軸承內環，與『繞組過溫』（冷卻）、『碳刷』（激磁火花）截然不同。", en: "A BPFI spike = bearing inner race — quite different from winding overtemp (cooling) or brush wear (excitation sparking)." },
     consequence: { zh: "軸承失效會損及轉子與定子，演變為發電機級大修。", en: "Bearing failure can damage rotor and stator, escalating to a generator-level overhaul." },
     tip: { zh: "重大故障：採頻譜定位後須重吊更換軸承並重新對心。", en: "Major fault: locate via spectrum, then heavy-lift replace the bearing and re-align." },
+    metaphor: { zh: "軸承磨損就像腳踏車輪軸鬆動:一轉就有規律的『喀啦』異音與抖動,愈騎愈糟。", en: "A worn bearing is like a loose bike wheel hub — a rhythmic knock and wobble that worsens the more it spins." },
   },
   gen_brush_wear: {
     mechanism: { zh: "碳刷磨耗、彈簧壓力不足或集電環髒污，接觸不良造成激磁電流跳動與火花。", en: "Worn brushes, weak spring pressure or a dirty slip-ring make poor contact, causing excitation-current jitter and sparking." },
@@ -858,6 +862,7 @@ export const CODEX: Record<string, CodexEntry> = {
     differential: { zh: "振動正常排除軸承、激磁正常排除碳刷——剩下的根因就是冷卻系統。", en: "Normal vibration rules out the bearing, normal excitation rules out brushes — leaving the cooling system." },
     consequence: { zh: "長期過溫使絕緣老化、縮短繞組壽命。", en: "Prolonged overtemp ages insulation and shortens winding life." },
     tip: { zh: "檢查冷卻泵流量與風扇，更換冷卻泵並補充冷卻液後降溫復歸。", en: "Check coolant flow & fan, replace the pump, top up coolant, then cool down and reset." },
+    metaphor: { zh: "繞組過溫就像吹風機悶住散熱口:再吹下去馬達過熱就會自動跳停。", en: "Winding overtemp is like a hair-dryer with blocked vents — keep going and the motor overheats and cuts out." },
   },
   pitch_fault: {
     mechanism: { zh: "失電時變槳依賴後備電池/超級電容順槳停機，電池失效將無法安全順槳。", en: "On power loss, pitch relies on a backup battery/supercap to feather; a dead battery prevents safe feathering." },
@@ -865,6 +870,7 @@ export const CODEX: Record<string, CodexEntry> = {
     differential: { zh: "後備電池『失電』面——與『液壓洩漏』（壓力/油位下降、反應遲鈍）的機械面不同。", en: "This is the power-loss path — distinct from the hydraulic-leak path (falling pressure/level, sluggish motion)." },
     consequence: { zh: "無法順槳將使轉子過速，是危及結構安全的重大風險。", en: "Failure to feather lets the rotor overspeed — a serious structural-safety risk." },
     tip: { zh: "量測後備電池電壓，更換電池模組並自檢後做順槳測試。", en: "Measure backup-battery voltage, replace the module, self-test, then run a feather test." },
+    metaphor: { zh: "變槳像調整風扇葉片角度來控速;失電無法順槳,就像下坡時煞車失靈還停不下來。", en: "Pitch is like angling fan blades to control speed; losing feather power is like brakes failing on a downhill." },
   },
   pitch_hydraulic_leak: {
     mechanism: { zh: "液壓閥或油封洩漏使系統壓力與油位下降，變槳作動力道不足、反應遲鈍。", en: "A leaking hydraulic valve or seal drops system pressure and oil level, leaving pitch underpowered and sluggish." },
@@ -879,6 +885,7 @@ export const CODEX: Record<string, CodexEntry> = {
     differential: { zh: "『冷卻流量不足』影響整體散熱；若冷卻正常卻單一橋臂跳脫則屬『IGBT 模組劣化』。", en: "Low coolant flow affects overall cooling; if cooling is fine but one bridge leg trips, it's IGBT-module degradation." },
     consequence: { zh: "反覆過溫加速功率模組老化，最終演變為模組級故障。", en: "Repeated overtemp ages the power modules, eventually becoming a module-level failure." },
     tip: { zh: "檢查冷卻泵與管路流量，清理散熱器/更換濾網後復歸測試。", en: "Check coolant pump & loop flow, clean the radiator / replace filters, then reset-test." },
+    metaphor: { zh: "變流器過熱就像電腦 CPU 風扇積灰或卡住:散熱不良就會自動降速/關機保護。", en: "Converter overheat is like a dusty or stuck PC CPU fan — poor cooling forces it to throttle or shut down." },
   },
   converter_igbt: {
     mechanism: { zh: "單一橋臂 IGBT 功率模組劣化/失效，即使冷卻正常也反覆觸發短路（desat）保護。", en: "A single bridge-leg IGBT power module degrades/fails and keeps tripping desat protection even with cooling normal." },

@@ -67,6 +67,38 @@ export const EVENTS: GameEvent[] = [
     desc: { zh: "天候穩定，運維順利，一台機組提前修復併網。", en: "Steady weather — smooth ops bring a unit back online." },
     apply: () => ({}),
   },
+
+  // ───────── 戲劇性(非技術)事件(#2.2)：增加張力與代入感,不需新機制,以聲望/合規成本呈現 ─────────
+  {
+    id: "eco_protest", weight: 2,
+    name: { zh: "環保團體抗議", en: "Environmental protest" },
+    desc: { zh: "團體質疑工程對生態的影響,公關與暫緩作業產生額外成本。", en: "A group questions the ecological impact — PR and a brief work pause add cost." },
+    apply: (s) => ({ budget: Math.max(0, s.budget - 1_500_000) }),
+  },
+  {
+    id: "bad_press", weight: 2,
+    name: { zh: "負面媒體報導", en: "Negative press" },
+    desc: { zh: "一則停機事故報導見報,商譽受損、季度營收承壓。", en: "A downtime incident makes the news — reputation and quarterly revenue take a hit." },
+    apply: (s) => ({ budget: Math.max(0, s.budget - 1_000_000) }),
+  },
+  {
+    id: "media_spotlight", weight: 2, good: true,
+    name: { zh: "正面媒體曝光", en: "Positive media spotlight" },
+    desc: { zh: "高可用率獲產業媒體報導,招商與形象加分,挹注一筆收入。", en: "High availability earns industry coverage — image & investment up, a revenue boost." },
+    apply: (s) => ({ budget: s.budget + 1_500_000 }),
+  },
+  {
+    id: "community_support", weight: 2, good: true,
+    name: { zh: "地方社區支持", en: "Community support" },
+    desc: { zh: "與漁會/社區關係良好,作業協調順暢,獲地方回饋金。", en: "Good ties with the fishing community smooth operations — a local goodwill grant." },
+    apply: (s) => ({ budget: s.budget + 800_000 }),
+  },
+  {
+    id: "regulator_audit", weight: 1,
+    name: { zh: "主管機關稽查", en: "Regulator audit" },
+    desc: { zh: "主管機關進場稽查安全與環評承諾,合規應對產生成本。", en: "Regulators audit safety & permit compliance — handling it costs budget." },
+    apply: (s) => ({ budget: Math.max(0, s.budget - 700_000) }),
+  },
 ];
 
 const TOTAL_WEIGHT = EVENTS.reduce((a, e) => a + e.weight, 0);
