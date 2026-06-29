@@ -20,15 +20,17 @@
       rel="stylesheet"
     />
     <!-- 啟動安全網:若 JS(主程式包)在 React 掛載前就載入/執行失敗,把空白白畫面換成可讀訊息,
-         並提供「重新載入 / 清除快取並重載」。捕捉 script 載入錯誤與執行期例外(忽略字型/圖片)。 -->
+         並提供「重新載入 / 清除快取並重載」。捕捉 script 載入錯誤與執行期例外(忽略字型/圖片)。
+         關鍵:更新後若 PWA 仍端出「舊版殼」(其 <script> 指向已不存在的資產 → 404),會「自動修復一次」
+         (清快取 + 反註冊 SW + 重載);每個分頁只自動修一次,修不好才顯示手動對話框,避免重載迴圈。 -->
     <script>
       (function () {
         var shown = false;
+        function booting() { var r = document.getElementById("root"); return r && document.getElementById("wfg-boot"); } // React 未掛載
         window.__bootErr = function (msg) {
-          var root = document.getElementById("root");
-          if (shown || !root || !document.getElementById("wfg-boot")) return; // React 已掛載則不顯示
+          if (shown || !booting()) return; // React 已掛載則不顯示
           shown = true;
-          root.innerHTML =
+          document.getElementById("root").innerHTML =
             '<div style="position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:radial-gradient(circle at 50% 30%,#14242d,#070d11 80%);padding:16px;font-family:\'Noto Sans TC\',sans-serif;color:#f4ead2">' +
             '<div style="max-width:460px;width:90vw;background:linear-gradient(180deg,#14323f,#0d242e);border:1px solid rgba(214,167,84,.5);border-radius:10px;padding:24px 22px;text-align:center">' +
             '<div style="font-size:38px;margin-bottom:8px">⚓️</div>' +
@@ -47,16 +49,33 @@
             Promise.all(ps).then(done, done);
           } catch (e) { done(); }
         };
+        // 啟動失敗的統一入口。hard=true(同源資產/腳本 404 → 必為「舊殼指向已消失的資產」)時,
+        // 先自動修復一次(清快取 + 反註冊 SW + 重載);已修過或非 hard(逾時/執行期例外)則顯示手動對話框。
+        window.__wfgFail = function (msg, hard) {
+          if (shown || !booting()) return;
+          var tried = "1";
+          try { tried = sessionStorage.getItem("wfg-recovered"); } catch (e) {}
+          if (hard && !tried && (window.caches || (navigator.serviceWorker && navigator.serviceWorker.getRegistrations))) {
+            try { sessionStorage.setItem("wfg-recovered", "1"); } catch (e) {}
+            shown = true; // 避免對話框與自動修復同時觸發
+            document.getElementById("root").innerHTML =
+              '<div style="position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:radial-gradient(circle at 50% 30%,#14242d,#070d11 80%);color:#9fb9c2;font-family:\'Noto Sans TC\',sans-serif;font-size:15px">自動修復中… / Auto-recovering…</div>';
+            window.__wfgClear();
+            return;
+          }
+          window.__bootErr(msg);
+        };
         window.addEventListener("error", function (e) {
           var t = e && e.target;
           if (t && (t.tagName === "LINK" || t.tagName === "IMG")) return; // 忽略字型/圖片載入錯誤
-          window.__bootErr((e && e.message) || (t && t.src && "資源載入失敗: " + t.src) || "script error");
+          // 有 t.src 代表是「資源(script/module)載入失敗」→ 視為 hard,啟動自動修復
+          window.__wfgFail((e && e.message) || (t && t.src && "資源載入失敗: " + t.src) || "script error", !!(t && t.src));
         }, true);
         window.addEventListener("unhandledrejection", function (e) {
-          window.__bootErr((e && e.reason && (e.reason.message || e.reason)) || "promise rejection");
+          window.__wfgFail((e && e.reason && (e.reason.message || e.reason)) || "promise rejection", false);
         });
-        // 啟動逾時:8 秒後若仍停在 boot 畫面(React 未掛載),顯示提示
-        setTimeout(function () { window.__bootErr("啟動逾時 / Boot timeout（資源可能未載入）"); }, 8000);
+        // 啟動逾時:8 秒後若仍停在 boot 畫面(React 未掛載)→ 僅顯示手動提示(慢網路可能誤判,不自動清快取)
+        setTimeout(function () { window.__wfgFail("啟動逾時 / Boot timeout（資源可能未載入）", false); }, 8000);
       })();
     </script>
   </head>
