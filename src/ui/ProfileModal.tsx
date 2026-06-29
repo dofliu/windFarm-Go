@@ -7,6 +7,8 @@ import { computeScore } from "../state/game";
 import { getProfile, displayName } from "../state/profile";
 import { ACHIEVEMENTS, ACHIEVEMENT_COUNT, loadRecord } from "../state/records";
 import { masteryRows, weakest, totalAnswered } from "../state/mastery";
+import RadarChart, { type RadarAxis } from "./RadarChart";
+import MistakeLog from "./MistakeLog";
 import { DISC } from "./disc";
 import { CAT_LABEL } from "../state/tasks";
 import { CLOUD_FIRST } from "../cloud/sheet";
@@ -96,6 +98,16 @@ export default function ProfileModal({ open, onClose }: { open: boolean; onClose
                   <div style={{ fontSize: 12, color: C.mist }}>{t({ zh: "尚無作答資料 —— 完成維修診斷測驗或自由營運中心任務後,這裡會顯示你各科別/任務類型的正確率與弱點補強建議。", en: "No answers yet — complete repair-diagnosis quizzes or Ops-Center tasks and your per-discipline / per-category accuracy and weak-spot tips will appear here." })}</div>
                 ) : (
                   <>
+                    {/* 能力雷達圖(#radar):各科別正確率一眼掌握強弱項 */}
+                    {(() => {
+                      const axes: RadarAxis[] = masteryRows(m, "disc", DISC).map((r) => ({ label: t(r.label), value: r.acc, n: r.n }));
+                      return discRows.length >= 1 ? (
+                        <div style={{ margin: "2px 0 6px" }}>
+                          <div style={{ fontSize: 11, color: C.mist, marginBottom: 2 }}>{t({ zh: "能力雷達 · 各科別", en: "Ability radar · by discipline" })}</div>
+                          <RadarChart axes={axes} />
+                        </div>
+                      ) : null;
+                    })()}
                     {discRows.length > 0 && (<>
                       <div style={{ fontSize: 11, color: C.mist, margin: "2px 0 5px" }}>{t({ zh: "診斷測驗 · 各科別正確率", en: "Diagnosis quiz · per discipline" })}</div>
                       <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 8 }}>{discRows.map(chip)}</div>
@@ -114,6 +126,9 @@ export default function ProfileModal({ open, onClose }: { open: boolean; onClose
               </div>
             );
           })()}
+
+          {/* 錯題本(#mistake-log):複習答錯題 + 反思 */}
+          <MistakeLog />
 
           {/* 成就牆 */}
           <div style={{ color: C.goldText, fontSize: 13.5, fontWeight: 900, fontFamily: FONT_SERIF, marginBottom: 10 }}>{t({ zh: "成就", en: "Achievements" })}</div>

@@ -164,6 +164,8 @@ export default function OpsCenterModal({ open, onClose }: { open: boolean; onClo
       // 知識點掌握度:案例演練記錄到對應「科別」;同時收錄進圖鑑案例檔
       dispatch({ type: "RECORD_ANSWER", keys: [`disc:${cs.discipline}`], correct: c.good });
       dispatch({ type: "MARK_CASE_SEEN", id: cs.id });
+      // 錯題本:選錯 → 記錄情境/你的選擇/正解/教訓
+      if (!c.good) { const good = cs.choices.find((x) => x.good); dispatch({ type: "RECORD_MISTAKE", mk: { topic: `disc:${cs.discipline}`, question: cs.scenario, chosen: c.label, correct: good?.label ?? c.label, lesson: cs.lesson, day: data.day } }); }
       return;
     }
     const tpl = draw.task.template;
@@ -172,6 +174,8 @@ export default function OpsCenterModal({ open, onClose }: { open: boolean; onClo
     dispatch({ type: "RESOLVE_TASK", dAvail: c.eff.a ?? 0, dBudget: c.eff.b ?? 0, dSafety: c.eff.s ?? 0, dGen: c.eff.g ?? 0, dHealth, xp: tpl.xp });
     // 知識點掌握度(#mastery):記錄此任務類型的決策對錯
     dispatch({ type: "RECORD_ANSWER", keys: [`cat:${tpl.cat}`], correct: c.good });
+    // 錯題本:選錯 → 記錄情境/你的選擇/正解/解析
+    if (!c.good) { const good = tpl.choices.find((x) => x.good); dispatch({ type: "RECORD_MISTAKE", mk: { topic: `cat:${tpl.cat}`, question: tpl.scenario, chosen: c.label, correct: good?.label ?? c.label, lesson: good?.feedback, day: data.day } }); }
   };
   const nextTask = () => { Sfx.click(); setDraw(makeDraw(data.seenCases ?? [])); setPicked(null); setCount((n) => n + 1); };
 

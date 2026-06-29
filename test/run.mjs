@@ -1597,6 +1597,32 @@ test("mastery: RECORD_ANSWER reducer updates mastery", () => {
   eq(s.mastery["cat:A"].n, 2); eq(s.mastery["cat:A"].ok, 1);
 });
 
+// ───────────────────────── 錯題本(#mistake-log) ─────────────────────────
+test("mistakes: addMistake caps to most-recent N; reviewMistake marks + reflection; pending count", () => {
+  const I18 = { zh: "x", en: "x" };
+  const mk = (i) => ({ id: "m" + i, topic: "disc:control", question: I18, chosen: I18, correct: I18, day: i });
+  let list = [];
+  for (let i = 0; i < mastery.MISTAKES_CAP + 5; i++) list = mastery.addMistake(list, mk(i));
+  eq(list.length, mastery.MISTAKES_CAP, "capped at MISTAKES_CAP");
+  eq(list[list.length - 1].id, "m" + (mastery.MISTAKES_CAP + 4), "keeps the newest");
+  eq(list[0].id, "m5", "drops the oldest");
+  eq(mastery.pendingMistakes(list), mastery.MISTAKES_CAP, "all unreviewed");
+  const rv = mastery.reviewMistake(list, "m10", "下次先查潤滑");
+  const hit = rv.find((x) => x.id === "m10");
+  ok(hit.reviewed && hit.reflection === "下次先查潤滑", "reviewed flag + reflection set");
+  eq(mastery.pendingMistakes(rv), mastery.MISTAKES_CAP - 1, "one fewer pending");
+});
+test("mistakes: RECORD_MISTAKE assigns id & appends; REVIEW_MISTAKE updates by id (reducer)", () => {
+  const I18 = { zh: "q", en: "q" };
+  let s = R({ ...I, mistakes: [], day: 7 }, { type: "RECORD_MISTAKE", mk: { topic: "cat:G", question: I18, chosen: I18, correct: I18, lesson: I18, day: 7 } });
+  eq(s.mistakes.length, 1, "appended");
+  ok(s.mistakes[0].id, "id assigned by reducer");
+  ok(!s.mistakes[0].reviewed, "starts unreviewed");
+  const id = s.mistakes[0].id;
+  s = R(s, { type: "REVIEW_MISTAKE", id, reflection: "檢討完成" });
+  ok(s.mistakes[0].reviewed && s.mistakes[0].reflection === "檢討完成", "reducer marks reviewed + reflection");
+});
+
 console.log(`\n${pass} passed, ${fail} failed (${pass + fail} total)`);
 if (fail) { console.log("\nFailures:"); for (const f of fails) console.log("  ✗ " + f); process.exit(1); }
 console.log("✓ all green");

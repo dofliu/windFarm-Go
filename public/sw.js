@@ -1,7 +1,7 @@
 // 離岸風場・運維傳說 — Service Worker (PWA 階段 1，手寫、零相依)
 // 策略:導覽 network-first(離線退回 app shell);同源資產 stale-while-revalidate;
 //      跨來源(Apps Script 雲端 API / Google Fonts)與非 GET 一律走網路、不快取。
-const CACHE = "wfg-cache-v2"; // 版本號隨改動遞增 → activate 會清掉舊版快取(含過期 app shell),避免更新後空白
+const CACHE = "wfg-cache-v3"; // 版本號隨改動遞增 → activate 會清掉舊版快取(含過期 app shell),避免更新後空白
 const START = new URL(".", self.registration.scope).href; // app 進入點(隨 base 自動正確)
 
 self.addEventListener("install", (e) => {
