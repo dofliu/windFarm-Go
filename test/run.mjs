@@ -58,6 +58,7 @@ const cs = await load("src/state/caseStudies.ts");
 const trends = await load("src/state/trends.ts");
 const mastery = await load("src/state/mastery.ts");
 const port = await load("src/state/port.ts");
+const events = await load("src/state/events.ts");
 const R = g.reducer, I = g.INITIAL;
 
 // ───────────────────────── INITIAL 不變量 ─────────────────────────
@@ -1612,6 +1613,27 @@ test("mistakes: addMistake caps to most-recent N; reviewMistake marks + reflecti
   const hit = rv.find((x) => x.id === "m10");
   ok(hit.reviewed && hit.reflection === "下次先查潤滑", "reviewed flag + reflection set");
   eq(mastery.pendingMistakes(rv), mastery.MISTAKES_CAP - 1, "one fewer pending");
+});
+// ───────────────────────── 新手友善 + 戲劇張力(#1.2/2.2) ─────────────────────────
+test("UX: entry-level faults carry life metaphors (#1.2)", () => {
+  for (const id of ["gearbox_overheat", "yaw_misalign", "pitch_fault", "converter_fault", "gen_overtemp", "gen_vibration"]) {
+    const c = flt.CODEX[id];
+    ok(c && c.metaphor && c.metaphor.zh && c.metaphor.en, `${id} has a bilingual life metaphor`);
+  }
+});
+test("drama: non-technical events added & well-formed; rollEvent still valid (#2.2)", () => {
+  const ids = new Set(events.EVENTS.map((e) => e.id));
+  for (const id of ["eco_protest", "bad_press", "media_spotlight", "community_support", "regulator_audit"]) ok(ids.has(id), `event ${id} present`);
+  for (const e of events.EVENTS) {
+    ok(e.id && e.name?.zh && e.name?.en && e.desc?.zh && e.desc?.en, `event ${e.id} bilingual`);
+    ok(typeof e.weight === "number" && e.weight > 0, `event ${e.id} weight>0`);
+    ok(typeof e.apply === "function", `event ${e.id} has apply`);
+    const patch = e.apply({ ...I });
+    ok(patch && typeof patch === "object", `event ${e.id} apply returns a patch`);
+  }
+  // rollEvent 仍回 null 或合法事件
+  seed(4);
+  for (let i = 0; i < 200; i++) { const r = events.rollEvent(0.4, 80); ok(r === null || ids.has(r.id), "rollEvent returns null or a known event"); }
 });
 // ───────────────────────── 母港建設・視覺成長(#port) ─────────────────────────
 test("port: catalog well-formed; level/cost helpers", () => {

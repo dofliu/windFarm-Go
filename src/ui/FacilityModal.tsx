@@ -342,6 +342,13 @@ function CodexCard({ faultId, seen }: { faultId: string; seen: boolean }) {
       </div>
       {seen && open && cx && (
         <div style={{ padding: "2px 12px 11px", borderTop: "1px solid rgba(255,255,255,.07)" }}>
+          {/* 生活化比喻(#1.2):無背景玩家先用日常事物秒懂,放最前面 */}
+          {cx.metaphor && (
+            <div style={{ marginTop: 8, padding: "7px 9px", borderRadius: 5, background: "rgba(217,164,65,.1)", border: "1px solid rgba(217,164,65,.3)" }}>
+              <div style={{ fontSize: 10.5, color: C.gold, fontWeight: 700, letterSpacing: ".06em" }}>💡 {t({ zh: "生活化比喻", en: "In plain terms" })}</div>
+              <div style={{ fontSize: 12.5, color: C.cream, lineHeight: 1.55, marginTop: 1 }}>{t(cx.metaphor)}</div>
+            </div>
+          )}
           {([
             [{ zh: "成因機制", en: "Mechanism" }, cx.mechanism, C.mist],
             [{ zh: "典型症狀", en: "Symptoms" }, cx.symptom, C.mist],
