@@ -30,6 +30,7 @@ const CaseFileModal = lazy(() => import("./ui/CaseFileModal"));
 const TrendsModal = lazy(() => import("./ui/TrendsModal"));
 const ProfileModal = lazy(() => import("./ui/ProfileModal"));
 const TeacherModal = lazy(() => import("./ui/TeacherModal"));
+const PortModal = lazy(() => import("./ui/PortModal"));
 import { GameProvider } from "./state/GameContext";
 import { DialogueProvider } from "./state/DialogueContext";
 import { TutorialProvider } from "./state/TutorialContext";
@@ -55,6 +56,7 @@ export default function App() {
   const [showTeacher, setShowTeacher] = useState(false);
   const [showCaseFile, setShowCaseFile] = useState(false);
   const [showTrends, setShowTrends] = useState(false);
+  const [showPort, setShowPort] = useState(false);
   const [facility, setFacility] = useState<Facility | null>(null);
   const [loggedIn, setLoggedIn] = useState(() => isAuthed(getProfile()));
   const [sceneId, setSceneId] = useState(getSceneId);
@@ -106,7 +108,7 @@ export default function App() {
   const logout = () => { clearProfile(); setScreen("hub"); setLoggedIn(false); };
 
   const hubScreen = (m: boolean) => (
-    <HubScreen setScreen={setScreen} accent={accent} onDispatch={() => setShowDispatch(true)} onFacility={(k) => setFacility(k)} sceneName={sceneName} onCycleScene={cycleScene} aerial={aerial} onToggleView={() => setAerial((v) => !v)} mode={mode} onCycleMode={cycleMode} onOps={() => setShowOps(true)} onFleet={() => setShowFleet(true)} onBuild={() => setShowBuild(true)} onCaseFile={() => setShowCaseFile(true)} onTrends={() => setShowTrends(true)} week={week} mobile={m} />
+    <HubScreen setScreen={setScreen} accent={accent} onDispatch={() => setShowDispatch(true)} onFacility={(k) => setFacility(k)} sceneName={sceneName} onCycleScene={cycleScene} aerial={aerial} onToggleView={() => setAerial((v) => !v)} mode={mode} onCycleMode={cycleMode} onOps={() => setShowOps(true)} onFleet={() => setShowFleet(true)} onBuild={() => setShowBuild(true)} onCaseFile={() => setShowCaseFile(true)} onTrends={() => setShowTrends(true)} onPort={() => setShowPort(true)} week={week} mobile={m} />
   );
   // 非母港畫面(交易所/出海/維修)+背景+頂列。母港另以 hubScreen 呈現(桌機絕對定位、手機單欄流動)。
   const stageScreens = (
@@ -132,6 +134,7 @@ export default function App() {
       {facility && <FacilityModal kind={facility} onClose={() => setFacility(null)} />}
       {showCaseFile && <CaseFileModal open onClose={() => setShowCaseFile(false)} />}
       {showTrends && <TrendsModal open onClose={() => setShowTrends(false)} />}
+      {showPort && <PortModal open onClose={() => setShowPort(false)} />}
       {showProfile && <ProfileModal open onClose={() => setShowProfile(false)} />}
       {showTeacher && <TeacherModal open onClose={() => setShowTeacher(false)} />}
     </Suspense>

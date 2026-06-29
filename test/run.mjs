@@ -57,6 +57,7 @@ const pack = await load("src/state/scenarioPack.ts");
 const cs = await load("src/state/caseStudies.ts");
 const trends = await load("src/state/trends.ts");
 const mastery = await load("src/state/mastery.ts");
+const port = await load("src/state/port.ts");
 const R = g.reducer, I = g.INITIAL;
 
 // ───────────────────────── INITIAL 不變量 ─────────────────────────
@@ -1611,6 +1612,45 @@ test("mistakes: addMistake caps to most-recent N; reviewMistake marks + reflecti
   const hit = rv.find((x) => x.id === "m10");
   ok(hit.reviewed && hit.reflection === "下次先查潤滑", "reviewed flag + reflection set");
   eq(mastery.pendingMistakes(rv), mastery.MISTAKES_CAP - 1, "one fewer pending");
+});
+// ───────────────────────── 母港建設・視覺成長(#port) ─────────────────────────
+test("port: catalog well-formed; level/cost helpers", () => {
+  ok(port.PORT_FACILITIES.length >= 3, "has facilities");
+  let sumMax = 0;
+  for (const f of port.PORT_FACILITIES) {
+    ok(f.id && f.name?.zh && f.name?.en && f.blurb?.zh, `facility ${f.id} bilingual`);
+    ok(f.max >= 1 && f.costs.length === f.max, `facility ${f.id} costs length == max`);
+    for (const c of f.costs) ok(c > 0, `facility ${f.id} cost > 0`);
+    sumMax += f.max;
+  }
+  eq(port.PORT_MAX_LEVEL, sumMax, "PORT_MAX_LEVEL = Σ max");
+  const fid = port.PORT_FACILITIES[0].id;
+  eq(port.portFacLevel({}, fid), 0, "missing → level 0");
+  eq(port.nextPortCost({}, fid), port.PORT_FACILITIES[0].costs[0], "next cost = costs[0] at lv0");
+  eq(port.portLevel({ [fid]: 2 }), 2, "portLevel sums");
+  ok(port.canUpgradePort({}, fid, 1e12), "affordable when rich");
+  ok(!port.canUpgradePort({}, fid, 0), "not affordable when broke");
+  // 滿級 → 下一級費用 null、不可升級
+  const maxed = { [fid]: port.PORT_FACILITIES[0].max };
+  eq(port.nextPortCost(maxed, fid), null, "maxed → null cost");
+  ok(!port.canUpgradePort(maxed, fid, 1e12), "maxed → cannot upgrade");
+});
+test("port: UPGRADE_PORT deducts budget & raises level; guards (reducer)", () => {
+  const fid = port.PORT_FACILITIES[0].id;
+  const cost = port.PORT_FACILITIES[0].costs[0];
+  let s = R({ ...I, budget: cost + 5, portUpgrades: {} }, { type: "UPGRADE_PORT", id: fid, cost });
+  eq(s.portUpgrades[fid], 1, "level +1");
+  eq(s.budget, 5, "budget deducted");
+  // 預算不足 → 不變
+  const poor = R({ ...I, budget: 1, portUpgrades: {} }, { type: "UPGRADE_PORT", id: fid, cost });
+  eq(poor.portUpgrades[fid] ?? 0, 0, "no upgrade when broke");
+  // 未知設施 → 不變
+  const bad = R({ ...I, budget: 1e9 }, { type: "UPGRADE_PORT", id: "nope", cost: 1 });
+  eq(bad.portUpgrades.nope, undefined, "unknown facility ignored");
+  // 滿級 → 不變
+  let full = { ...I, budget: 1e12, portUpgrades: { [fid]: port.PORT_FACILITIES[0].max } };
+  const after = R(full, { type: "UPGRADE_PORT", id: fid, cost: 1 });
+  eq(after.portUpgrades[fid], port.PORT_FACILITIES[0].max, "maxed stays");
 });
 test("mistakes: RECORD_MISTAKE assigns id & appends; REVIEW_MISTAKE updates by id (reducer)", () => {
   const I18 = { zh: "q", en: "q" };
