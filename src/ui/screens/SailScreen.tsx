@@ -8,7 +8,7 @@ import { exprUrl } from "../characters";
 import { useGame } from "../../state/GameContext";
 import { useCoachTarget } from "../../state/TutorialContext";
 import { Sfx } from "../../audio/sfx";
-import { SEA_INDEX, seaTolOf, activeVesselSpec, availableEngineer, tierOf } from "../../state/game";
+import { SEA_INDEX, seaTolOf, activeVesselSpec, availableEngineer, tierOf, workWindowMax, sopStepCost } from "../../state/game";
 import { FAULTS, isMajorFault } from "../faults";
 import { missionInstance } from "../campaign";
 import { DISC, hasEngineer } from "../disc";
@@ -39,6 +39,17 @@ function Check({ ok, label, hint }: { ok: boolean; label: string; hint?: string 
   );
 }
 
+// 出海前工期預估的單列（左標籤、右數值）
+function EstRow({ label, value, hint, muted, bold }: { label: string; value: string; hint?: string; muted?: boolean; bold?: boolean }) {
+  return (
+    <div style={{ display: "flex", alignItems: "baseline", gap: 6, padding: "2px 0", fontSize: 12 }}>
+      <span style={{ color: muted ? C.mist2 : C.cream, fontWeight: bold ? 700 : 400 }}>{label}</span>
+      {hint && <span style={{ color: C.mist2, fontSize: 10.5 }}>({hint})</span>}
+      <span style={{ marginLeft: "auto", color: muted ? C.mist2 : C.cream, fontWeight: bold ? 900 : 600 }}>{value}</span>
+    </div>
+  );
+}
+
 export default function SailScreen({ setScreen, accent, mode = "sim", mobile = false }: { setScreen: (s: Screen) => void; accent: string; mode?: "sim" | "real" | "comic"; mobile?: boolean }) {
   useLang();
   const { data, dispatch } = useGame();
@@ -56,6 +67,20 @@ export default function SailScreen({ setScreen, accent, mode = "sim", mobile = f
   const partOk = fault ? (data.inventory[fault.part] ?? 0) > 0 : false;
   const seaOk = SEA_INDEX[data.seaState] <= seaTolOf(data);
   const ready = active && engOk && partOk && seaOk;
+
+  // Part A — 出海前工期預估 vs 天氣窗（與現場 RepairScreen 同一套公式 → 數字一致）。
+  // 讓玩家在出航前判斷「是否保留足夠作業窗」；只提示、不擋出航（由玩家自行決定）。
+  const winMax = workWindowMax(data);
+  const roughSea = data.seaState !== "workable";
+  const stepCost = sopStepCost(data.toolLevel);
+  const sopClickable = fault ? Math.max(0, fault.sop.length - 2) : 3; // 前兩步預設完成、其餘需逐步完成
+  const estBoard = roughSea ? 3 : 0; // 登船（頂浪 −3；平穩不耗窗）
+  const estInspect = 1; // 診斷題（答對一次；答錯每次 −3）
+  const estRepair = sopClickable * stepCost; // 維修 SOP
+  const estOnsite = estBoard + estInspect + estRepair; // 上塔作業小計（耗天氣窗）
+  const reserve = winMax - estOnsite; // 保留餘裕
+  const transitH = 4; // 單程航程 ~4h（與航行 ETA 一致）
+  const resCol = reserve >= 3 ? C.green : reserve >= 1 ? C.amber2 : C.redText;
 
   // 航行動畫（enroute → onsite）
   const [progress, setProgress] = useState(0);
@@ -149,6 +174,25 @@ export default function SailScreen({ setScreen, accent, mode = "sim", mobile = f
                 <ForecastStrip forecast={data.forecast} compact />
                 <StormWarning forecast={data.forecast} />
               </>)}
+              {/* Part A — 工期預估 vs 天氣窗：航線／登船／檢查／維修 估時 + 天氣窗允許 + 保留餘裕，供玩家判斷是否出航 */}
+              {fault && (
+                <div style={{ marginTop: 10, padding: "9px 10px", borderRadius: 6, background: "rgba(8,24,31,.6)", border: "1px solid rgba(214,167,84,.3)" }}>
+                  <div style={{ fontSize: 11.5, color: C.goldText, fontWeight: 700, marginBottom: 6 }}>⏱ {t({ zh: "工期預估 vs 天氣窗", en: "Job Estimate vs Window" })}</div>
+                  <EstRow label={t({ zh: "航線（單程／往返）", en: "Transit (1-way/round)" })} value={`~${transitH}h / ${transitH * 2}h`} muted />
+                  <div style={{ height: 1, background: "rgba(214,167,84,.18)", margin: "5px 0" }} />
+                  <div style={{ fontSize: 10.5, color: C.mist2, marginBottom: 3 }}>{t({ zh: "上塔作業（耗天氣窗 · 時段）", en: "On-site (spends window · slots)" })}</div>
+                  <EstRow label={t({ zh: "登船", en: "Boarding" })} value={estBoard === 0 ? t({ zh: "0（海象平穩）", en: "0 (calm)" }) : `−${estBoard}`} />
+                  <EstRow label={t({ zh: "檢查／診斷", en: "Inspection" })} value={`−${estInspect}`} hint={t({ zh: "答錯每次 −3", en: "−3 per wrong" })} />
+                  <EstRow label={t({ zh: "維修 SOP", en: "Repair SOP" })} value={`−${estRepair}`} />
+                  <div style={{ height: 1, background: "rgba(214,167,84,.18)", margin: "5px 0" }} />
+                  <EstRow label={t({ zh: "作業小計", en: "Work subtotal" })} value={`${estOnsite} ${t({ zh: "時段", en: "slots" })}`} bold />
+                  <EstRow label={t({ zh: "天氣窗允許", en: "Window allows" })} value={`${winMax} ${t({ zh: "時段", en: "slots" })}`} bold />
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 5, padding: "5px 7px", borderRadius: 4, background: reserve >= 3 ? "rgba(127,206,142,.14)" : reserve >= 1 ? "rgba(227,173,66,.14)" : "rgba(220,100,80,.16)" }}>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: resCol }}>{t({ zh: "保留餘裕", en: "Reserve" })}</span>
+                    <span style={{ fontSize: 12, fontWeight: 900, color: resCol }}>{reserve >= 0 ? `+${reserve}` : reserve} · {reserve >= 3 ? t({ zh: "充足", en: "Ample" }) : reserve >= 1 ? t({ zh: "偏緊", en: "Tight" }) : t({ zh: "不足，恐中途撤離", en: "Short — may abort" })}</span>
+                  </div>
+                </div>
+              )}
               <button
                 ref={departRef}
                 disabled={!ready}

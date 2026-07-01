@@ -767,6 +767,30 @@ test("repair progress persists in state, resets on quest lifecycle (#33)", () =>
   // 明確清空
   eq(R(s1, { type: "SET_REPAIR", repair: null }).repair, null);
 });
+test("REPLAN_RETURN: 審慎返港 → 清進度、回 office、進 1 天、不計安全事件、工單保留（Part B）", () => {
+  const r = { key: "0:m1", boarded: true, pick: null, steps: [true, true, false, false, false], win: 2 };
+  const base = { ...I, questStage: "active", jobPhase: "onsite", repair: r, safetyIncidents: 0 };
+  seed(3); const s = R(base, { type: "REPLAN_RETURN" });
+  eq(s.repair, null, "repair cleared");
+  eq(s.jobPhase, "office", "returned to office");
+  eq(s.questStage, "active", "work order stays open (re-plannable)");
+  eq(s.safetyIncidents, 0, "no safety incident (distinct from FAIL_REPAIR)");
+  eq(s.day, base.day + 1, "advances one day");
+  // 對照：FAIL_REPAIR(撤離) 會計一次安全事件
+  seed(3); eq(R(base, { type: "FAIL_REPAIR" }).safetyIncidents, 1, "FAIL_REPAIR counts a safety incident");
+});
+test("workWindowMax/sopStepCost: 海象越差窗越小、磨耗扣窗、下限 4；步驟耗時下限 1（出海預估與現場共用）", () => {
+  const mk = (o) => ({ ...I, ...o });
+  const w = g.workWindowMax(mk({ seaState: "workable", vesselLevel: 0, vesselWear: 0 }));
+  const c = g.workWindowMax(mk({ seaState: "caution", vesselLevel: 0, vesselWear: 0 }));
+  const cl = g.workWindowMax(mk({ seaState: "closed", vesselLevel: 0, vesselWear: 0 }));
+  ok(w > c && c > cl, "workable > caution > closed");
+  ok(g.workWindowMax(mk({ seaState: "workable", vesselLevel: 0, vesselWear: 90 })) < w, "heavy wear shrinks window");
+  ok(g.workWindowMax(mk({ seaState: "closed", vesselLevel: 0, vesselWear: 90 })) >= 4, "never below floor 4");
+  eq(g.sopStepCost(0), 2, "tool Lv.0 → 2 slots/step");
+  eq(g.sopStepCost(1), 1, "tool Lv.1 → 1 slot/step");
+  eq(g.sopStepCost(5), 1, "step cost floors at 1");
+});
 test("dailyRevenue scales with running turbines; no-fleet fallback uses availability", () => {
   // 機組越多運轉 → 收入越高
   const few = { ...I, fleet: I.fleet.map((t, i) => (i < 20 ? { ...t, status: "fault", faultId: "gearbox" } : t)) };
@@ -864,7 +888,7 @@ function randomAction(s, rnd) {
   const t = pick([
     "REST", "REST", "REMOTE_CHECK", "OPS_ADVANCE", "OPS_ADVANCE", "ACCEPT_QUEST", "DEPART", "ARRIVE", "BUY", "SELL",
     "UPGRADE", "HIRE", "BUY_SOV", "UNLOCK_FARM", "SERVICE_VESSEL", "BUY_DIAGNOSTICS", "DO_ROUTINE",
-    "OPS_DISPATCH", "OPS_DISPATCH", "OPS_RESET", "OPS_INSPECT", "FINISH_REPAIR", "FAIL_REPAIR", "NEXT_QUEST", "RESOLVE_TASK", "RESTART_CAMPAIGN",
+    "OPS_DISPATCH", "OPS_DISPATCH", "OPS_RESET", "OPS_INSPECT", "FINISH_REPAIR", "FAIL_REPAIR", "REPLAN_RETURN", "NEXT_QUEST", "RESOLVE_TASK", "RESTART_CAMPAIGN",
     "BUILD_RESOLVE", "BUILD_RESOLVE", "BUILD_RESET",
   ]);
   switch (t) {
