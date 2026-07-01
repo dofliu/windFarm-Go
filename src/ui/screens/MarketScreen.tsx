@@ -10,6 +10,8 @@ import { useDialogue } from "../../state/DialogueContext";
 import { S } from "../../i18n/strings";
 import { Sfx } from "../../audio/sfx";
 import { toast } from "../toast";
+import { FAULTS } from "../faults";
+import { missionInstance } from "../campaign";
 
 const TAX = 0.12;
 const SELL_RATE = 0.9; // 賣出 9 折回收
@@ -35,6 +37,14 @@ export default function MarketScreen({ accent, mobile = false }: { accent: strin
   const canBuy = count > 0 && total <= data.budget;
 
   const owned = PARTS.filter((p) => (data.inventory[p.id] ?? 0) > 0);
+
+  // 判斷提醒：進行中工單的必備備品是否備齊；缺料時提示到貨前置期趕不趕得上出海。
+  const quest = data.customQuest ?? missionInstance(data.campaignIndex);
+  const need = data.questStage === "active" ? FAULTS[quest.targetFault]?.part : undefined;
+  const needPart = need ? PARTS.find((p) => p.id === need) : undefined;
+  const needInStock = need ? (data.inventory[need] ?? 0) > 0 : false;
+  const needInTransit = need ? data.pendingOrders.filter((o) => o.partId === need).reduce((a, o) => a + o.qty, 0) : 0;
+  const needLead = needPart ? leadOf(needPart) : 0;
 
   const add = (id: string) => {
     Sfx.click();
@@ -164,6 +174,31 @@ export default function MarketScreen({ accent, mobile = false }: { accent: strin
 
         {/* RIGHT: NPC + cargo/tax */}
         <div style={mobile ? { width: "100%", flex: "none", display: "flex", flexDirection: "column", gap: 14 } : { width: 392, flex: "none", display: "flex", flexDirection: "column", gap: 14 }}>
+          {/* 判斷提醒：進行中工單的必備備品 —— 缺料/在途/備齊，並提示前置期是否趕得上出海 */}
+          {need && needPart && (
+            needInStock ? (
+              <div style={{ ...panel, padding: "9px 12px", display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={{ color: C.green, fontWeight: 900 }}>✔</span>
+                <span style={{ fontSize: 12.5, color: C.cream }}>{t({ zh: "本工單備品", en: "Order part" })}「{t(needPart.n)}」{t({ zh: "已備齊，可出海。", en: "in stock — ready to sail." })}</span>
+              </div>
+            ) : (
+              <div style={{ ...panel, padding: "10px 12px", border: `1px solid ${needInTransit > 0 ? "rgba(227,173,66,.5)" : "rgba(220,100,80,.55)"}` }}>
+                <div style={{ fontSize: 12.5, fontWeight: 700, color: needInTransit > 0 ? C.amber2 : C.redText, marginBottom: 4 }}>
+                  {needInTransit > 0 ? "🚚" : "⚠"} {t({ zh: "本工單缺備品", en: "Order needs part" })}：{t(needPart.n)}
+                </div>
+                <div style={{ fontSize: 11.5, color: C.mist, lineHeight: 1.5 }}>
+                  {needInTransit > 0
+                    ? t({ zh: `已下單在途 ×${needInTransit}，到貨後即可出海。`, en: `${needInTransit} on the way — sail once it arrives.` })
+                    : t({ zh: `尚未購買。此品約 ${needLead} 天到貨${needLead > 0 ? "，趕不上就無法出海——建議先買齊。" : "（即到貨）。"}`, en: `Not purchased. ~${needLead}d lead${needLead > 0 ? " — buy it before you can sail." : " (in stock)."}` })}
+                </div>
+                {needInTransit === 0 && (
+                  <button onClick={() => { setMode("buy"); add(need); }} style={{ marginTop: 8, width: "100%", padding: "8px 0", borderRadius: 5, border: "1px solid rgba(255,236,196,.6)", background: primaryBg(accent), color: C.ink, fontFamily: FONT_SERIF, fontWeight: 900, fontSize: 13, cursor: "pointer" }}>
+                    {t({ zh: "加入購物車", en: "Add to cart" })}
+                  </button>
+                )}
+              </div>
+            )
+          )}
           {!mobile && (
           <div style={{ flex: 1, position: "relative", borderRadius: 6, border: "1px solid rgba(214,167,84,.4)", background: "radial-gradient(circle at 50% 28%, #1c4f5f, #0e2a36)", overflow: "hidden", boxShadow: "0 16px 40px rgba(0,0,0,.5)" }}>
             <Portrait id="owner" style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }} />

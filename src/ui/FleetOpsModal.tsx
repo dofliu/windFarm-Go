@@ -9,7 +9,7 @@ import { DISC } from "./disc";
 import { FARMS } from "../state/farms";
 import { incidentAt } from "../state/incidents";
 import { PARTS } from "./data";
-import { fleetUptime, engineerBusy, fatigueOf, FATIGUE_LIMIT, jobCapOf, onsiteJobCount, INSPECT_DAYS, SEA_INDEX, seaTolOf, activeVesselSpec, SEA_LABEL, dailyPayroll, toWan, sortieCostOf } from "../state/game";
+import { fleetUptime, engineerBusy, fatigueOf, FATIGUE_LIMIT, jobCapOf, onsiteJobCount, INSPECT_DAYS, SEA_INDEX, seaTolOf, activeVesselSpec, SEA_LABEL, dailyPayroll, toWan, sortieCostOf, QUARTER_DAYS, SLA_FLOOR } from "../state/game";
 import { LedgerView } from "./Ledger";
 
 const STATUS_COLOR: Record<string, string> = { ok: "#3f7d52", fault: "#c0463a", repair: "#cf9a35" };
@@ -58,6 +58,10 @@ export default function FleetOpsModal({ open, onClose }: { open: boolean; onClos
   const seaOk = SEA_INDEX[data.seaState] <= seaTolOf(data); // 海象是否允許派船（依目前作業船）
   const canDeploy = !atCap && seaOk;
   const idleCrew = data.engineers.filter((e) => !engineerBusy(data.opsJobs, e.id) && fatigueOf(e) < FATIGUE_LIMIT);
+  // 判斷提醒：SLA 季末履約風險（決策點 inline，而非母港輪播）
+  const daysLeftQ = Math.max(0, data.quarterStartDay + QUARTER_DAYS - data.day);
+  const slaAvg = data.slaSamples > 0 ? data.slaAvailSum / data.slaSamples : data.availability;
+  const slaBelow = slaAvg < SLA_FLOOR;
 
   const dispatchCrew = (engineerId: string) => {
     if (!selT) return;
@@ -87,6 +91,16 @@ export default function FleetOpsModal({ open, onClose }: { open: boolean; onClos
         <Stat label={t({ zh: "已修復", en: "Resolved" })} value={String(data.fleetResolved)} color={C.green} />
         <Stat label={t({ zh: "薪資/月", en: "Payroll/mo" })} value={`◎${toWan(dailyPayroll(data.engineers) * 30)}萬`} color={C.mist2} />
         <Stat label={t({ zh: "作業船", en: "Vessel" })} value={`${vSpec.icon} ${t(vSpec.short)}`} color={C.goldText} />
+      </div>
+
+      {/* 判斷提醒：SLA 季末履約風險 —— 平均妥善率 vs 底線 + 季末剩餘天數，低於底線時警示違約金 */}
+      <div style={{ marginBottom: 12, padding: "7px 10px", borderRadius: 5, background: slaBelow ? "rgba(220,100,80,.12)" : daysLeftQ <= 14 ? "rgba(227,173,66,.1)" : "rgba(127,206,142,.08)", border: `1px solid ${slaBelow ? "rgba(220,100,80,.32)" : daysLeftQ <= 14 ? "rgba(227,173,66,.3)" : "rgba(127,206,142,.28)"}`, fontSize: 11.5, color: slaBelow ? C.redText : daysLeftQ <= 14 ? C.amber2 : C.mist, lineHeight: 1.55 }}>
+        📑 {t({ zh: `本季 SLA：平均妥善率 ${slaAvg.toFixed(0)}%（底線 ${SLA_FLOOR}%）· 季末剩 ${daysLeftQ} 天`, en: `Quarter SLA: avg uptime ${slaAvg.toFixed(0)}% (floor ${SLA_FLOOR}%) · ${daysLeftQ}d left` })}
+        {slaBelow
+          ? t({ zh: " — ⚠ 低於底線,季末將扣違約金,盡快搶修拉高妥善率!", en: " — ⚠ below floor; fix faults before quarter-end to avoid a penalty!" })
+          : daysLeftQ <= 14 && slaAvg < SLA_FLOOR + 3
+            ? t({ zh: " — 逼近底線,留意違約風險。", en: " — near the floor; watch breach risk." })
+            : ""}
       </div>
 
       {/* 海象限制派船（接上天氣預報） */}

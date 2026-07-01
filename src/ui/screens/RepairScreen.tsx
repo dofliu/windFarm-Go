@@ -12,7 +12,7 @@ import { exprUrl } from "../characters";
 import { FAULTS, LOCATION_LABEL, locationOf, isMajorFault } from "../faults";
 import RepairScene from "../RepairScene";
 import { FallbackImg } from "../SceneVideo";
-import { vesselWindowPenalty, windowBonusOf, type RepairState } from "../../state/game";
+import { workWindowMax, sopStepCost, type RepairState } from "../../state/game";
 import { PARTS } from "../data";
 import { missionInstance } from "../campaign";
 import type { Screen } from "../../App";
@@ -25,8 +25,8 @@ export default function RepairScreen({ setScreen, mode = "sim", mobile = false }
   const fault = FAULTS[quest.targetFault] ?? FAULTS.gearbox_overheat;
   const q = fault.quiz;
 
-  // 作業窗（#17）：海象越差，可用時段越少；船隊升級加窗；船舶磨耗扣窗（#7）
-  const windowMax = Math.max(4, (data.seaState === "closed" ? 6 : data.seaState === "caution" ? 8 : 10) + data.vesselLevel * 2 + windowBonusOf(data) - vesselWindowPenalty(data.vesselWear));
+  // 作業窗（#17）：海象越差，可用時段越少；船隊升級加窗；船舶磨耗扣窗（#7）。與出海前工期預估共用同一公式。
+  const windowMax = workWindowMax(data);
 
   // 維修進度持久化（#33）：存進 game state（以工單 key 綁定），切換畫面不丟失、作業窗不被免費重置。
   const repairKey = `${data.customQuest ? "c" : data.campaignIndex}:${quest.id}`;
@@ -58,17 +58,28 @@ export default function RepairScreen({ setScreen, mode = "sim", mobile = false }
   const complete = quizCorrect && allSteps;
   const failed = win <= 0 && !complete; // 窗內未完成 → 撤離
   const ready = complete && hasPart && data.questStage === "active" && !data.repairDone && !failed;
+  // Part B —「維修不利」判定：已登塔、尚未完成也未撤離時，估算窗內剩餘最佳工時；不足 → 提示可回港再規劃。
+  const remainingCost = (quizCorrect ? 0 : 1) + steps.filter((v) => !v).length * sopStepCost(data.toolLevel); // 診斷(未答對 +1) + 未完成 SOP 步驟耗時
+  const tightWindow = boarded && !complete && !failed && win < remainingCost; // 作業窗恐不足以在窗內完成
 
   const completeStep = (i: number) => {
     if (i < 2 || steps[i] || failed) return; // 前兩步固定、已完成、已撤離不可再動
     // 工坊升級降低每步耗時
-    saveRepair({ steps: steps.map((v, idx) => (idx === i ? true : v)), win: Math.max(0, win - Math.max(1, 2 - data.toolLevel)) });
+    saveRepair({ steps: steps.map((v, idx) => (idx === i ? true : v)), win: Math.max(0, win - sopStepCost(data.toolLevel)) });
   };
 
   const retreat = () => {
     Sfx.error();
     dispatch({ type: "FAIL_REPAIR" });
     say({ speaker: "veteran_sailor", line: { zh: "海象變差、作業窗關了！先撤離，擇日再來。", en: "Weather's turned — window's shut. Retreat and try another day." } });
+    setScreen("hub");
+  };
+
+  // Part B — 審慎返港再規劃（維修不利時的安全選擇）：進 1 天、不計安全事件、工單保留可改天再來
+  const replan = () => {
+    Sfx.click();
+    dispatch({ type: "REPLAN_RETURN" });
+    say({ speaker: "veteran_sailor", line: { zh: "作業窗吃緊、別硬拚。先回港重新規劃船機與時機，擇日再來——工單還在。", en: "Window's tight — don't force it. Head back and re-plan the vessel and timing; the order stays open." } });
     setScreen("hub");
   };
 
@@ -345,14 +356,29 @@ export default function RepairScreen({ setScreen, mode = "sim", mobile = false }
                 🌧️ {t({ zh: "天氣窗關閉 · 撤離", en: "Window closed · Retreat" })}
               </button>
             ) : (
-              <button
-                ref={finishRef}
-                disabled={!ready}
-                onClick={finish}
-                style={{ width: "100%", padding: "11px 0", borderRadius: 6, border: "1px solid rgba(255,236,196,.6)", background: ready ? primaryBg() : "rgba(255,255,255,.08)", color: ready ? C.ink : C.mist, fontFamily: FONT_SERIF, fontWeight: 900, fontSize: 15, letterSpacing: ".08em", cursor: ready ? "pointer" : "not-allowed" }}
-              >
-                {isMajorFault(fault.id) ? t({ zh: "拆檢完成 · 啟動大修", en: "Stripdown done · Start overhaul" }) : t(S.btn.finishRepair)}
-              </button>
+              <>
+                {/* Part B —「維修不利」提示：作業窗吃緊時，明確給出「繼續作業 / 回港再規劃」兩條路 */}
+                {tightWindow && (
+                  <div style={{ display: "flex", alignItems: "flex-start", gap: 6, marginBottom: 8, padding: "7px 9px", borderRadius: 5, background: "rgba(227,173,66,.12)", border: "1px solid rgba(227,173,66,.4)", fontSize: 11.5, lineHeight: 1.5, color: C.amber2 }}>
+                    <span>⚠</span>
+                    <span>{t({ zh: `作業窗吃緊（剩 ${win} 時段，估計還需 ${remainingCost}）——可繼續作業，或回港再規劃、擇日再來。`, en: `Window's tight (${win} slots left, ~${remainingCost} needed) — keep going, or return to port and re-plan.` })}</span>
+                  </div>
+                )}
+                <button
+                  ref={finishRef}
+                  disabled={!ready}
+                  onClick={finish}
+                  style={{ width: "100%", padding: "11px 0", borderRadius: 6, border: "1px solid rgba(255,236,196,.6)", background: ready ? primaryBg() : "rgba(255,255,255,.08)", color: ready ? C.ink : C.mist, fontFamily: FONT_SERIF, fontWeight: 900, fontSize: 15, letterSpacing: ".08em", cursor: ready ? "pointer" : "not-allowed" }}
+                >
+                  {isMajorFault(fault.id) ? t({ zh: "拆檢完成 · 啟動大修", en: "Stripdown done · Start overhaul" }) : t(S.btn.finishRepair)}
+                </button>
+                <button
+                  onClick={replan}
+                  style={{ width: "100%", marginTop: 8, padding: "9px 0", borderRadius: 6, border: `1px solid ${tightWindow ? "rgba(227,173,66,.6)" : "rgba(214,167,84,.4)"}`, background: tightWindow ? "rgba(227,173,66,.14)" : "rgba(15,40,50,.7)", color: tightWindow ? C.amber2 : C.mist, fontFamily: FONT_SERIF, fontWeight: 700, fontSize: 13, cursor: "pointer" }}
+                >
+                  ⚓ {t({ zh: "回港再規劃（不計安全事件）", en: "Return & re-plan (no incident)" })}
+                </button>
+              </>
             )}
           </div>
         </div>
