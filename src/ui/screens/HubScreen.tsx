@@ -390,7 +390,7 @@ export default function HubScreen({ setScreen, accent, onDispatch, onFacility, s
                               ? t({ zh: "✔ 今日可作業：推進 +1 工日", en: "✔ Workable today: push adds +1 day" })
                               : t({ zh: "✖ 今日不可作業：推進只會空耗 1 天待命費，建議等可作業窗", en: "✖ Not workable: pushing only burns a standby day — wait for a workable window" })}
                           </div>
-                          {oh.demurrageDays > 0 && <div style={{ fontSize: 10.5, color: C.amber2, marginTop: 2 }}>{t({ zh: `已因惡劣海象停滯 ${oh.demurrageDays} 天`, en: `Stalled ${oh.demurrageDays}d by weather` })}</div>}
+                          {oh.demurrageDays > 0 && <div style={{ fontSize: 10.5, color: C.amber2, marginTop: 2 }}>{t({ zh: `已因惡劣海象停滯 ${oh.demurrageDays} 天(累計待命費 ◎${toWan(oh.demurrageDays * DEMURRAGE_PER_DAY)} 萬)`, en: `Stalled ${oh.demurrageDays}d by weather (standby ◎${toWan(oh.demurrageDays * DEMURRAGE_PER_DAY)}M so far)` })}</div>}
                           <button onClick={() => { (seaOk ? Sfx.success : Sfx.error)(); dispatch({ type: "ADVANCE_OVERHAUL" }); }} style={{ width: "100%", marginTop: 8, padding: "7px 0", borderRadius: 4, border: "1px solid rgba(255,236,196,.6)", background: seaOk ? primaryBg(accent) : "rgba(220,100,80,.18)", color: seaOk ? C.ink : C.redText, fontFamily: FONT_SERIF, fontWeight: 900, fontSize: 13, cursor: "pointer" }}>
                             {seaOk ? t({ zh: "推進大修（消耗 1 天）", en: "Push overhaul (1 day)" }) : t({ zh: "仍要推進（空耗待命費）", en: "Push anyway (burn standby)" })}
                           </button>
@@ -516,6 +516,17 @@ export default function HubScreen({ setScreen, accent, onDispatch, onFacility, s
                 <button onClick={() => { Sfx.success(); dispatch({ type: "GRANT_FUNDS", amount: TEST_GRANT }); toast({ zh: `💰 測試加值 +◎${toWan(TEST_GRANT)} 萬`, en: `💰 Test top-up +◎${toWan(TEST_GRANT)}M` }); }} style={{ width: "100%", margin: "4px 0 2px", padding: "5px 0", borderRadius: 4, border: "1px dashed rgba(214,167,84,.5)", background: "rgba(214,167,84,.1)", color: C.goldText, fontSize: 11.5, fontWeight: 700, cursor: "pointer" }}>💰 {t({ zh: `測試加值 +◎${toWan(TEST_GRANT)} 萬`, en: `Test top-up +◎${toWan(TEST_GRANT)}M` })}</button>
                 <div style={kvRow}><span style={{ color: C.mist }}>{t({ zh: "售電收入/日", en: "Revenue/day" })}</span><span style={{ color: C.green, fontWeight: 700 }}>◎ {toWan(dailyRevenue(data))} {t({ zh: "萬", en: "M" })}</span></div>
                 <div style={kvRow}><span style={{ color: C.mist }}>{t({ zh: "技師薪資/月", en: "Payroll/mo" })}</span><span style={{ color: C.amber2, fontWeight: 700 }}>◎ {toWan(dailyPayroll(data.engineers) * 30)} {t({ zh: "萬", en: "M" })}</span></div>
+                {/* 判斷提醒：淨現金流 + 預算續航天數（現金流轉負時提醒可撐幾天） */}
+                {(() => {
+                  const net = dailyRevenue(data) - dailyPayroll(data.engineers) - dailyStorageCost(data.inventory);
+                  const runway = net < 0 ? Math.floor(data.budget / -net) : Infinity;
+                  return (
+                    <>
+                      <div style={kvRow}><span style={{ color: C.mist }}>{t({ zh: "淨現金流/日", en: "Net/day" })}</span><span style={{ color: net >= 0 ? C.green : C.redText, fontWeight: 700 }}>{net >= 0 ? "+" : "−"}◎ {toWan(Math.abs(net))} {t({ zh: "萬", en: "M" })}</span></div>
+                      {net < 0 && <div style={{ ...kvRow, color: runway <= 20 ? C.redText : C.amber2 }}><span>{t({ zh: "⏳ 預算可撐", en: "⏳ Runway" })}</span><span style={{ fontWeight: 700 }}>~{runway} {t({ zh: "天", en: "d" })}{runway <= 20 ? t({ zh: "(偏低,顧好現金流)", en: " (low!)" }) : ""}</span></div>}
+                    </>
+                  );
+                })()}
                 <div style={kvRow}><span style={{ color: C.mist }}>{t({ zh: "天數", en: "Day" })}</span><span>{data.day}</span></div>
               </OpsBlock>
 
