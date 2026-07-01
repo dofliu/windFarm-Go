@@ -12,13 +12,19 @@ permissions:
 
 concurrency:
   group: pages
-  cancel-in-progress: true
+  cancel-in-progress: false # 部署途中不取消,避免半途而廢的發佈(GitHub Pages 建議值)
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      # 確保 Pages 發佈來源鎖定為 GitHub Actions(enablement:true 會在需要時自動設定/修正),
+      # 避免日後被誤切回「Deploy from a branch」→ 端出未 build 的原始碼而整頁 404。
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+        with:
+          enablement: true
       - uses: actions/setup-node@v4
         with:
           node-version: 20
