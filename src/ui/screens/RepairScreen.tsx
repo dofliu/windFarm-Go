@@ -12,6 +12,7 @@ import { exprUrl } from "../characters";
 import { FAULTS, LOCATION_LABEL, locationOf, isMajorFault } from "../faults";
 import RepairScene from "../RepairScene";
 import { FallbackImg } from "../SceneVideo";
+import { useReducedMotion } from "../useReducedMotion";
 import { workWindowMax, sopStepCost, type RepairState } from "../../state/game";
 import { PARTS } from "../data";
 import { missionInstance } from "../campaign";
@@ -21,6 +22,7 @@ export default function RepairScreen({ setScreen, mode = "sim", mobile = false }
   useLang();
   const { data, dispatch } = useGame();
   const { say } = useDialogue();
+  const reduced = useReducedMotion(); // 無障礙：減少動態時，登船影片改用靜態首幀
   const quest = data.customQuest ?? missionInstance(data.campaignIndex);
   const fault = FAULTS[quest.targetFault] ?? FAULTS.gearbox_overheat;
   const q = fault.quiz;
@@ -145,17 +147,21 @@ export default function RepairScreen({ setScreen, mode = "sim", mobile = false }
   if (!boarded) {
     return (
       <div style={mobile ? { position: "relative", padding: "12px 12px 24px" } : { position: "absolute", inset: 0, zIndex: 2 }}>
-        {/* 登塔情境影片背景（取代原 CSS 平台/船隻）;手機隱藏 */}
-        {!mobile && <video
-          key="boarding-video"
-          src={`${import.meta.env.BASE_URL}assets/scenes/boarding.mp4`}
-          poster={`${import.meta.env.BASE_URL}assets/scenes/real_boarding.jpg`}
-          autoPlay
-          loop
-          muted
-          playsInline
-          style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
-        />}
+        {/* 登塔情境影片背景（取代原 CSS 平台/船隻）;手機隱藏。無障礙：減少動態時改用靜態首幀 */}
+        {!mobile && (reduced ? (
+          <img src={`${import.meta.env.BASE_URL}assets/scenes/real_boarding.jpg`} alt="" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />
+        ) : (
+          <video
+            key="boarding-video"
+            src={`${import.meta.env.BASE_URL}assets/scenes/boarding.mp4`}
+            poster={`${import.meta.env.BASE_URL}assets/scenes/real_boarding.jpg`}
+            autoPlay
+            loop
+            muted
+            playsInline
+            style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
+          />
+        ))}
         {!mobile && <div style={{ position: "absolute", inset: 0, background: "linear-gradient(90deg, rgba(6,18,24,.15) 0%, rgba(6,18,24,.05) 45%, rgba(6,18,24,.5) 100%)", pointerEvents: "none" }} />}
 
         <div style={mobile ? { width: "100%" } : { position: "absolute", right: 26, top: 92, width: 360 }}>

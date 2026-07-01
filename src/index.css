@@ -72,3 +72,16 @@ body {
     opacity: 0.35;
   }
 }
+
+/* 無障礙:尊重「減少動態」偏好 → 停用非必要動畫/轉場(前庭敏感/暈動友善)。
+   自動播放的場景影片另在 SceneVideo 以 poster 靜態首幀取代。 */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
