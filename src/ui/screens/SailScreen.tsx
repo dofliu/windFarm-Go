@@ -8,7 +8,7 @@ import { exprUrl } from "../characters";
 import { useGame } from "../../state/GameContext";
 import { useCoachTarget } from "../../state/TutorialContext";
 import { Sfx } from "../../audio/sfx";
-import { SEA_INDEX, seaTolOf, activeVesselSpec, availableEngineer, tierOf, workWindowMax, sopStepCost } from "../../state/game";
+import { SEA_INDEX, seaTolOf, activeVesselSpec, availableEngineer, tierOf, workWindowMax, sopStepCost, vesselWindowPenalty, fatigueOf, FATIGUE_LIMIT } from "../../state/game";
 import { FAULTS, isMajorFault } from "../faults";
 import { missionInstance } from "../campaign";
 import { DISC, hasEngineer } from "../disc";
@@ -81,6 +81,11 @@ export default function SailScreen({ setScreen, accent, mode = "sim", mobile = f
   const reserve = winMax - estOnsite; // 保留餘裕
   const transitH = 4; // 單程航程 ~4h（與航行 ETA 一致）
   const resCol = reserve >= 3 ? C.green : reserve >= 1 ? C.amber2 : C.redText;
+  // 判斷提醒：船舶磨耗縮窗 / 技師疲勞接近輪班上限 / 天氣窗擇日（今日不利但預報有可作業日）
+  const wearPenalty = vesselWindowPenalty(data.vesselWear); // 0 / 1 / 2 時段
+  const dispatchEng = fault ? data.engineers.filter((e) => e.discipline === fault.discipline && fatigueOf(e) < FATIGUE_LIMIT).sort((a, b) => fatigueOf(a) - fatigueOf(b))[0] : undefined;
+  const engFatigue = dispatchEng ? fatigueOf(dispatchEng) : 0;
+  const betterDayIdx = data.seaState !== "workable" ? data.forecast.findIndex((f) => f === "workable") : -1; // 預報中第一個可作業日（0=明日）
 
   // 航行動畫（enroute → onsite）
   const [progress, setProgress] = useState(0);
@@ -173,6 +178,12 @@ export default function SailScreen({ setScreen, accent, mode = "sim", mobile = f
                 <div style={{ fontSize: 11, color: C.mist2, margin: "6px 0 4px" }}>{t({ zh: "三日預報", en: "3-Day Forecast" })}</div>
                 <ForecastStrip forecast={data.forecast} compact />
                 <StormWarning forecast={data.forecast} />
+                {/* 判斷提醒：天氣窗擇日 —— 今日不利、但預報有可作業日 → 建議靠港等窗再出海 */}
+                {betterDayIdx >= 0 && (
+                  <div style={{ marginTop: 6, padding: "6px 9px", borderRadius: 5, background: "rgba(80,160,180,.12)", border: "1px solid rgba(120,190,210,.35)", fontSize: 11.5, color: C.mist2, lineHeight: 1.5 }}>
+                    🌤 {t({ zh: `今日海象不利;預報第 ${betterDayIdx + 1} 日可作業——靠港等窗再出海,作業窗更寬、較不易中途撤離。`, en: `Rough today; forecast day ${betterDayIdx + 1} is workable — waiting for that window gives a wider work window and less risk of aborting.` })}
+                  </div>
+                )}
               </>)}
               {/* Part A — 工期預估 vs 天氣窗：航線／登船／檢查／維修 估時 + 天氣窗允許 + 保留餘裕，供玩家判斷是否出航 */}
               {fault && (
@@ -191,6 +202,13 @@ export default function SailScreen({ setScreen, accent, mode = "sim", mobile = f
                     <span style={{ fontSize: 12, fontWeight: 700, color: resCol }}>{t({ zh: "保留餘裕", en: "Reserve" })}</span>
                     <span style={{ fontSize: 12, fontWeight: 900, color: resCol }}>{reserve >= 0 ? `+${reserve}` : reserve} · {reserve >= 3 ? t({ zh: "充足", en: "Ample" }) : reserve >= 1 ? t({ zh: "偏緊", en: "Tight" }) : t({ zh: "不足，恐中途撤離", en: "Short — may abort" })}</span>
                   </div>
+                  {/* 判斷提醒：解釋作業窗為何變小（磨耗縮窗 / 技師疲勞接近輪班上限） */}
+                  {wearPenalty > 0 && (
+                    <div style={{ marginTop: 5, fontSize: 11, color: C.amber2, lineHeight: 1.5 }}>⚙ {t({ zh: `船舶磨耗 ${Math.round(data.vesselWear)}% → 作業窗 −${wearPenalty}(建議先進廠保養)`, en: `Vessel wear ${Math.round(data.vesselWear)}% → window −${wearPenalty} (service the vessel first)` })}</div>
+                  )}
+                  {engOk && engFatigue >= 55 && (
+                    <div style={{ marginTop: 4, fontSize: 11, color: C.amber2, lineHeight: 1.5 }}>🧑‍🔧 {t({ zh: `技師疲勞 ${engFatigue}%(接近輪班上限 ${FATIGUE_LIMIT}%)——完成後恐需靠港休整`, en: `Engineer fatigue ${engFatigue}% (near the ${FATIGUE_LIMIT}% shift limit) — may need to rest in port after` })}</div>
+                  )}
                 </div>
               )}
               <button
