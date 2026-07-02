@@ -363,6 +363,19 @@ export default function HubScreen({ setScreen, accent, onDispatch, onFacility, s
                     <div style={{ color: C.cream, fontSize: 13.5, fontWeight: 700, margin: "2px 0" }}>{t(quest.title)}</div>
                     <div style={{ color: C.mist, fontSize: 11.5 }}>{quest.unit} · {fault ? t(fault.name) : "—"} · <span style={{ color: stage === "done" ? C.green : C.amber2 }}>{t(stage === "available" ? S.status.available : stage === "active" ? S.status.active : S.status.done)}</span></div>
                     {stage === "active" && <div style={{ fontSize: 11, color: C.amber2, marginTop: 4 }}>{t({ zh: "⚠ 停機中：每天約損失 3 萬", en: "⚠ Down: ~30k/day lost" })}</div>}
+                    {/* 半途成果保留(#carry):返港後在工單上顯示已保留的進度,提示出海續修 */}
+                    {stage === "active" && !data.overhaul && (() => {
+                      const rk = `${data.customQuest ? "c" : data.campaignIndex}:${quest.id}`;
+                      const rp = data.repair && data.repair.key === rk && !data.repair.boarded ? data.repair : null;
+                      const diagOk = !!rp && !!fault && rp.pick === fault.quiz.correct;
+                      const doneSteps = rp ? rp.steps.filter(Boolean).length : 0;
+                      if (!rp || (!diagOk && doneSteps <= 2)) return null;
+                      return (
+                        <div style={{ fontSize: 11, color: C.green, marginTop: 3 }}>
+                          ♻ {t({ zh: `上次進度已保留（診斷${diagOk ? "✓" : "未完成"} · SOP ${doneSteps}/${rp.steps.length}）——出海續修即可`, en: `Progress kept (diag ${diagOk ? "done" : "pending"} · SOP ${doneSteps}/${rp.steps.length}) — sail to resume` })}
+                        </div>
+                      );
+                    })()}
                     {/* 多回合大修（#4）：需連續可作業天氣窗，惡劣海象停滯 + 船舶待命費 */}
                     {stage === "active" && data.overhaul && (oh => (oh.mobilizeLeft ?? 0) > 0 ? (
                       // 安裝船(jack-up)動員/航行中（#81）：尚未到場,僅倒數,不收待命費
