@@ -1058,7 +1058,7 @@ export function reducer(s: GameData, a: Action): GameData {
         availability: fleetUptime(taskFleet),
         budget: Math.max(0, (adv.budget ?? s.budget) + a.dBudget),
         generationMWh: Math.max(0, (adv.generationMWh ?? s.generationMWh) + a.dGen),
-        safetyIncidents: s.safetyIncidents + a.dSafety,
+        safetyIncidents: Math.max(0, s.safetyIncidents + a.dSafety), // 夾 0:s:-1 的選項(降事件)不可把事件數打成負值 → 否則變成刷分漏洞(負事件反加績效)
         fleetHealth: clampN((adv.fleetHealth ?? s.fleetHealth) + a.dHealth, 0, 100),
         xp: s.xp + a.xp,
         missionsDone: s.missionsDone + 1,

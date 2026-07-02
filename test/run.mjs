@@ -787,6 +787,12 @@ test("REPLAN_RETURN: 審慎返港 → 保留診斷/SOP 進度(#carry)、回 offi
   eq(f.repair, null, "FAIL_REPAIR clears progress");
   eq(f.safetyIncidents, 1, "FAIL_REPAIR counts a safety incident");
 });
+test("RESOLVE_TASK: dSafety 負值(降事件)夾 0 — 不可刷成負事件數換績效", () => {
+  seed(9); const s = R({ ...I, safetyIncidents: 0 }, { type: "RESOLVE_TASK", dAvail: 0, dBudget: 0, dSafety: -1, dGen: 0, dHealth: 0, xp: 10 });
+  eq(s.safetyIncidents, 0, "clamped at 0 (no negative incidents)");
+  seed(9); const s2 = R({ ...I, safetyIncidents: 2 }, { type: "RESOLVE_TASK", dAvail: 0, dBudget: 0, dSafety: -1, dGen: 0, dHealth: 0, xp: 10 });
+  eq(s2.safetyIncidents, 1, "normal decrement still works");
+});
 test("RUSH_SOP: 剩餘步驟一次完成、耗時減半;incident 計安全事件;守衛不動作(#rush)", () => {
   const r = { key: "0:m1", boarded: true, pick: 0, steps: [true, true, true, false, false], win: 4 };
   const base = { ...I, toolLevel: 0, repair: r, safetyIncidents: 0 };

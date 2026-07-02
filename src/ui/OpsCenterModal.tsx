@@ -198,8 +198,8 @@ export default function OpsCenterModal({ open, onClose }: { open: boolean; onClo
     if (c.eff.a) parts.push(`${t({ zh: "可用率", en: "Avail" })} ${c.eff.a > 0 ? "+" : ""}${c.eff.a}`);
     if (c.eff.b) parts.push(`◎ ${c.eff.b > 0 ? "+" : ""}${Math.round(c.eff.b / 10000)}萬`);
     if (c.eff.g) parts.push(`${c.eff.g > 0 ? "+" : ""}${c.eff.g} MWh`);
-    // 小細節:dSafety 是「安全事件」次數(越多越糟),明確標示避免看起來像加分
-    if (c.eff.s) parts.push(`⚠ ${t({ zh: "安全事件", en: "Incidents" })} +${c.eff.s}`);
+    // 小細節:dSafety 是「安全事件」次數(正=更糟,負=改善),帶正確符號並明確標示,避免「安全 +1」看起來像加分
+    if (c.eff.s) parts.push(`${c.eff.s > 0 ? "⚠ " : ""}${t({ zh: "安全事件", en: "Incidents" })} ${c.eff.s > 0 ? "+" : ""}${c.eff.s}`);
     return parts.join(" · ");
   };
 
