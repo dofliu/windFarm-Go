@@ -24,7 +24,7 @@ export const PARTS: Part[] = [
   { id: "main_controller", n: { zh: "主控制器 PLC", en: "Main Controller (PLC)" }, stars: 3, idx: 99, qty: 28, price: "900,000", minTier: 2 },
   { id: "cable_joint", n: { zh: "海纜接頭", en: "Subsea Cable Joint" }, stars: 2, idx: 105, qty: 243, price: "900,000", minTier: 3 },
   { id: "transformer_bushing", n: { zh: "變壓器套管", en: "Transformer Bushing" }, stars: 2, idx: 97, qty: 26, price: "350,000", minTier: 3 },
-  { id: "yaw_motor", n: { zh: "偏航電機", en: "Yaw Motor" }, stars: 2, idx: 70, qty: 0, price: "700,000", minTier: 1 },
+  { id: "yaw_motor", n: { zh: "偏航電機", en: "Yaw Motor" }, stars: 2, idx: 70, qty: 6, price: "700,000", minTier: 1 }, // 修:原 qty 0 讓 Tier1 必需品看似缺貨(qty 僅展示)
   { id: "yaw_gear", n: { zh: "偏航齒輪組", en: "Yaw Gear Set" }, stars: 2, idx: 92, qty: 18, price: "600,000", minTier: 2 },
   { id: "pitch_controller", n: { zh: "變槳控制器", en: "Pitch Controller" }, stars: 2, idx: 101, qty: 30, price: "500,000", minTier: 2 },
   { id: "slip_ring", n: { zh: "集電環", en: "Slip Ring" }, stars: 2, idx: 88, qty: 22, price: "400,000", minTier: 2 },
@@ -42,7 +42,7 @@ export const PARTS: Part[] = [
   { id: "bolt_m36", n: { zh: "螺栓組 M36", en: "Bolt Set M36" }, stars: 1, idx: 103, qty: 73, price: "50,000", minTier: 2 },
   { id: "corrosion_anode", n: { zh: "犧牲陽極(防蝕)", en: "Sacrificial Anode" }, stars: 1, idx: 100, qty: 90, price: "55,000", minTier: 2 },
   { id: "seal_kit", n: { zh: "油封組", en: "Seal Kit" }, stars: 1, idx: 99, qty: 160, price: "45,000", minTier: 1 },
-  { id: "gen_brush", n: { zh: "發電機碳刷", en: "Generator Brush" }, stars: 1, idx: 81, qty: 0, price: "40,000", minTier: 1 },
+  { id: "gen_brush", n: { zh: "發電機碳刷", en: "Generator Brush" }, stars: 1, idx: 81, qty: 24, price: "40,000", minTier: 1 }, // 修:原 qty 0 讓 Tier1 必需品看似缺貨(qty 僅展示)
   { id: "leading_edge_tape", n: { zh: "葉片前緣保護帶", en: "Leading-edge Tape" }, stars: 1, idx: 100, qty: 210, price: "35,000", minTier: 2 },
   { id: "gearbox_filter", n: { zh: "齒輪箱濾芯", en: "Gearbox Filter" }, stars: 1, idx: 98, qty: 130, price: "30,000", minTier: 1 },
   { id: "coolant", n: { zh: "冷卻液", en: "Coolant" }, stars: 1, idx: 101, qty: 180, price: "25,000", minTier: 1 },

@@ -92,8 +92,8 @@ export const TUTORIAL_STEPS: CoachStep[] = [
     screen: "repair",
     expr: "happy",
     text: {
-      zh: "海象平穩,可安全登船。點「登船登塔,開始作業」!",
-      en: "Calm seas — board safely. Tap 'Board & start work'!",
+      zh: "抵達後先登船登塔。海象平穩可直接登船;若浪高,「頂浪登船」會多耗作業窗——點登船按鈕繼續!",
+      en: "Time to board the tower. Calm seas board freely; in swell, boarding costs extra window time — tap the board button to continue!",
     },
     gate: (d) => !!d.repair?.boarded,
   },

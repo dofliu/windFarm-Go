@@ -21,8 +21,8 @@ export interface IncidentType {
 // Tier 4：最大組件更換（葉片/主軸承磨耗）
 export const INCIDENTS: IncidentType[] = [
   { id: "gearbox", name: { zh: "齒輪箱過熱", en: "Gearbox overheat" }, discipline: "mechanical", repairDays: 2, part: "gearbox_oil", weight: 5, minTier: 1 },
-  { id: "sensor", name: { zh: "感測器誤報", en: "Sensor false alarm" }, discipline: "control", repairDays: 1, resettable: true, part: "gen_brush", weight: 5, minTier: 1 },
-  { id: "pitch", name: { zh: "變槳故障", en: "Pitch fault" }, discipline: "control", repairDays: 2, part: "hydraulic_oil", weight: 4, minTier: 2 },
+  { id: "sensor", name: { zh: "感測器誤報", en: "Sensor false alarm" }, discipline: "control", repairDays: 1, resettable: true, part: "anemometer", weight: 5, minTier: 1 }, // 修:原誤用發電機碳刷,感測器工單應耗感測器備品
+  { id: "pitch", name: { zh: "變槳故障", en: "Pitch fault" }, discipline: "control", repairDays: 2, part: "pitch_battery", weight: 4, minTier: 2 }, // 修:控制側變槳故障耗後備電池;液壓根因由 pitch_hyd(hydraulic_valve)負責
   { id: "yaw", name: { zh: "偏航失準", en: "Yaw misalignment" }, discipline: "control", repairDays: 1, resettable: true, part: "yaw_motor", weight: 4, minTier: 1 },
   { id: "converter", name: { zh: "變流器跳脫", en: "Converter trip" }, discipline: "electrical", repairDays: 1, resettable: true, part: "converter", weight: 3, minTier: 2 },
   { id: "bearing", name: { zh: "主軸承振動", en: "Main-bearing vibration" }, discipline: "mechanical", repairDays: 3, part: "pitch_bearing", weight: 2, minTier: 3 },

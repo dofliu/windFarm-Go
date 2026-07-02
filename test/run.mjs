@@ -1195,6 +1195,21 @@ test("daily: dueDailyClaims detects met increment goals", () => {
   const after = daily.dueDailyClaims({ ...I, daily: dl, missionsDone: 1 });
   ok(after.includes("mission1"), "mission increment detected");
 });
+test("daily: 維持型任務(deferred)不即時發獎、於日結算檢核(#daily-fix)", () => {
+  const base = { resolved: 0, missions: 0, gen: 0, safety: 0 };
+  const dl = { day: I.day, ids: ["mission1", "noincident", "uptime"], base, claimed: [], streak: 0 };
+  const d0 = { ...I, daily: dl, safetyIncidents: 0 };
+  // 開局當下 noincident/uptime 條件即為真,但不得立即發獎(原本開局白拿 3/6 種任務)
+  const due = daily.dueDailyClaims(d0);
+  ok(!due.includes("noincident") && !due.includes("uptime"), "maintain-type not instantly claimable");
+  // 日結算(隔日 roll 前):整天沒出事 → 通過
+  ok(daily.dueDeferredClaims(d0).includes("noincident"), "deferred settles after holding all day");
+  // 當天出過事 → 結算不通過
+  const d1 = { ...I, daily: dl, safetyIncidents: 1 };
+  ok(!daily.dueDeferredClaims(d1).includes("noincident"), "incident during the day blocks settlement");
+  // 增量型不受影響
+  ok(daily.dueDailyClaims({ ...d0, missionsDone: I.missionsDone + 1 }).includes("mission1"), "increment goals still instant");
+});
 test("daily: CLAIM_DAILY grants reward, is idempotent, increments streak on full", () => {
   const dl = { day: I.day, ids: ["health", "uptime"], base: { resolved: 0, missions: 0, gen: 0, safety: 0 }, claimed: [], streak: 0 };
   let s = { ...I, daily: dl, budget: 1_000_000, xp: 0 };
