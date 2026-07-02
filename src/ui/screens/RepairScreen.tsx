@@ -13,7 +13,7 @@ import { FAULTS, LOCATION_LABEL, locationOf, isMajorFault } from "../faults";
 import RepairScene from "../RepairScene";
 import { FallbackImg } from "../SceneVideo";
 import { useReducedMotion } from "../useReducedMotion";
-import { workWindowMax, sopStepCost, toWan, type RepairState } from "../../state/game";
+import { workWindowMax, sopStepCost, toWan, rushCost, RUSH_RISK, type RepairState } from "../../state/game";
 import { toast } from "../toast";
 import { PARTS } from "../data";
 import { missionInstance } from "../campaign";
@@ -76,6 +76,20 @@ export default function RepairScreen({ setScreen, mode = "sim", mobile = false }
     dispatch({ type: "FAIL_REPAIR" });
     say({ speaker: "veteran_sailor", line: { zh: "海象變差、作業窗關了！先撤離，擇日再來。", en: "Weather's turned — window's shut. Retreat and try another day." } });
     setScreen("hub");
+  };
+
+  // 加班搶修(#rush) — 作業窗吃緊時的風險取捨:剩餘 SOP 一次趕完、耗時減半,但 25% 機率安全近失事件。
+  const stepsRemaining = steps.filter((v) => !v).length;
+  const rushSlots = rushCost(stepsRemaining, data.toolLevel);
+  const rush = () => {
+    const incident = Math.random() < RUSH_RISK; // UI 擲骰、reducer 保持確定性(可測)
+    (incident ? Sfx.error : Sfx.success)();
+    dispatch({ type: "RUSH_SOP", incident });
+    say(
+      incident
+        ? { speaker: "safety_officer", expr: "alert", line: { zh: "趕工出狀況!有人差點失足——列入安全近失紀錄。快歸快,程序不能省!", en: "Rushing went wrong — a near-miss on the ladder. Logged as a safety incident. Fast isn't free!" } }
+        : { speaker: "repair_eng", expr: "confident", line: { zh: "加班趕上了!所有步驟完成——這次運氣站在我們這邊。", en: "Overtime paid off — all steps done. Luck was on our side this time." } }
+    );
   };
 
   // Part B — 審慎返港再規劃（維修不利時的安全選擇）：進 1 天、不計安全事件、工單保留可改天再來;
@@ -409,12 +423,23 @@ export default function RepairScreen({ setScreen, mode = "sim", mobile = false }
               </button>
             ) : (
               <>
-                {/* Part B —「維修不利」提示：作業窗吃緊時，明確給出「繼續作業 / 回港再規劃」兩條路 */}
+                {/* Part B —「維修不利」提示：作業窗吃緊時，給三條路「繼續作業 / ⚡加班搶修(風險) / 回港再規劃」 */}
                 {tightWindow && (
-                  <div style={{ display: "flex", alignItems: "flex-start", gap: 6, marginBottom: 8, padding: "7px 9px", borderRadius: 5, background: "rgba(227,173,66,.12)", border: "1px solid rgba(227,173,66,.4)", fontSize: 11.5, lineHeight: 1.5, color: C.amber2 }}>
-                    <span>⚠</span>
-                    <span>{t({ zh: `作業窗吃緊（剩 ${win} 時段，估計還需 ${remainingCost}）——可繼續作業，或回港再規劃、擇日再來。`, en: `Window's tight (${win} slots left, ~${remainingCost} needed) — keep going, or return to port and re-plan.` })}</span>
-                  </div>
+                  <>
+                    <div style={{ display: "flex", alignItems: "flex-start", gap: 6, marginBottom: 8, padding: "7px 9px", borderRadius: 5, background: "rgba(227,173,66,.12)", border: "1px solid rgba(227,173,66,.4)", fontSize: 11.5, lineHeight: 1.5, color: C.amber2 }}>
+                      <span>⚠</span>
+                      <span>{t({ zh: `作業窗吃緊（剩 ${win} 時段，估計還需 ${remainingCost}）——可繼續作業、加班搶修(有風險),或回港再規劃。`, en: `Window's tight (${win} slots left, ~${remainingCost} needed) — keep going, rush (risky), or return & re-plan.` })}</span>
+                    </div>
+                    {stepsRemaining > 0 && win >= rushSlots && (
+                      <button
+                        onClick={rush}
+                        style={{ width: "100%", marginBottom: 8, padding: "9px 0", borderRadius: 6, border: "1px solid rgba(232,154,91,.6)", background: "rgba(232,154,91,.14)", color: C.amber2, fontFamily: FONT_SERIF, fontWeight: 900, fontSize: 13, cursor: "pointer" }}
+                        title={t({ zh: "快歸快,程序壓縮有風險——安全近失會扣績效", en: "Fast isn't free — a near-miss costs score" })}
+                      >
+                        ⚡ {t({ zh: `加班搶修:剩餘 ${stepsRemaining} 步一次完成（−${rushSlots} 時段 · ${Math.round(RUSH_RISK * 100)}% 安全事件風險）`, en: `Rush: finish ${stepsRemaining} steps now (−${rushSlots} slots · ${Math.round(RUSH_RISK * 100)}% incident risk)` })}
+                      </button>
+                    )}
+                  </>
                 )}
                 <button
                   ref={finishRef}

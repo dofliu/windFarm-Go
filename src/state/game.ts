@@ -373,6 +373,12 @@ export const workWindowMax = (s: { seaState: SeaState; vesselLevel: number; vess
 // 每個可點擊 SOP 步驟耗費的作業窗時段（工坊等級越高越省，下限 1）。RepairScreen.completeStep 與出海預估共用。
 export const sopStepCost = (toolLevel: number): number => Math.max(1, 2 - toolLevel);
 
+// 加班搶修(#rush):作業窗吃緊時的風險取捨——剩餘 SOP 一次趕完、總耗時減半(無條件進位、下限 1),
+// 但有 RUSH_RISK 機率發生安全近失事件(計入 safetyIncidents、扣績效)。「快」與「穩」的抉擇。
+export const RUSH_RISK = 0.25;
+export const rushCost = (remainingSteps: number, toolLevel: number): number =>
+  Math.max(1, Math.ceil((remainingSteps * sopStepCost(toolLevel)) / 2));
+
 // 多風場每日基準發電總和（owned 座風場的 genPerDay 加總）
 function ownedFarmGen(farmsOwned: number): number {
   let g = 0;
@@ -705,6 +711,7 @@ export type Action =
   | { type: "ARRIVE" } // 抵達 → onsite（#25）
   | { type: "FAIL_REPAIR" } // 天氣窗關閉、撤離（#17）
   | { type: "REPLAN_RETURN" } // 審慎返港再規劃：維修中途、作業窗吃緊時的安全決策（進 1 天、不計安全事件、工單保留）
+  | { type: "RUSH_SOP"; incident: boolean } // 加班搶修(#rush)：剩餘 SOP 一次趕完、耗時減半;風險由 UI 擲骰後傳入(reducer 保持可測)
   | { type: "REST" } // 靠港休整：進日 + 重新擲海象（#18）
   | { type: "REMOTE_CHECK" } // 每日遠端 SCADA 巡檢（Phase A #2）：消耗 1 天、累積 XP、早期偵測微幅回復健康度
   | { type: "OPS_DISPATCH"; turbine: string; engineerId: string } // 戰情室派工：指派技師維修某故障機組（Phase C）
@@ -849,6 +856,20 @@ export function reducer(s: GameData, a: Action): GameData {
       const adv = advance(s, 1);
       const kept = s.repair ? { ...s.repair, boarded: false, win: 0 } : null;
       return { ...s, ...adv, jobPhase: "office", repair: kept };
+    }
+    case "RUSH_SOP": {
+      // 加班搶修(#rush)：已登塔、有剩餘步驟、窗未關才可趕工;一次完成剩餘 SOP、耗 rushCost 時段;
+      // incident=true 時計 1 次安全近失事件（趕工的代價 —— 教「快」不等於「好」）。
+      const rp = s.repair;
+      if (!rp || !rp.boarded || rp.win <= 0) return s;
+      const remaining = rp.steps.filter((v) => !v).length;
+      if (remaining === 0) return s;
+      const cost = rushCost(remaining, s.toolLevel);
+      return {
+        ...s,
+        repair: { ...rp, steps: rp.steps.map(() => true), win: Math.max(0, rp.win - cost) },
+        safetyIncidents: s.safetyIncidents + (a.incident ? 1 : 0),
+      };
     }
     case "REST": {
       const adv = advance(s, 1);

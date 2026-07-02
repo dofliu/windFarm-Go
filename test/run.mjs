@@ -787,6 +787,19 @@ test("REPLAN_RETURN: 審慎返港 → 保留診斷/SOP 進度(#carry)、回 offi
   eq(f.repair, null, "FAIL_REPAIR clears progress");
   eq(f.safetyIncidents, 1, "FAIL_REPAIR counts a safety incident");
 });
+test("RUSH_SOP: 剩餘步驟一次完成、耗時減半;incident 計安全事件;守衛不動作(#rush)", () => {
+  const r = { key: "0:m1", boarded: true, pick: 0, steps: [true, true, true, false, false], win: 4 };
+  const base = { ...I, toolLevel: 0, repair: r, safetyIncidents: 0 };
+  const s = R(base, { type: "RUSH_SOP", incident: false });
+  ok(s.repair.steps.every(Boolean), "all steps completed");
+  eq(s.repair.win, 2, "cost = ceil(2steps*2slots/2) = 2");
+  eq(s.safetyIncidents, 0, "lucky roll → no incident");
+  eq(R(base, { type: "RUSH_SOP", incident: true }).safetyIncidents, 1, "unlucky roll → incident counted");
+  // 守衛:未登塔 / 窗已關 / 無剩餘步驟 → no-op
+  eq(R({ ...base, repair: { ...r, boarded: false } }, { type: "RUSH_SOP", incident: true }).safetyIncidents, 0, "not boarded → no-op");
+  eq(R({ ...base, repair: { ...r, win: 0 } }, { type: "RUSH_SOP", incident: true }).safetyIncidents, 0, "window closed → no-op");
+  eq(R({ ...base, repair: { ...r, steps: [true, true, true, true, true] } }, { type: "RUSH_SOP", incident: true }).safetyIncidents, 0, "nothing remaining → no-op");
+});
 test("answer streak: 連續首答正確 → streak+1 與封頂 XP 加成;答錯歸零(#streak)", () => {
   let s = R(I, { type: "RECORD_ANSWER", keys: ["disc:mechanical"], correct: true });
   eq(s.answerStreak, 1, "streak starts");
@@ -910,7 +923,7 @@ function randomAction(s, rnd) {
   const t = pick([
     "REST", "REST", "REMOTE_CHECK", "OPS_ADVANCE", "OPS_ADVANCE", "ACCEPT_QUEST", "DEPART", "ARRIVE", "BUY", "SELL",
     "UPGRADE", "HIRE", "BUY_SOV", "UNLOCK_FARM", "SERVICE_VESSEL", "BUY_DIAGNOSTICS", "DO_ROUTINE",
-    "OPS_DISPATCH", "OPS_DISPATCH", "OPS_RESET", "OPS_INSPECT", "FINISH_REPAIR", "FAIL_REPAIR", "REPLAN_RETURN", "NEXT_QUEST", "RESOLVE_TASK", "RESTART_CAMPAIGN",
+    "OPS_DISPATCH", "OPS_DISPATCH", "OPS_RESET", "OPS_INSPECT", "FINISH_REPAIR", "FAIL_REPAIR", "REPLAN_RETURN", "RUSH_SOP", "NEXT_QUEST", "RESOLVE_TASK", "RESTART_CAMPAIGN",
     "BUILD_RESOLVE", "BUILD_RESOLVE", "BUILD_RESET",
   ]);
   switch (t) {
@@ -930,6 +943,7 @@ function randomAction(s, rnd) {
     case "OPS_RESET": { const f = s.fleet.find((x) => x.status === "fault"); return { type: "OPS_RESET", turbine: f ? f.id : "none" }; }
     case "OPS_INSPECT": { const e = s.engineers[Math.floor(rnd() * s.engineers.length)]; return { type: "OPS_INSPECT", engineerId: e ? e.id : "none" }; }
     case "NEXT_QUEST": return { type: "NEXT_QUEST", poolSize: 7 };
+    case "RUSH_SOP": return { type: "RUSH_SOP", incident: rnd() < 0.5 };
     default: return { type: t };
   }
 }
