@@ -42,6 +42,9 @@ function hubTips(d: GameData): Tip[] {
   // 過勞技師
   if (d.engineers.some((e) => fatigueOf(e) >= 80)) tips.push({ expr: "worried", line: { zh: "有技師快過勞了,適時『靠港休整』讓他們回復,別硬派。", en: "An engineer's near burnout — rest in port to recover before dispatching again." } });
 
+  // 半途成果保留(#carry):有保留進度的工單 → 提醒出海續修
+  if (d.questStage === "active" && d.repair && !d.repair.boarded) tips.push({ expr: "happy", line: { zh: "上次返港前的維修進度已保留!挑個好天氣窗出海,登塔就能續修。", en: "Your repair progress was saved! Pick a good weather window, sail out, and resume where you left off." } });
+
   // 常駐教學小提示（提供穩定可輪播的內容）
   tips.push(
     { expr: "smile", line: { zh: "小提醒:售電收入＝實際運轉的機組,管理好機隊就是賺錢。", en: "Tip: revenue = turbines actually running — managing the fleet is how you earn." } },
@@ -49,6 +52,8 @@ function hubTips(d: GameData): Tip[] {
     { expr: "smile", line: { zh: "答對診斷題、完成 SOP 才算修好;答錯會多耗作業窗喔。", en: "A correct diagnosis + full SOP completes a repair; wrong answers cost work-window time." } },
     { expr: "happy", line: { zh: `目前綜合績效分要靠:高可用率、完成任務、少安全事件。預算 ◎${toWan(d.budget)} 萬。`, en: `Score comes from high uptime, missions done, and few safety incidents. Budget ◎${toWan(d.budget)}M.` } },
     { expr: "smile", line: { zh: "缺料就先到『備品交易所』下單,注意有到貨前置期。", en: "Out of parts? Order at the Parts Market — mind the delivery lead time." } },
+    { expr: "thinking", line: { zh: "作業窗吃緊時有三條路:繼續作業(穩)、加班搶修(快但有風險)、回港再規劃(保留進度)。", en: "When the window's tight: keep working (steady), rush (fast but risky), or return to port (progress kept)." } },
+    { expr: "happy", line: { zh: "診斷第一次就答對會累積 🔥 連對,XP 加成越疊越高——出手前先想清楚!", en: "First-try correct diagnoses build a 🔥 streak with growing XP bonus — think before you answer!" } },
   );
   return tips;
 }
