@@ -13,7 +13,8 @@ import { FAULTS, LOCATION_LABEL, locationOf, isMajorFault } from "../faults";
 import RepairScene from "../RepairScene";
 import { FallbackImg } from "../SceneVideo";
 import { useReducedMotion } from "../useReducedMotion";
-import { workWindowMax, sopStepCost, type RepairState } from "../../state/game";
+import { workWindowMax, sopStepCost, toWan, type RepairState } from "../../state/game";
+import { toast } from "../toast";
 import { PARTS } from "../data";
 import { missionInstance } from "../campaign";
 import type { Screen } from "../../App";
@@ -112,6 +113,8 @@ export default function RepairScreen({ setScreen, mode = "sim", mobile = false }
     }
     Sfx.success();
     dispatch({ type: "FINISH_REPAIR", quest, part: need, discipline: fault.discipline });
+    // 完工即時回饋(juice):跳出本次獎勵,強化成就感
+    toast({ zh: `💰 +◎${toWan(quest.rewardBudget)} 萬　⭐ +${quest.rewardXp} XP`, en: `💰 +◎${toWan(quest.rewardBudget)}M ⭐ +${quest.rewardXp} XP` });
     const m = data.customQuest ? null : missionInstance(data.campaignIndex);
     // 任務復盤(#debrief):量化本次出海的決策品質 → 星級 + 一句 takeaway(把每次出海變成可檢討的學習點)
     const misses = rp?.misses ?? 0;
@@ -337,6 +340,11 @@ export default function RepairScreen({ setScreen, mode = "sim", mobile = false }
                       dispatch({ type: "RECORD_ANSWER", keys: [`disc:${fault.discipline}`], correct: i === q.correct });
                       // 錯題本(#mistake-log):第一次就答錯 → 記錄情境/你的選擇/正解/解析,供事後複習
                       if (i !== q.correct) dispatch({ type: "RECORD_MISTAKE", mk: { topic: `disc:${fault.discipline}`, question: q.question, chosen: q.options[i], correct: q.options[q.correct], lesson: q.ok, day: data.day } });
+                      // 連對里程碑(juice):3 連對與每 5 連對跳慶祝,強化「先思考再作答」的正循環
+                      if (i === q.correct) {
+                        const ns = (data.answerStreak ?? 0) + 1;
+                        if (ns === 3 || (ns >= 5 && ns % 5 === 0)) toast({ zh: `🔥 診斷連對 ${ns} 題!XP 加成中`, en: `🔥 ${ns}-answer streak! XP bonus active` });
+                      }
                     }
                     // 答錯多耗作業窗（可重新作答，但每次扣時段）;累計答錯次數供任務復盤(#debrief)
                     saveRepair({ pick: i, win: Math.max(0, win - (i === q.correct ? 1 : 3)), misses: (rp?.misses ?? 0) + (i === q.correct ? 0 : 1) });

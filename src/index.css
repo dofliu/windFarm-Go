@@ -74,7 +74,8 @@ body {
 }
 
 /* 無障礙:尊重「減少動態」偏好 → 停用非必要動畫/轉場(前庭敏感/暈動友善)。
-   自動播放的場景影片另在 SceneVideo 以 poster 靜態首幀取代。 */
+   自動播放的場景影片另在 SceneVideo 以 poster 靜態首幀取代。
+   body.wfg-reduced = 遊戲內手動開啟(個人檔案 → 設定),與系統偏好等效。 */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -84,4 +85,12 @@ body {
     transition-duration: 0.001ms !important;
     scroll-behavior: auto !important;
   }
+}
+body.wfg-reduced *,
+body.wfg-reduced *::before,
+body.wfg-reduced *::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+  scroll-behavior: auto !important;
 }
