@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { C, FONT_SERIF } from "./tokens";
 import { t } from "../game/systems/i18n";
 import { useLang } from "./useLang";
@@ -7,18 +7,16 @@ import type { I18n } from "../game/systems/types";
 
 export default function Toaster() {
   useLang();
-  const [msg, setMsg] = useState<I18n | null>(null);
-  const timer = useRef<number | undefined>(undefined);
+  // 小佇列:多則通知(完工獎勵/每日任務/連對里程碑)依序各顯示 1.8 秒,不再互相蓋掉;上限 5 則防洪
+  const [queue, setQueue] = useState<I18n[]>([]);
+  const msg = queue[0] ?? null;
 
-  useEffect(
-    () =>
-      onToast((m) => {
-        setMsg(m);
-        window.clearTimeout(timer.current);
-        timer.current = window.setTimeout(() => setMsg(null), 1800);
-      }),
-    []
-  );
+  useEffect(() => onToast((m) => setQueue((q) => (q.length >= 5 ? q : [...q, m]))), []);
+  useEffect(() => {
+    if (!msg) return;
+    const id = window.setTimeout(() => setQueue((q) => q.slice(1)), 1800);
+    return () => window.clearTimeout(id);
+  }, [msg]);
 
   if (!msg) return null;
   return (
