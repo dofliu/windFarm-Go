@@ -844,9 +844,11 @@ export function reducer(s: GameData, a: Action): GameData {
     }
     case "REPLAN_RETURN": {
       // 審慎返港再規劃：維修中途、作業窗吃緊時的安全決策。空耗 1 天，但「不計」安全事件（與 FAIL_REPAIR 撤離區隔）；
-      // questStage 維持 active、清空維修進度 → 回母港可重新規劃船機/時機、擇日再出海（獎勵「看準天氣窗、及時止損」的判斷）。
+      // questStage 維持 active；已完成的診斷/SOP 步驟「保留」（工作交接紀錄，#carry）——擇日再出海只需重新登塔、
+      // 重擲作業窗續修。被迫撤離（FAIL_REPAIR）則進度全失＋計安全事件 → 獎勵「及時止損」勝過「硬撐到窗關」。
       const adv = advance(s, 1);
-      return { ...s, ...adv, jobPhase: "office", repair: null };
+      const kept = s.repair ? { ...s.repair, boarded: false, win: 0 } : null;
+      return { ...s, ...adv, jobPhase: "office", repair: kept };
     }
     case "REST": {
       const adv = advance(s, 1);

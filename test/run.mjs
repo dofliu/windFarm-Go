@@ -768,17 +768,24 @@ test("repair progress persists in state, resets on quest lifecycle (#33)", () =>
   // 明確清空
   eq(R(s1, { type: "SET_REPAIR", repair: null }).repair, null);
 });
-test("REPLAN_RETURN: 審慎返港 → 清進度、回 office、進 1 天、不計安全事件、工單保留（Part B）", () => {
-  const r = { key: "0:m1", boarded: true, pick: null, steps: [true, true, false, false, false], win: 2 };
+test("REPLAN_RETURN: 審慎返港 → 保留診斷/SOP 進度(#carry)、回 office、進 1 天、不計安全事件", () => {
+  const r = { key: "0:m1", boarded: true, pick: 1, steps: [true, true, true, false, false], win: 2, misses: 1 };
   const base = { ...I, questStage: "active", jobPhase: "onsite", repair: r, safetyIncidents: 0 };
   seed(3); const s = R(base, { type: "REPLAN_RETURN" });
-  eq(s.repair, null, "repair cleared");
+  ok(s.repair, "repair progress kept (not cleared)");
+  eq(s.repair.key, "0:m1", "same work order key");
+  eq(s.repair.pick, 1, "diagnosis pick kept");
+  eq(s.repair.steps.filter(Boolean).length, 3, "completed SOP steps kept");
+  eq(s.repair.boarded, false, "must re-board next trip");
+  eq(s.repair.win, 0, "window re-rolled at next boarding (not carried)");
   eq(s.jobPhase, "office", "returned to office");
   eq(s.questStage, "active", "work order stays open (re-plannable)");
   eq(s.safetyIncidents, 0, "no safety incident (distinct from FAIL_REPAIR)");
   eq(s.day, base.day + 1, "advances one day");
-  // 對照：FAIL_REPAIR(撤離) 會計一次安全事件
-  seed(3); eq(R(base, { type: "FAIL_REPAIR" }).safetyIncidents, 1, "FAIL_REPAIR counts a safety incident");
+  // 對照：FAIL_REPAIR(被迫撤離) 進度全失 + 計一次安全事件
+  seed(3); const f = R(base, { type: "FAIL_REPAIR" });
+  eq(f.repair, null, "FAIL_REPAIR clears progress");
+  eq(f.safetyIncidents, 1, "FAIL_REPAIR counts a safety incident");
 });
 test("answer streak: 連續首答正確 → streak+1 與封頂 XP 加成;答錯歸零(#streak)", () => {
   let s = R(I, { type: "RECORD_ANSWER", keys: ["disc:mechanical"], correct: true });

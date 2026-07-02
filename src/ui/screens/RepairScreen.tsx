@@ -78,11 +78,12 @@ export default function RepairScreen({ setScreen, mode = "sim", mobile = false }
     setScreen("hub");
   };
 
-  // Part B — 審慎返港再規劃（維修不利時的安全選擇）：進 1 天、不計安全事件、工單保留可改天再來
+  // Part B — 審慎返港再規劃（維修不利時的安全選擇）：進 1 天、不計安全事件、工單保留可改天再來;
+  // 已完成的診斷/SOP 進度「保留」(#carry),擇日只需重新登塔續修。
   const replan = () => {
     Sfx.click();
     dispatch({ type: "REPLAN_RETURN" });
-    say({ speaker: "veteran_sailor", line: { zh: "作業窗吃緊、別硬拚。先回港重新規劃船機與時機，擇日再來——工單還在。", en: "Window's tight — don't force it. Head back and re-plan the vessel and timing; the order stays open." } });
+    say({ speaker: "veteran_sailor", line: { zh: "作業窗吃緊、別硬拚。已完成的步驟都記錄在案,回港重新規劃、擇日登塔續修!", en: "Window's tight — don't force it. Completed steps are logged; re-plan in port and resume another day." } });
     setScreen("hub");
   };
 
@@ -206,6 +207,12 @@ export default function RepairScreen({ setScreen, mode = "sim", mobile = false }
                   : t({ zh: "海象平穩，可安全登船，前往作業地點。", en: "Calm seas — board safely and proceed to the work area." })}
               </div>
               <div style={{ fontSize: 12, color: C.mist, marginBottom: 12 }}>{t({ zh: "作業地點", en: "Work area" })}：<b style={{ color: C.cream }}>{t(LOCATION_LABEL[location])}</b></div>
+              {/* 半途成果保留(#carry):上次審慎返港所留的診斷/SOP 進度,登塔後直接續修 */}
+              {rp && (quizCorrect || steps.filter(Boolean).length > 2) && (
+                <div style={{ marginBottom: 12, padding: "7px 9px", borderRadius: 5, background: "rgba(127,206,142,.1)", border: "1px solid rgba(127,206,142,.32)", fontSize: 11.5, color: C.green, lineHeight: 1.5 }}>
+                  ♻ {t({ zh: `上次進度已保留:診斷${quizCorrect ? "✓" : "未完成"} · SOP ${steps.filter(Boolean).length}/${steps.length} 步——登塔後續修即可。`, en: `Progress kept: diagnosis ${quizCorrect ? "done" : "pending"} · SOP ${steps.filter(Boolean).length}/${steps.length} — resume after boarding.` })}
+                </div>
+              )}
               <button ref={boardRef} onClick={board} style={{ width: "100%", padding: "12px 0", borderRadius: 6, border: "1px solid rgba(255,236,196,.6)", background: primaryBg(), color: C.ink, fontFamily: FONT_SERIF, fontWeight: 900, fontSize: 15, cursor: "pointer" }}>
                 {roughBoarding ? t({ zh: "頂浪登船（延誤 −3 時段）", en: "Board in swell (−3 slots)" }) : t({ zh: "登船登塔，開始作業", en: "Board & start work" })}
               </button>

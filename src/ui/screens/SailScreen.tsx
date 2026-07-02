@@ -74,9 +74,15 @@ export default function SailScreen({ setScreen, accent, mode = "sim", mobile = f
   const roughSea = data.seaState !== "workable";
   const stepCost = sopStepCost(data.toolLevel);
   const sopClickable = fault ? Math.max(0, fault.sop.length - 2) : 3; // 前兩步預設完成、其餘需逐步完成
+  // 半途成果保留(#carry):上次審慎返港所留的診斷/SOP 進度 → 工期預估只算「剩餘」工作
+  const repairKey = `${data.customQuest ? "c" : data.campaignIndex}:${quest.id}`;
+  const rp = data.repair && data.repair.key === repairKey ? data.repair : null;
+  const diagDone = !!rp && !!fault && rp.pick === fault.quiz.correct;
+  const stepsLeft = rp ? rp.steps.filter((v) => !v).length : sopClickable;
+  const carried = !!rp && (diagDone || rp.steps.filter(Boolean).length > 2);
   const estBoard = roughSea ? 3 : 0; // 登船（頂浪 −3；平穩不耗窗）
-  const estInspect = 1; // 診斷題（答對一次；答錯每次 −3）
-  const estRepair = sopClickable * stepCost; // 維修 SOP
+  const estInspect = diagDone ? 0 : 1; // 診斷題（答對一次；答錯每次 −3;已診斷則免）
+  const estRepair = stepsLeft * stepCost; // 維修 SOP（僅剩餘步驟）
   const estOnsite = estBoard + estInspect + estRepair; // 上塔作業小計（耗天氣窗）
   const reserve = winMax - estOnsite; // 保留餘裕
   const transitH = 4; // 單程航程 ~4h（與航行 ETA 一致）
@@ -193,8 +199,9 @@ export default function SailScreen({ setScreen, accent, mode = "sim", mobile = f
                   <div style={{ height: 1, background: "rgba(214,167,84,.18)", margin: "5px 0" }} />
                   <div style={{ fontSize: 10.5, color: C.mist2, marginBottom: 3 }}>{t({ zh: "上塔作業（耗天氣窗 · 時段）", en: "On-site (spends window · slots)" })}</div>
                   <EstRow label={t({ zh: "登船", en: "Boarding" })} value={estBoard === 0 ? t({ zh: "0（海象平穩）", en: "0 (calm)" }) : `−${estBoard}`} />
-                  <EstRow label={t({ zh: "檢查／診斷", en: "Inspection" })} value={`−${estInspect}`} hint={t({ zh: "答錯每次 −3", en: "−3 per wrong" })} />
-                  <EstRow label={t({ zh: "維修 SOP", en: "Repair SOP" })} value={`−${estRepair}`} />
+                  <EstRow label={t({ zh: "檢查／診斷", en: "Inspection" })} value={diagDone ? t({ zh: "0（已診斷）", en: "0 (done)" }) : `−${estInspect}`} hint={diagDone ? undefined : t({ zh: "答錯每次 −3", en: "−3 per wrong" })} />
+                  <EstRow label={t({ zh: "維修 SOP", en: "Repair SOP" })} value={`−${estRepair}`} hint={carried ? t({ zh: `剩 ${stepsLeft} 步`, en: `${stepsLeft} left` }) : undefined} />
+                  {carried && <div style={{ fontSize: 10.5, color: C.green, margin: "3px 0 1px" }}>♻ {t({ zh: "已保留上次返港前的進度,只需完成剩餘工作", en: "Progress from the last trip is kept — only remaining work counted" })}</div>}
                   <div style={{ height: 1, background: "rgba(214,167,84,.18)", margin: "5px 0" }} />
                   <EstRow label={t({ zh: "作業小計", en: "Work subtotal" })} value={`${estOnsite} ${t({ zh: "時段", en: "slots" })}`} bold />
                   <EstRow label={t({ zh: "天氣窗允許", en: "Window allows" })} value={`${winMax} ${t({ zh: "時段", en: "slots" })}`} bold />
