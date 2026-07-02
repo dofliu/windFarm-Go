@@ -28,8 +28,16 @@ export default function MarketScreen({ accent, mobile = false }: { accent: strin
   const [cart, setCart] = useState<Record<string, number>>({});
   const [showAll, setShowAll] = useState(false); // #77 漸進揭露：預設只顯示已解鎖備品，可切換顯示全部
   const tier = tierOf(data);
-  const buyParts = showAll ? PARTS : partsForTier(tier); // 依運維層級過濾(非阻擋：可切換全部)
-  const lockedCount = PARTS.length - partsForTier(tier).length;
+  // 判斷提醒/小細節:進行中工單的必備備品「永遠可見」——即使 minTier 高於目前層級,也不能讓主線卡在找不到料
+  const activeQuest = data.customQuest ?? missionInstance(data.campaignIndex);
+  const activeNeed = data.questStage === "active" ? FAULTS[activeQuest.targetFault]?.part : undefined;
+  const tierParts = partsForTier(tier);
+  const buyParts = showAll
+    ? PARTS
+    : activeNeed && !tierParts.some((p) => p.id === activeNeed)
+      ? [...tierParts, ...PARTS.filter((p) => p.id === activeNeed)]
+      : tierParts; // 依運維層級過濾(非阻擋：可切換全部)
+  const lockedCount = PARTS.length - tierParts.length;
 
   const subtotal = PARTS.reduce((s, p) => s + priceNum(p) * (cart[p.id] ?? 0), 0);
   const total = Math.round(subtotal * (1 + TAX));
@@ -39,8 +47,7 @@ export default function MarketScreen({ accent, mobile = false }: { accent: strin
   const owned = PARTS.filter((p) => (data.inventory[p.id] ?? 0) > 0);
 
   // 判斷提醒：進行中工單的必備備品是否備齊；缺料時提示到貨前置期趕不趕得上出海。
-  const quest = data.customQuest ?? missionInstance(data.campaignIndex);
-  const need = data.questStage === "active" ? FAULTS[quest.targetFault]?.part : undefined;
+  const need = activeNeed;
   const needPart = need ? PARTS.find((p) => p.id === need) : undefined;
   const needInStock = need ? (data.inventory[need] ?? 0) > 0 : false;
   const needInTransit = need ? data.pendingOrders.filter((o) => o.partId === need).reduce((a, o) => a + o.qty, 0) : 0;

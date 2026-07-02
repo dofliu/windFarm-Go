@@ -14,6 +14,9 @@ export interface DailyDef {
   cash: number; // 達成獎勵 ◎
   // 是否達成：以「自今日起始的增量(base)」或「當前狀態」判定
   met: (d: GameData, base: DailyState["base"]) => boolean;
+  // 維持型任務(#daily-fix):條件在開局當下即可能為真(零事件/健康度/妥善率),
+  // 若即時發獎會變成「開局白拿」。deferred=true → 僅在「隔日 roll 前」結算(撐過一整天才算達成)。
+  deferred?: boolean;
 }
 
 export const DAILY_GEN_TARGET = 100; // 今日淨發電增量目標 (MWh)
@@ -24,9 +27,9 @@ export const DAILY_DEFS: DailyDef[] = [
   { id: "resolve2", desc: { zh: "今日於戰情室修復 2 台機組", en: "Resolve 2 turbines in Fleet Ops today" }, xp: 30, cash: 200_000, met: (d, b) => (d.fleetResolved ?? 0) - b.resolved >= 2 },
   { id: "mission1", desc: { zh: "今日完成 1 件工單／任務", en: "Complete 1 work order/task today" }, xp: 25, cash: 150_000, met: (d, b) => d.missionsDone - b.missions >= 1 },
   { id: "gen", desc: { zh: `今日淨發電 ≥ ${DAILY_GEN_TARGET} MWh`, en: `Generate ≥ ${DAILY_GEN_TARGET} MWh today` }, xp: 25, cash: 150_000, met: (d, b) => d.generationMWh - b.gen >= DAILY_GEN_TARGET },
-  { id: "noincident", desc: { zh: "今日零安全事件", en: "Zero safety incidents today" }, xp: 20, cash: 120_000, met: (d, b) => (d.safetyIncidents ?? 0) - b.safety <= 0 },
-  { id: "health", desc: { zh: "維持機組健康度 ≥ 60%", en: "Keep fleet health ≥ 60%" }, xp: 20, cash: 120_000, met: (d) => d.fleetHealth >= 60 },
-  { id: "uptime", desc: { zh: "維持機隊妥善率 ≥ 85%", en: "Keep fleet uptime ≥ 85%" }, xp: 25, cash: 150_000, met: (d) => fleetUptime(d.fleet) >= 85 },
+  { id: "noincident", desc: { zh: "今日零安全事件", en: "Zero safety incidents today" }, xp: 20, cash: 120_000, deferred: true, met: (d, b) => (d.safetyIncidents ?? 0) - b.safety <= 0 },
+  { id: "health", desc: { zh: "維持機組健康度 ≥ 60%", en: "Keep fleet health ≥ 60%" }, xp: 20, cash: 120_000, deferred: true, met: (d) => d.fleetHealth >= 60 },
+  { id: "uptime", desc: { zh: "維持機隊妥善率 ≥ 85%", en: "Keep fleet uptime ≥ 85%" }, xp: 25, cash: 150_000, deferred: true, met: (d) => fleetUptime(d.fleet) >= 85 },
 ];
 
 export const dailyDef = (id: string): DailyDef | undefined => DAILY_DEFS.find((x) => x.id === id);
@@ -61,11 +64,24 @@ export function rollDailyState(day: number, seed: string, d: GameData, prev: Dai
   };
 }
 
-// 目前「已達成但尚未發獎」的任務 id（DailyTracker 據此自動 claim）
+// 目前「已達成但尚未發獎」的任務 id（DailyTracker 據此自動 claim）；維持型(deferred)不在此列,於隔日結算
 export function dueDailyClaims(d: GameData): string[] {
   const dl = d.daily;
   if (!dl) return [];
-  return dl.ids.filter((id) => !dl.claimed.includes(id) && (dailyDef(id)?.met(d, dl.base) ?? false));
+  return dl.ids.filter((id) => {
+    const def = dailyDef(id);
+    return !!def && !def.deferred && !dl.claimed.includes(id) && def.met(d, dl.base);
+  });
+}
+
+// 日終結算(#daily-fix):隔日 roll「前」呼叫,回傳撐過一整天且達成的維持型任務 id
+export function dueDeferredClaims(d: GameData): string[] {
+  const dl = d.daily;
+  if (!dl) return [];
+  return dl.ids.filter((id) => {
+    const def = dailyDef(id);
+    return !!def && !!def.deferred && !dl.claimed.includes(id) && def.met(d, dl.base);
+  });
 }
 
 // 全部完成？

@@ -1,4 +1,4 @@
-import { useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { C, FONT_SERIF, FONT_CINZEL, chip } from "./tokens";
 import { Sfx } from "../audio/sfx";
 import { Bgm } from "../audio/bgm";
@@ -56,6 +56,16 @@ export default function TopBar({
   const { data } = useGame();
   const sea = SEA[data.seaState as SeaState];
   const profile = getProfile();
+  // 預算變動即時回饋(juice):金額增減時短暫變色(綠=進帳/紅=支出);純顏色變化,減少動態偏好下也安全
+  const prevBudget = useRef(data.budget);
+  const [flash, setFlash] = useState<null | "up" | "down">(null);
+  useEffect(() => {
+    if (prevBudget.current === data.budget) return;
+    setFlash(data.budget > prevBudget.current ? "up" : "down");
+    prevBudget.current = data.budget;
+    const id = window.setTimeout(() => setFlash(null), 900);
+    return () => window.clearTimeout(id);
+  }, [data.budget]);
 
   return (
     <div
@@ -176,7 +186,7 @@ export default function TopBar({
         </div>
         <div style={{ ...chip, background: "linear-gradient(180deg, rgba(217,164,65,.22), rgba(217,164,65,.06))", border: "1px solid rgba(214,167,84,.5)" }}>
           <span style={{ color: C.gold, fontSize: 16 }}>◎</span>
-          <span style={{ color: C.goldText, fontSize: 15, fontWeight: 900, fontVariantNumeric: "tabular-nums" }}>
+          <span style={{ color: flash === "up" ? C.greenLight : flash === "down" ? "#f0a898" : C.goldText, fontSize: 15, fontWeight: 900, fontVariantNumeric: "tabular-nums", transition: "color .25s" }}>
             {toWan(data.budget)} {t(S.hud.wan)}
           </span>
         </div>

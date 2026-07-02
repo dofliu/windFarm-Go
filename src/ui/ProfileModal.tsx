@@ -13,6 +13,7 @@ import { DISC } from "./disc";
 import { CAT_LABEL } from "../state/tasks";
 import { CLOUD_FIRST } from "../cloud/sheet";
 import { cloudEnabled } from "../cloud/api";
+import { useReducedMotion, getReducedOverride, setReducedOverride } from "./useReducedMotion";
 import type { I18n } from "../game/systems/types";
 
 // 個人檔案頁（階段 3）：身分、關鍵數據、最佳紀錄與成就牆。資料來源 = 即時遊戲狀態 + 學習紀錄。
@@ -20,6 +21,7 @@ export default function ProfileModal({ open, onClose }: { open: boolean; onClose
   useLang();
   const { data } = useGame();
   const profile = getProfile();
+  const reduced = useReducedMotion(); // 設定:減少動態(跟隨系統 or 手動開啟)
   // 開啟時讀一次紀錄（含本回合已累積的最佳值）
   const rec = useMemo(() => loadRecord(profile), [open, profile]);
   if (!open) return null;
@@ -66,6 +68,20 @@ export default function ProfileModal({ open, onClose }: { open: boolean; onClose
               <div style={{ color: C.goldText, fontSize: 26, fontWeight: 900, fontFamily: FONT_SERIF, lineHeight: 1 }}>{earned}<span style={{ color: C.mist, fontSize: 15 }}>/{ACHIEVEMENT_COUNT}</span></div>
               <div style={{ color: C.mist, fontSize: 11, marginTop: 3 }}>{t({ zh: "成就", en: "Badges" })}</div>
             </div>
+          </div>
+
+          {/* 設定:減少動態(無障礙)——影片改靜態圖、停用動畫;跟隨系統偏好,也可在此手動開啟 */}
+          <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 12px", borderRadius: 6, background: "rgba(255,255,255,.04)", border: "1px solid rgba(214,167,84,.25)", marginBottom: 16 }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 12.5, color: C.cream, fontWeight: 700 }}>🎬 {t({ zh: "減少動態(影片改靜態圖、停用動畫)", en: "Reduce motion (static scenes, no animations)" })}</div>
+              <div style={{ fontSize: 10.5, color: C.mist2, marginTop: 2 }}>{t({ zh: "暈動/前庭敏感/投影友善;預設跟隨系統偏好", en: "Motion-sensitivity friendly; follows OS preference by default" })}</div>
+            </div>
+            <button
+              onClick={() => setReducedOverride(!getReducedOverride())}
+              style={{ flex: "none", padding: "6px 14px", borderRadius: 999, border: `1px solid ${reduced ? "rgba(127,206,142,.6)" : "rgba(214,167,84,.4)"}`, background: reduced ? "rgba(127,206,142,.16)" : "rgba(255,255,255,.06)", color: reduced ? C.green : C.mist, fontWeight: 900, fontSize: 12, cursor: "pointer" }}
+            >
+              {reduced ? t({ zh: "已開啟", en: "ON" }) : t({ zh: "關閉", en: "OFF" })}
+            </button>
           </div>
 
           {/* 數據格 */}

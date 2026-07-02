@@ -136,7 +136,7 @@ export const FAULTS: Record<string, Fault> = {
       { zh: "順槳測試並回報 SCADA", en: "Feather test & report to SCADA" },
     ],
     knowledge_point: "pitch_backup",
-    part: "hydraulic_oil",
+    part: "pitch_battery", // 修:quiz/SOP 都在講後備電池,原誤耗液壓油(液壓根因另有 pitch_hydraulic_leak)
     discipline: "control",
   },
   converter_fault: {

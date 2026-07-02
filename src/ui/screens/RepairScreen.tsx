@@ -13,7 +13,8 @@ import { FAULTS, LOCATION_LABEL, locationOf, isMajorFault } from "../faults";
 import RepairScene from "../RepairScene";
 import { FallbackImg } from "../SceneVideo";
 import { useReducedMotion } from "../useReducedMotion";
-import { workWindowMax, sopStepCost, type RepairState } from "../../state/game";
+import { workWindowMax, sopStepCost, toWan, rushCost, RUSH_RISK, type RepairState } from "../../state/game";
+import { toast } from "../toast";
 import { PARTS } from "../data";
 import { missionInstance } from "../campaign";
 import type { Screen } from "../../App";
@@ -37,9 +38,10 @@ export default function RepairScreen({ setScreen, mode = "sim", mobile = false }
   const pick = rp?.pick ?? null;
   const steps = rp?.steps ?? fault.sop.map((_, i) => i < 2); // 前兩步預設完成；步驟 3~5 可點擊完成
   const win = rp?.win ?? windowMax;
-  // 寫回進度（合併補丁）；未登塔前以目前 windowMax 為基準
+  // 寫回進度（合併補丁）；未登塔前以目前 windowMax 為基準。
+  // 注意:基底必須帶上 misses,否則登塔/完成步驟等未傳 misses 的補丁會把答錯次數歸零(復盤會低估)。
   const saveRepair = (patch: Partial<Omit<RepairState, "key">>) =>
-    dispatch({ type: "SET_REPAIR", repair: { key: repairKey, boarded, pick, steps, win, ...patch } });
+    dispatch({ type: "SET_REPAIR", repair: { key: repairKey, boarded, pick, steps, win, misses: rp?.misses ?? 0, ...patch } });
 
   // #33 登船事件 + 作業地點
   const location = locationOf(fault.id);
@@ -77,11 +79,26 @@ export default function RepairScreen({ setScreen, mode = "sim", mobile = false }
     setScreen("hub");
   };
 
-  // Part B — 審慎返港再規劃（維修不利時的安全選擇）：進 1 天、不計安全事件、工單保留可改天再來
+  // 加班搶修(#rush) — 作業窗吃緊時的風險取捨:剩餘 SOP 一次趕完、耗時減半,但 25% 機率安全近失事件。
+  const stepsRemaining = steps.filter((v) => !v).length;
+  const rushSlots = rushCost(stepsRemaining, data.toolLevel);
+  const rush = () => {
+    const incident = Math.random() < RUSH_RISK; // UI 擲骰、reducer 保持確定性(可測)
+    (incident ? Sfx.error : Sfx.success)();
+    dispatch({ type: "RUSH_SOP", incident });
+    say(
+      incident
+        ? { speaker: "safety_officer", expr: "alert", line: { zh: "趕工出狀況!有人差點失足——列入安全近失紀錄。快歸快,程序不能省!", en: "Rushing went wrong — a near-miss on the ladder. Logged as a safety incident. Fast isn't free!" } }
+        : { speaker: "repair_eng", expr: "confident", line: { zh: "加班趕上了!所有步驟完成——這次運氣站在我們這邊。", en: "Overtime paid off — all steps done. Luck was on our side this time." } }
+    );
+  };
+
+  // Part B — 審慎返港再規劃（維修不利時的安全選擇）：進 1 天、不計安全事件、工單保留可改天再來;
+  // 已完成的診斷/SOP 進度「保留」(#carry),擇日只需重新登塔續修。
   const replan = () => {
     Sfx.click();
     dispatch({ type: "REPLAN_RETURN" });
-    say({ speaker: "veteran_sailor", line: { zh: "作業窗吃緊、別硬拚。先回港重新規劃船機與時機，擇日再來——工單還在。", en: "Window's tight — don't force it. Head back and re-plan the vessel and timing; the order stays open." } });
+    say({ speaker: "veteran_sailor", line: { zh: "作業窗吃緊、別硬拚。已完成的步驟都記錄在案,回港重新規劃、擇日登塔續修!", en: "Window's tight — don't force it. Completed steps are logged; re-plan in port and resume another day." } });
     setScreen("hub");
   };
 
@@ -92,9 +109,11 @@ export default function RepairScreen({ setScreen, mode = "sim", mobile = false }
     saveRepair({ boarded: true, win: roughBoarding ? Math.max(3, windowMax - 3) : windowMax });
   };
   const abortBoarding = () => {
-    Sfx.error();
-    dispatch({ type: "FAIL_REPAIR" }); // 返航改期：回辦公室、可用率小扣
-    say({ speaker: "veteran_sailor", line: { zh: "浪太大、登船風險高，先返航改期吧。", en: "Seas too rough to board safely — return and reschedule." } });
+    Sfx.click();
+    // 操作邏輯一致性:浪高「不登船、返航改期」是審慎決策 → 與回港再規劃同語意(進 1 天、不計安全事件、進度保留);
+    // 硬要「頂浪登船」才承擔延誤/風險。安全的選擇不該被安全事件懲罰。
+    dispatch({ type: "REPLAN_RETURN" });
+    say({ speaker: "veteran_sailor", line: { zh: "浪太大、登船風險高——返航改期是對的判斷,擇日再來。", en: "Seas too rough to board — returning is the right call. Try another day." } });
     setScreen("sail");
   };
 
@@ -112,11 +131,13 @@ export default function RepairScreen({ setScreen, mode = "sim", mobile = false }
     }
     Sfx.success();
     dispatch({ type: "FINISH_REPAIR", quest, part: need, discipline: fault.discipline });
+    // 完工即時回饋(juice):跳出本次獎勵,強化成就感
+    toast({ zh: `💰 +◎${toWan(quest.rewardBudget)} 萬　⭐ +${quest.rewardXp} XP`, en: `💰 +◎${toWan(quest.rewardBudget)}M ⭐ +${quest.rewardXp} XP` });
     const m = data.customQuest ? null : missionInstance(data.campaignIndex);
     // 任務復盤(#debrief):量化本次出海的決策品質 → 星級 + 一句 takeaway(把每次出海變成可檢討的學習點)
     const misses = rp?.misses ?? 0;
-    const used = windowMax - win;
-    const pctLeft = windowMax > 0 ? win / windowMax : 0;
+    const used = Math.max(0, windowMax - win); // 夾 0:跨日後 windowMax 重算可能小於登塔時基準
+    const pctLeft = windowMax > 0 ? Math.min(1, win / windowMax) : 0;
     const stars = Math.max(1, (pctLeft >= 0.4 ? 3 : pctLeft >= 0.15 ? 2 : 1) - (misses >= 2 ? 1 : 0));
     const starStr = "★".repeat(stars) + "☆".repeat(3 - stars);
     const tipZh = misses > 0
@@ -203,12 +224,18 @@ export default function RepairScreen({ setScreen, mode = "sim", mobile = false }
                   : t({ zh: "海象平穩，可安全登船，前往作業地點。", en: "Calm seas — board safely and proceed to the work area." })}
               </div>
               <div style={{ fontSize: 12, color: C.mist, marginBottom: 12 }}>{t({ zh: "作業地點", en: "Work area" })}：<b style={{ color: C.cream }}>{t(LOCATION_LABEL[location])}</b></div>
+              {/* 半途成果保留(#carry):上次審慎返港所留的診斷/SOP 進度,登塔後直接續修 */}
+              {rp && (quizCorrect || steps.filter(Boolean).length > 2) && (
+                <div style={{ marginBottom: 12, padding: "7px 9px", borderRadius: 5, background: "rgba(127,206,142,.1)", border: "1px solid rgba(127,206,142,.32)", fontSize: 11.5, color: C.green, lineHeight: 1.5 }}>
+                  ♻ {t({ zh: `上次進度已保留:診斷${quizCorrect ? "✓" : "未完成"} · SOP ${steps.filter(Boolean).length}/${steps.length} 步——登塔後續修即可。`, en: `Progress kept: diagnosis ${quizCorrect ? "done" : "pending"} · SOP ${steps.filter(Boolean).length}/${steps.length} — resume after boarding.` })}
+                </div>
+              )}
               <button ref={boardRef} onClick={board} style={{ width: "100%", padding: "12px 0", borderRadius: 6, border: "1px solid rgba(255,236,196,.6)", background: primaryBg(), color: C.ink, fontFamily: FONT_SERIF, fontWeight: 900, fontSize: 15, cursor: "pointer" }}>
                 {roughBoarding ? t({ zh: "頂浪登船（延誤 −3 時段）", en: "Board in swell (−3 slots)" }) : t({ zh: "登船登塔，開始作業", en: "Board & start work" })}
               </button>
               {roughBoarding && (
                 <button onClick={abortBoarding} style={{ width: "100%", marginTop: 8, padding: "9px 0", borderRadius: 6, border: "1px solid rgba(220,100,80,.5)", background: "rgba(220,100,80,.14)", color: C.redText, fontFamily: FONT_SERIF, fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
-                  {t({ zh: "返航改期（可用率小扣）", en: "Return & reschedule (avail. penalty)" })}
+                  {t({ zh: "返航改期（審慎決策 · 耗 1 天）", en: "Return & reschedule (prudent · 1 day)" })}
                 </button>
               )}
             </div>
@@ -337,6 +364,11 @@ export default function RepairScreen({ setScreen, mode = "sim", mobile = false }
                       dispatch({ type: "RECORD_ANSWER", keys: [`disc:${fault.discipline}`], correct: i === q.correct });
                       // 錯題本(#mistake-log):第一次就答錯 → 記錄情境/你的選擇/正解/解析,供事後複習
                       if (i !== q.correct) dispatch({ type: "RECORD_MISTAKE", mk: { topic: `disc:${fault.discipline}`, question: q.question, chosen: q.options[i], correct: q.options[q.correct], lesson: q.ok, day: data.day } });
+                      // 連對里程碑(juice):3 連對與每 5 連對跳慶祝,強化「先思考再作答」的正循環
+                      if (i === q.correct) {
+                        const ns = (data.answerStreak ?? 0) + 1;
+                        if (ns === 3 || (ns >= 5 && ns % 5 === 0)) toast({ zh: `🔥 診斷連對 ${ns} 題!XP 加成中`, en: `🔥 ${ns}-answer streak! XP bonus active` });
+                      }
                     }
                     // 答錯多耗作業窗（可重新作答，但每次扣時段）;累計答錯次數供任務復盤(#debrief)
                     saveRepair({ pick: i, win: Math.max(0, win - (i === q.correct ? 1 : 3)), misses: (rp?.misses ?? 0) + (i === q.correct ? 0 : 1) });
@@ -394,12 +426,23 @@ export default function RepairScreen({ setScreen, mode = "sim", mobile = false }
               </button>
             ) : (
               <>
-                {/* Part B —「維修不利」提示：作業窗吃緊時，明確給出「繼續作業 / 回港再規劃」兩條路 */}
+                {/* Part B —「維修不利」提示：作業窗吃緊時，給三條路「繼續作業 / ⚡加班搶修(風險) / 回港再規劃」 */}
                 {tightWindow && (
-                  <div style={{ display: "flex", alignItems: "flex-start", gap: 6, marginBottom: 8, padding: "7px 9px", borderRadius: 5, background: "rgba(227,173,66,.12)", border: "1px solid rgba(227,173,66,.4)", fontSize: 11.5, lineHeight: 1.5, color: C.amber2 }}>
-                    <span>⚠</span>
-                    <span>{t({ zh: `作業窗吃緊（剩 ${win} 時段，估計還需 ${remainingCost}）——可繼續作業，或回港再規劃、擇日再來。`, en: `Window's tight (${win} slots left, ~${remainingCost} needed) — keep going, or return to port and re-plan.` })}</span>
-                  </div>
+                  <>
+                    <div style={{ display: "flex", alignItems: "flex-start", gap: 6, marginBottom: 8, padding: "7px 9px", borderRadius: 5, background: "rgba(227,173,66,.12)", border: "1px solid rgba(227,173,66,.4)", fontSize: 11.5, lineHeight: 1.5, color: C.amber2 }}>
+                      <span>⚠</span>
+                      <span>{t({ zh: `作業窗吃緊（剩 ${win} 時段，估計還需 ${remainingCost}）——可繼續作業、加班搶修(有風險),或回港再規劃。`, en: `Window's tight (${win} slots left, ~${remainingCost} needed) — keep going, rush (risky), or return & re-plan.` })}</span>
+                    </div>
+                    {stepsRemaining > 0 && win >= rushSlots && (
+                      <button
+                        onClick={rush}
+                        style={{ width: "100%", marginBottom: 8, padding: "9px 0", borderRadius: 6, border: "1px solid rgba(232,154,91,.6)", background: "rgba(232,154,91,.14)", color: C.amber2, fontFamily: FONT_SERIF, fontWeight: 900, fontSize: 13, cursor: "pointer" }}
+                        title={t({ zh: "快歸快,程序壓縮有風險——安全近失會扣績效", en: "Fast isn't free — a near-miss costs score" })}
+                      >
+                        ⚡ {t({ zh: `加班搶修:剩餘 ${stepsRemaining} 步一次完成（−${rushSlots} 時段 · ${Math.round(RUSH_RISK * 100)}% 安全事件風險）`, en: `Rush: finish ${stepsRemaining} steps now (−${rushSlots} slots · ${Math.round(RUSH_RISK * 100)}% incident risk)` })}
+                      </button>
+                    )}
+                  </>
                 )}
                 <button
                   ref={finishRef}

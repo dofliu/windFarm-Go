@@ -8,6 +8,7 @@ import { toWan, DIAG_COST } from "../state/game";
 import { Sfx } from "../audio/sfx";
 import { CAT_LABEL, generateTask, type TaskChoice, type TaskInstance } from "../state/tasks";
 import { randomCaseDrill, visibleSources, type CaseStudy, type CaseChoice } from "../state/caseStudies";
+import { toast } from "./toast";
 import type { I18n } from "../game/systems/types";
 
 const CAT_COLOR: Record<string, string> = { A: "#dc6450", B: "#5fa8d9", C: "#7fce8e", D: "#e3ad42", E: "#b08adf", F: "#e89a5b", G: "#d98ac0" };
@@ -157,6 +158,11 @@ export default function OpsCenterModal({ open, onClose }: { open: boolean; onClo
     if (picked !== null) return;
     (c.good ? Sfx.success : Sfx.error)();
     setPicked(ci);
+    // 連對里程碑(juice):與維修診斷一致的 🔥 回饋(RECORD_ANSWER 於下方派發,先以現值+1 判斷)
+    if (c.good) {
+      const ns = (data.answerStreak ?? 0) + 1;
+      if (ns === 3 || (ns >= 5 && ns % 5 === 0)) toast({ zh: `🔥 判斷連對 ${ns} 題!XP 加成中`, en: `🔥 ${ns}-answer streak! XP bonus active` });
+    }
     if (draw.kind === "case") {
       const cs = draw.cs;
       const dHealth = c.good ? 2 : -3;
@@ -192,7 +198,8 @@ export default function OpsCenterModal({ open, onClose }: { open: boolean; onClo
     if (c.eff.a) parts.push(`${t({ zh: "可用率", en: "Avail" })} ${c.eff.a > 0 ? "+" : ""}${c.eff.a}`);
     if (c.eff.b) parts.push(`◎ ${c.eff.b > 0 ? "+" : ""}${Math.round(c.eff.b / 10000)}萬`);
     if (c.eff.g) parts.push(`${c.eff.g > 0 ? "+" : ""}${c.eff.g} MWh`);
-    if (c.eff.s) parts.push(`${t({ zh: "安全", en: "Safety" })} +${c.eff.s}`);
+    // 小細節:dSafety 是「安全事件」次數(正=更糟,負=改善),帶正確符號並明確標示,避免「安全 +1」看起來像加分
+    if (c.eff.s) parts.push(`${c.eff.s > 0 ? "⚠ " : ""}${t({ zh: "安全事件", en: "Incidents" })} ${c.eff.s > 0 ? "+" : ""}${c.eff.s}`);
     return parts.join(" · ");
   };
 
@@ -200,6 +207,11 @@ export default function OpsCenterModal({ open, onClose }: { open: boolean; onClo
     <div>
       <div style={{ fontSize: 12, color: C.mist, marginBottom: 12, lineHeight: 1.6 }}>
         {t({ zh: "風場日常各種狀況的判斷練習，結算計入排行榜績效分（不影響計分週任務）。本場次已處理：", en: "Judgment practice on day-to-day farm situations; results count toward leaderboard score (not the graded weekly tasks). Resolved this session: " })}<b style={{ color: C.goldText }}>{count}</b>
+        {(data.answerStreak ?? 0) >= 2 && (
+          <span title={t({ zh: "連續首答正確,每題有 XP 加成!", en: "First-try correct streak — XP bonus per answer!" })} style={{ marginLeft: 8, fontSize: 11, fontWeight: 900, padding: "2px 8px", borderRadius: 999, background: "rgba(232,154,91,.16)", border: "1px solid rgba(232,154,91,.5)", color: C.amber2 }}>
+            🔥 {t({ zh: `連對 ${data.answerStreak}`, en: `Streak ${data.answerStreak}` })}
+          </span>
+        )}
       </div>
 
       {/* 進階檢測解鎖（#scada）：付費後 SCADA 圖顯示投影/門檻/讀數，判讀更清晰 */}

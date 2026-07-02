@@ -665,17 +665,13 @@ export const TASKS: TaskTemplate[] = [
   { id: "b_data_gap", cat: "B", xp: 60, title: { zh: "SCADA 資料缺漏", en: "SCADA data gaps" }, scenario: { zh: "某機組 SCADA 資料出現大量缺漏,趨勢無法判讀。", en: "A unit's SCADA data is full of gaps; trends can't be read." }, choices: [
     { label: { zh: "修復資料採集與通訊鏈路", en: "Fix data acquisition & comms link" }, good: true, feedback: { zh: "✓ 沒有可信資料就沒有預知保養。", en: "✓ No trustworthy data, no predictive maintenance." }, eff: { a: 2, b: -80000 } },
     { label: { zh: "用其他機組資料推估", en: "Estimate from other units" }, good: false, feedback: { zh: "△ 代用資料掩蓋本機真實狀態。", en: "△ Proxy data hides this unit's true state." }, eff: { a: -1 } } ] },
-  { id: "b_harmonics", cat: "B", xp: 70, chart: "spectrum", title: { zh: "諧波失真上升", en: "Harmonic distortion rising" }, scenario: { zh: "併網點電流總諧波失真(THD)持續升高。", en: "Current total-harmonic-distortion at the grid point keeps rising." }, choices: [
-    { label: { zh: "檢查濾波器與變流器調變", en: "Check filters & converter modulation" }, good: true, feedback: { zh: "✓ THD 過高違反併網規範且傷設備。", en: "✓ Excess THD breaches grid code and stresses equipment." }, eff: { a: 2, b: -150000 } },
-    { label: { zh: "在限值內就不理會", en: "Within limits — ignore" }, good: false, feedback: { zh: "△ 上升趨勢終將越限受罰。", en: "△ The rising trend will breach limits and incur penalties." }, eff: { b: -100000 } } ] },
+  // (b_harmonics 已移除:與 b_harmonic 情境重複,避免同題雙倍抽中率)
 
   // ── C 預防保養 ──
   { id: "c_torque_audit", cat: "C", xp: 50, title: { zh: "螺栓抽驗稽核", en: "Bolt torque audit" }, scenario: { zh: "品保要求對連接螺栓做抽樣扭力稽核。", en: "QA requires a sample torque audit on connection bolts." }, choices: [
     { label: { zh: "依抽樣計畫稽核並記錄", en: "Audit per sampling plan & record" }, good: true, feedback: { zh: "✓ 抽驗能及早發現系統性鬆動。", en: "✓ Sampling catches systematic loosening early." }, eff: { a: 1, b: -50000 } },
     { label: { zh: "上次沒問題就免了", en: "Skip — last time was fine" }, good: false, feedback: { zh: "✗ 預緊力會隨運轉持續衰減。", en: "✗ Preload keeps relaxing with operation." }, eff: { s: 1 } } ] },
-  { id: "c_dehumidify", cat: "C", xp: 40, title: { zh: "機艙除濕排水", en: "Nacelle dehumidification" }, scenario: { zh: "機艙濕度偏高、底部積水,電氣件受潮風險升高。", en: "High nacelle humidity with pooled water raises moisture risk to electronics." }, choices: [
-    { label: { zh: "檢修除濕機與排水、密封", en: "Service dehumidifier, drains & seals" }, good: true, feedback: { zh: "✓ 受潮是離岸電氣故障主因之一。", en: "✓ Moisture is a top cause of offshore electrical faults." }, eff: { a: 2, b: -60000 } },
-    { label: { zh: "開門通風就好", en: "Just air it out" }, good: false, feedback: { zh: "△ 海上高鹽濕,通風治標。", en: "△ Salty sea air makes airing a stopgap." }, eff: { a: -1 } } ] },
+  // (c_dehumidify 已移除:與 c_dehumidifier 情境重複,避免同題雙倍抽中率)
   { id: "c_escape_kit", cat: "C", xp: 40, title: { zh: "逃生與緊急照明檢查", en: "Escape & emergency-light check" }, scenario: { zh: "塔內緊急照明與逃生裝備到期須檢查。", en: "Tower emergency lighting & escape kit are due for inspection." }, choices: [
     { label: { zh: "逐項檢查並更換失效件", en: "Check each item & replace failures" }, good: true, feedback: { zh: "✓ 緊急時刻這些是保命裝備。", en: "✓ In an emergency these are life-saving kit." }, eff: { b: -40000 } },
     { label: { zh: "外觀完好就跳過", en: "Looks ok — skip" }, good: false, feedback: { zh: "✗ 失效要到逃生時才發現就太遲。", en: "✗ Finding failures during an escape is too late." }, eff: { s: 1 } } ] },
@@ -741,9 +737,7 @@ export const TASKS: TaskTemplate[] = [
   { id: "g_lightning_hit", cat: "G", xp: 70, title: { zh: "運轉中遭雷擊", en: "Lightning strike in operation" }, scenario: { zh: "一台運轉中機組剛遭雷擊,接閃系統告警、可能起火或損傷。", en: "An operating unit just took a lightning strike; the LPS alarms and fire/damage is possible." }, choices: [
     { label: { zh: "遠端停機、確認無火後派員檢查", en: "Remote-stop, confirm no fire, then inspect" }, good: true, feedback: { zh: "✓ 先確保無火再進場,避免人員涉險。", en: "✓ Confirm no fire before entry to keep crews safe." }, eff: { a: 1, b: -100000 } },
     { label: { zh: "立即派員登塔查看", en: "Send crew up immediately" }, good: false, feedback: { zh: "✗ 雷擊後恐有殘餘起火與帶電風險。", en: "✗ Post-strike there may be residual fire & live hazards." }, eff: { s: 2 } } ] },
-  { id: "g_medical_evac", cat: "G", xp: 80, title: { zh: "海上醫療急救", en: "Offshore medical emergency" }, scenario: { zh: "一名技師在機艙突發疑似心臟不適。", en: "A technician suffers suspected cardiac distress in the nacelle." }, choices: [
-    { label: { zh: "啟動急救與醫療後送程序", en: "Start first aid & medevac procedure" }, good: true, feedback: { zh: "✓ 黃金時間搶救,立即後送。", en: "✓ Act in the golden window — evacuate at once." }, eff: { a: -1 } },
-    { label: { zh: "讓他休息等下班一起回", en: "Let him rest, return at shift end" }, good: false, feedback: { zh: "✗ 延誤醫療可能致命。", en: "✗ Delaying care can be fatal." }, eff: { s: 3 } } ] },
+  // (g_medical_evac 已移除:與 g_medical 情境重複,避免同題雙倍抽中率)
   { id: "g_unauth_vessel", cat: "G", xp: 50, title: { zh: "不明船舶闖入", en: "Unauthorised vessel intrusion" }, scenario: { zh: "不明船舶進入風場安全區、逼近作業船。", en: "An unknown vessel enters the safety zone near work boats." }, choices: [
     { label: { zh: "通報海巡並廣播警示", en: "Notify the coastguard & broadcast a warning" }, good: true, feedback: { zh: "✓ 安全區管制須即時通報。", en: "✓ Safety-zone control requires prompt reporting." }, eff: {} },
     { label: { zh: "自行驅離", en: "Chase it off yourself" }, good: false, feedback: { zh: "✗ 自行處置恐釀碰撞與衝突。", en: "✗ Confronting it risks collision & escalation." }, eff: { s: 1 } } ] },

@@ -27,7 +27,7 @@ export const ACHIEVEMENTS: Achievement[] = [
   { id: "fleet_master", icon: "🎯", name: { zh: "戰情室高手", en: "Ops Master" }, desc: { zh: "戰情室累積修復 20 台機組", en: "Resolve 20 turbines in Ops Center" }, test: (d) => (d.fleetResolved ?? 0) >= 20 },
   { id: "multi_farm", icon: "🌊", name: { zh: "拓展版圖", en: "Fleet Expansion" }, desc: { zh: "同時營運 2 座以上風場", en: "Operate 2+ wind farms" }, test: (d) => d.farmsOwned >= 2 },
   { id: "two_vessels", icon: "🚢", name: { zh: "多元船隊", en: "Diverse Fleet" }, desc: { zh: "擁有 2 種以上作業船", en: "Own 2+ vessel types" }, test: (d) => (d.ownedVessels?.length ?? 0) >= 2 },
-  { id: "safety_clean", icon: "🦺", name: { zh: "零事故 30 天", en: "30 Days Incident-Free" }, desc: { zh: "營運滿 30 天且零安全事件", en: "30+ days operated with zero safety incidents" }, test: (d) => d.day - 21 >= 30 && (d.safetyIncidents ?? 0) === 0 },
+  { id: "safety_clean", icon: "🦺", name: { zh: "零事故 30 天", en: "30 Days Incident-Free" }, desc: { zh: "營運滿 30 天且零安全事件", en: "30+ days operated with zero safety incidents" }, test: (d) => d.day - 21 >= 30 && (d.safetyIncidents ?? 0) <= 0 }, // <=0 防禦:舊存檔若殘留負值不致永久卡死成就
   { id: "sla_keeper", icon: "📈", name: { zh: "達標守門員", en: "SLA Keeper" }, desc: { zh: "撐過一季且無 SLA 違約", en: "Clear a quarter with no SLA breach" }, test: (d) => d.quarter >= 2 && (d.slaPenalties ?? 0) === 0 },
   { id: "score_500", icon: "⭐", name: { zh: "績效新星", en: "Rising Star" }, desc: { zh: "綜合績效分達 500", en: "Reach a performance score of 500" }, test: (_d, s) => s >= 500 },
   { id: "score_1500", icon: "🌟", name: { zh: "績效王者", en: "Performance Ace" }, desc: { zh: "綜合績效分達 1,500", en: "Reach a performance score of 1,500" }, test: (_d, s) => s >= 1500 },
