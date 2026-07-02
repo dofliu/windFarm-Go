@@ -6,7 +6,7 @@ import { t } from "../game/systems/i18n";
 import { getLang, toggleLang } from "../game/systems/i18n";
 import { useLang } from "./useLang";
 import { useGame } from "../state/GameContext";
-import { toWan, type SeaState } from "../state/game";
+import { toWan, SEA_ICON, type SeaState } from "../state/game";
 import { getProfile } from "../state/profile";
 import { S } from "../i18n/strings";
 import type { I18n } from "../game/systems/types";
@@ -25,12 +25,13 @@ const SEA: Record<SeaState, { c: string; label: I18n }> = {
   closed: { c: C.red, label: S.status.closed },
 };
 
-// 三日預報迷你點（#2）：海象晶片下方一眼掌握未來天氣窗
+// 三日預報迷你圖示（#2）：海象晶片旁一眼掌握未來天氣窗。
+// 無障礙:用「圖示 + 顏色」雙重編碼(☀/⛅/🌀),不只靠顏色區分(色覺友善)。
 function ForecastDots({ forecast }: { forecast: SeaState[] }) {
   return (
-    <div style={{ display: "flex", gap: 3, marginTop: 2 }}>
+    <div style={{ display: "flex", gap: 2, marginTop: 2 }}>
       {forecast.map((s, i) => (
-        <span key={i} title={t(SEA[s].label)} style={{ width: 7, height: 7, borderRadius: "50%", background: SEA[s].c, opacity: 0.9 }} />
+        <span key={i} title={t(SEA[s].label)} style={{ fontSize: 9, lineHeight: 1, filter: "saturate(1.2)" }}>{SEA_ICON[s]}</span>
       ))}
     </div>
   );
