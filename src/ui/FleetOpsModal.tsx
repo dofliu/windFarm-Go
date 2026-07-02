@@ -140,6 +140,8 @@ export default function FleetOpsModal({ open, onClose }: { open: boolean; onClos
                   >
                     {tt.id.replace(/^[A-Za-z-]+/, "")}
                     {tt.status === "repair" && <span style={{ position: "absolute", top: -2, right: -2, fontSize: 9 }}>🔧</span>}
+                    {/* 無障礙:故障格加 ⚠ 圖示,不只靠紅色區分(色覺友善) */}
+                    {tt.status === "fault" && <span style={{ position: "absolute", top: -3, right: -3, fontSize: 9 }}>⚠</span>}
                   </div>
                 );
               })}

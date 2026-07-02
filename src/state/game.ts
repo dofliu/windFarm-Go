@@ -288,6 +288,7 @@ export interface RepairState {
   pick: number | null; // 診斷題目前選擇（null = 未作答）
   steps: boolean[]; // SOP 各步驟完成狀態
   win: number; // 剩餘作業窗時段
+  misses?: number; // 診斷答錯次數(供任務復盤/評分,#debrief)
 }
 
 // 多回合大修（#4）：重大組件更換需多個「可作業天氣窗」工日才完成。

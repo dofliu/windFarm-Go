@@ -755,11 +755,12 @@ test("SLA settlement uses actual fleet uptime, not the legacy availability scala
   ok(u.lastSla && !u.lastSla.breached, "full fleet uptime meets SLA");
 });
 test("repair progress persists in state, resets on quest lifecycle (#33)", () => {
-  const r = { key: "0:m1", boarded: true, pick: 0, steps: [true, true, true, false, false], win: 5 };
+  const r = { key: "0:m1", boarded: true, pick: 0, steps: [true, true, true, false, false], win: 5, misses: 2 };
   const s1 = R(I, { type: "SET_REPAIR", repair: r });
   eq(s1.repair.win, 5);
   ok(s1.repair.boarded, "boarded persisted");
   eq(s1.repair.pick, 0);
+  eq(s1.repair.misses, 2, "quiz misses persisted (debrief)");
   // 接新單 → 清空（避免把上一單進度帶到新單）
   eq(R(s1, { type: "ACCEPT_QUEST" }).repair, null);
   // 撤離（FAIL_REPAIR）→ 清空；作業窗不可被切畫面免費重置

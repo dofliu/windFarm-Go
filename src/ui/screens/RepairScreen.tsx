@@ -113,14 +113,39 @@ export default function RepairScreen({ setScreen, mode = "sim", mobile = false }
     Sfx.success();
     dispatch({ type: "FINISH_REPAIR", quest, part: need, discipline: fault.discipline });
     const m = data.customQuest ? null : missionInstance(data.campaignIndex);
-    say(
-      m
+    // 任務復盤(#debrief):量化本次出海的決策品質 → 星級 + 一句 takeaway(把每次出海變成可檢討的學習點)
+    const misses = rp?.misses ?? 0;
+    const used = windowMax - win;
+    const pctLeft = windowMax > 0 ? win / windowMax : 0;
+    const stars = Math.max(1, (pctLeft >= 0.4 ? 3 : pctLeft >= 0.15 ? 2 : 1) - (misses >= 2 ? 1 : 0));
+    const starStr = "★".repeat(stars) + "☆".repeat(3 - stars);
+    const tipZh = misses > 0
+      ? `診斷答錯 ${misses} 次、多耗 ${misses * 3} 時段——出發前先比對 SCADA 告警徵兆再作答。`
+      : pctLeft >= 0.4
+        ? "窗內從容完工、餘裕充足——漂亮的計畫與執行!"
+        : "有完工但餘裕偏緊——下次挑更寬的天氣窗,或先保養船舶加大作業窗。";
+    const tipEn = misses > 0
+      ? `${misses} wrong diagnosis attempt(s) cost ${misses * 3} slots — study the SCADA alarms before answering.`
+      : pctLeft >= 0.4
+        ? "Finished with ample reserve — great planning and execution!"
+        : "Done, but the margin was thin — pick a wider weather window or service the vessel next time.";
+    const debrief = {
+      speaker: "manager",
+      expr: stars === 3 ? "confident" : "thinking",
+      line: {
+        zh: `出海復盤 ${starStr}:作業窗 ${windowMax} 時段、用 ${used}、餘 ${win}。${tipZh}`,
+        en: `Debrief ${starStr}: window ${windowMax} slots, used ${used}, ${win} left. ${tipEn}`,
+      },
+    } as const;
+    say([
+      ...(m
         ? m.outro
         : [
-            { speaker: "repair_eng", expr: "confident", line: { zh: `${quest.unit} 修復完成、已回報 SCADA，幹得漂亮！`, en: `${quest.unit} repaired and reported to SCADA — nicely done!` } },
-            { speaker: "narrator_girl", expr: "wink", line: { zh: "工單完成！預算與妥善率都進帳囉，要不要再接下一筆？", en: "Order complete! Budget & availability up — fancy another?" } },
-          ]
-    );
+            { speaker: "repair_eng", expr: "confident", line: { zh: `${quest.unit} 修復完成、已回報 SCADA，幹得漂亮！`, en: `${quest.unit} repaired and reported to SCADA — nicely done!` } } as const,
+            { speaker: "narrator_girl", expr: "wink", line: { zh: "工單完成！預算與妥善率都進帳囉，要不要再接下一筆？", en: "Order complete! Budget & availability up — fancy another?" } } as const,
+          ]),
+      debrief,
+    ]);
     setScreen("hub");
   };
 
@@ -307,8 +332,8 @@ export default function RepairScreen({ setScreen, mode = "sim", mobile = false }
                       // 錯題本(#mistake-log):第一次就答錯 → 記錄情境/你的選擇/正解/解析,供事後複習
                       if (i !== q.correct) dispatch({ type: "RECORD_MISTAKE", mk: { topic: `disc:${fault.discipline}`, question: q.question, chosen: q.options[i], correct: q.options[q.correct], lesson: q.ok, day: data.day } });
                     }
-                    // 答錯多耗作業窗（可重新作答，但每次扣時段）
-                    saveRepair({ pick: i, win: Math.max(0, win - (i === q.correct ? 1 : 3)) });
+                    // 答錯多耗作業窗（可重新作答，但每次扣時段）;累計答錯次數供任務復盤(#debrief)
+                    saveRepair({ pick: i, win: Math.max(0, win - (i === q.correct ? 1 : 3)), misses: (rp?.misses ?? 0) + (i === q.correct ? 0 : 1) });
                   }}
                   style={s}
                 >
