@@ -844,7 +844,8 @@ export function reducer(s: GameData, a: Action): GameData {
     case "ARRIVE":
       return { ...s, jobPhase: "onsite" };
     case "FAIL_REPAIR": {
-      // 撤離/返航改期 = 安全近失事件（#34）+ 空耗 1 天（Phase B）
+      // 被迫撤離(作業窗關閉才離場) = 安全近失事件（#34）+ 空耗 1 天 + 進度全失（Phase B）
+      // 註:審慎的「返航改期/回港再規劃」走 REPLAN_RETURN(不計事件、保留進度) —— 安全的選擇不受懲罰。
       const adv = advance(s, 1);
       // 可用率不再用純量 −4：撤離本身不直接使機組故障；安全近失以 safetyIncidents 計入績效（#3）。
       return { ...s, ...adv, jobPhase: "office", safetyIncidents: s.safetyIncidents + 1, repair: null };

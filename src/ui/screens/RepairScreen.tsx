@@ -38,9 +38,10 @@ export default function RepairScreen({ setScreen, mode = "sim", mobile = false }
   const pick = rp?.pick ?? null;
   const steps = rp?.steps ?? fault.sop.map((_, i) => i < 2); // 前兩步預設完成；步驟 3~5 可點擊完成
   const win = rp?.win ?? windowMax;
-  // 寫回進度（合併補丁）；未登塔前以目前 windowMax 為基準
+  // 寫回進度（合併補丁）；未登塔前以目前 windowMax 為基準。
+  // 注意:基底必須帶上 misses,否則登塔/完成步驟等未傳 misses 的補丁會把答錯次數歸零(復盤會低估)。
   const saveRepair = (patch: Partial<Omit<RepairState, "key">>) =>
-    dispatch({ type: "SET_REPAIR", repair: { key: repairKey, boarded, pick, steps, win, ...patch } });
+    dispatch({ type: "SET_REPAIR", repair: { key: repairKey, boarded, pick, steps, win, misses: rp?.misses ?? 0, ...patch } });
 
   // #33 登船事件 + 作業地點
   const location = locationOf(fault.id);
@@ -108,9 +109,11 @@ export default function RepairScreen({ setScreen, mode = "sim", mobile = false }
     saveRepair({ boarded: true, win: roughBoarding ? Math.max(3, windowMax - 3) : windowMax });
   };
   const abortBoarding = () => {
-    Sfx.error();
-    dispatch({ type: "FAIL_REPAIR" }); // 返航改期：回辦公室、可用率小扣
-    say({ speaker: "veteran_sailor", line: { zh: "浪太大、登船風險高，先返航改期吧。", en: "Seas too rough to board safely — return and reschedule." } });
+    Sfx.click();
+    // 操作邏輯一致性:浪高「不登船、返航改期」是審慎決策 → 與回港再規劃同語意(進 1 天、不計安全事件、進度保留);
+    // 硬要「頂浪登船」才承擔延誤/風險。安全的選擇不該被安全事件懲罰。
+    dispatch({ type: "REPLAN_RETURN" });
+    say({ speaker: "veteran_sailor", line: { zh: "浪太大、登船風險高——返航改期是對的判斷,擇日再來。", en: "Seas too rough to board — returning is the right call. Try another day." } });
     setScreen("sail");
   };
 
@@ -133,8 +136,8 @@ export default function RepairScreen({ setScreen, mode = "sim", mobile = false }
     const m = data.customQuest ? null : missionInstance(data.campaignIndex);
     // 任務復盤(#debrief):量化本次出海的決策品質 → 星級 + 一句 takeaway(把每次出海變成可檢討的學習點)
     const misses = rp?.misses ?? 0;
-    const used = windowMax - win;
-    const pctLeft = windowMax > 0 ? win / windowMax : 0;
+    const used = Math.max(0, windowMax - win); // 夾 0:跨日後 windowMax 重算可能小於登塔時基準
+    const pctLeft = windowMax > 0 ? Math.min(1, win / windowMax) : 0;
     const stars = Math.max(1, (pctLeft >= 0.4 ? 3 : pctLeft >= 0.15 ? 2 : 1) - (misses >= 2 ? 1 : 0));
     const starStr = "★".repeat(stars) + "☆".repeat(3 - stars);
     const tipZh = misses > 0
@@ -232,7 +235,7 @@ export default function RepairScreen({ setScreen, mode = "sim", mobile = false }
               </button>
               {roughBoarding && (
                 <button onClick={abortBoarding} style={{ width: "100%", marginTop: 8, padding: "9px 0", borderRadius: 6, border: "1px solid rgba(220,100,80,.5)", background: "rgba(220,100,80,.14)", color: C.redText, fontFamily: FONT_SERIF, fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
-                  {t({ zh: "返航改期（可用率小扣）", en: "Return & reschedule (avail. penalty)" })}
+                  {t({ zh: "返航改期（審慎決策 · 耗 1 天）", en: "Return & reschedule (prudent · 1 day)" })}
                 </button>
               )}
             </div>
