@@ -258,6 +258,7 @@ export interface GameData {
   history: TrendPoint[]; // 營運趨勢歷史（#5）：每次推進日累積一點,供趨勢圖/賽後復盤
   mastery: Mastery; // 知識點掌握度（#mastery）：依科別/任務類型統計作答正確率,找弱點補強
   mistakes: Mistake[]; // 錯題本（#mistake-log）：答錯的情境/選擇/正解/教訓,供複習與反思
+  answerStreak: number; // 診斷連對 streak(#streak):首次作答連續答對次數 → 小額 XP 加成,鼓勵出手前先思考
   portUpgrades: Record<string, number>; // 母港建設（#port）：各設施視覺成長等級
 }
 
@@ -483,6 +484,7 @@ export const INITIAL: GameData = {
   history: [],
   mastery: {},
   mistakes: [],
+  answerStreak: 0,
   portUpgrades: {},
 };
 
@@ -1056,8 +1058,12 @@ export function reducer(s: GameData, a: Action): GameData {
       if (!wk || wk.claimed) return s; // 已領 → 忽略(冪等)
       return { ...s, budget: s.budget + Math.max(0, a.cash), xp: s.xp + Math.max(0, a.xp), weekly: { ...wk, claimed: true, streak: wk.streak + 1 } };
     }
-    case "RECORD_ANSWER":
-      return { ...s, mastery: recordAnswer(s.mastery ?? {}, a.keys, a.correct) };
+    case "RECORD_ANSWER": {
+      // 連對 streak(#streak):首次作答連續答對 → 小額 XP 加成(每次 = streak×2,上限 10),答錯歸零。
+      const streak = a.correct ? (s.answerStreak ?? 0) + 1 : 0;
+      const bonus = a.correct ? Math.min(streak * 2, 10) : 0;
+      return { ...s, mastery: recordAnswer(s.mastery ?? {}, a.keys, a.correct), answerStreak: streak, xp: s.xp + bonus };
+    }
     case "RECORD_MISTAKE": {
       const id = `${a.mk.day}_${(s.mistakes ?? []).length}`;
       return { ...s, mistakes: addMistake(s.mistakes ?? [], { ...a.mk, id }) };

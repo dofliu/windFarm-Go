@@ -311,6 +311,12 @@ export default function RepairScreen({ setScreen, mode = "sim", mobile = false }
           <div style={panelHeader}>
             <Avatar id="elec_eng" src={exprUrl("elec_eng", "neutral")} size={26} headShot />
             <span style={panelTitle}>{t(S.panel.quiz)}</span>
+            {/* 診斷連對 streak(#streak):連續首答正確 → 🔥 徽章 + XP 加成,鼓勵出手前先思考 */}
+            {(data.answerStreak ?? 0) >= 2 && (
+              <span title={t({ zh: "連續首答正確,每題有 XP 加成!", en: "First-try correct streak — XP bonus per answer!" })} style={{ marginLeft: "auto", fontSize: 11, fontWeight: 900, padding: "2px 8px", borderRadius: 999, background: "rgba(232,154,91,.16)", border: "1px solid rgba(232,154,91,.5)", color: C.amber2 }}>
+                🔥 {t({ zh: `連對 ${data.answerStreak}`, en: `Streak ${data.answerStreak}` })}
+              </span>
+            )}
           </div>
           <div style={{ padding: "13px 14px" }}>
             <div style={{ color: C.cream, fontSize: 14, fontWeight: 700, lineHeight: 1.5, marginBottom: 11 }}>{t(q.question)}</div>
