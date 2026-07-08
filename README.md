@@ -27,6 +27,13 @@ An educational, *Uncharted-Waters*-style game that reframes offshore **wind-farm
 - **Live Fleet Ops room** — every farm has **24 individual turbines**; dispatch engineers to parallel work orders, remote-reset soft faults, and run preventive inspections in real time.
 - **First-time interactive onboarding tutorial** — the assistant **Lily** runs a hand-holding, mobile-game-style coach-mark walkthrough (spotlight the relevant button, dim the rest) through one complete work-order loop. Skippable, and replayable from the settings (⚙) menu.
 
+### Decision support & learning loop
+- **Job estimate vs. weather window** — before departure, see the estimated hours for transit / boarding / inspection / repair against the allowed work window, plus a computed safety margin (ample / tight / short) and reminders about vessel wear, crew fatigue, and whether to wait for a better forecast day. Advisory only — the player decides.
+- **Prudent return with progress carry** — if a repair is going badly mid-window, choose to keep working, **rush it** (finish remaining steps at half the time cost but a 25% chance of a safety incident), or **return to port and re-plan**: no safety penalty, and completed diagnosis/SOP steps are preserved for the next trip. Forced retreat (window closes) still wipes progress and logs an incident — rewarding "know when to fold."
+- **Debrief & answer streaks** — each finished job gets a star rating plus a one-line takeaway; correct first-try diagnoses build a streak with a growing (capped) XP bonus.
+- **Active-recall mistake log** — reviewing a past mistake starts with a hidden-answer self-test before revealing the correct answer and lesson, reinforcing retention over passive reading.
+- **Accessibility** — a `prefers-reduced-motion`-aware toggle (also settable in-game) swaps autoplaying scene video for static stills and disables non-essential animation; sea-state and fault indicators use icon **and** color, not color alone.
+
 ### Economy system
 - **Electricity revenue & availability share one source of truth**: the Fleet Ops `fleetUptime` (the actual share of turbines turning). Faulted / under-repair units don't generate — leaving units down directly costs you money.
 - **Quarterly SLA contract** — each quarter is 90 days; if average availability falls below 90% you pay a penalty.
@@ -36,7 +43,7 @@ An educational, *Uncharted-Waters*-style game that reframes offshore **wind-farm
 
 ### Teaching design
 - **Fault-diagnosis quiz + SOP** is the learning core: each fault is a SCADA alarm → 4-choice "what to check FIRST" quiz → 5-step SOP (first two pre-done: confirm weather window, LOTO lock-out).
-- **151-template judgment-task engine** across 7 categories (corrective / predictive / preventive / operational / weather / logistics / incident), most with trade-off choices, teaching feedback, and aid charts (trend / spectrum / radar).
+- **192-template judgment-task engine** across 7 categories (corrective / predictive / preventive / operational / weather / logistics / incident), most with trade-off choices, teaching feedback, and aid charts (trend / spectrum / radar).
 - **Codex** of cleared faults for revision, **Course Mode** for teachers (assign a week's fault, lock graded missions by week), knowledge-point tagging, and a **cloud class leaderboard** (free, no backend) via a Google Apps Script Web App with server-side validation; nickname + class-code login, per-user save isolation.
 - **Bilingual (繁中 / English)**, character/dialogue system, procedural Web Audio SFX/BGM.
 
@@ -53,8 +60,9 @@ npm install
 npm run dev        # http://localhost:5173
 npm run build      # type-check + production build
 npm run typecheck  # tsc --noEmit
-npm test           # dependency-free game-logic tests (test/run.mjs)
+npm test           # dependency-free game-logic tests (test/run.mjs) — 154 passing
 npm run sim        # balance simulator: passive / active / full-crew strategies (test/sim.mjs)
+npm run stress     # concurrency/load simulation for the cloud leaderboard backend (test/stress.mjs)
 ```
 CI (`.github/workflows/ci.yml`) runs `typecheck` + `test` + `build` on every PR to `main`.
 
@@ -66,7 +74,7 @@ src/
 │  ├─ game.ts                    # core reducer: economy, SLA, fleet, scoring
 │  ├─ farms.ts                   # 4 farms × 24 units each
 │  ├─ events.ts / incidents.ts   # random events & fault catalogue (Fleet Ops)
-│  ├─ tasks.ts                   # 151-template judgment-task engine
+│  ├─ tasks.ts                   # 192-template judgment-task engine
 │  └─ profile.ts / course.ts     # login, class code, weekly unlock
 ├─ ui/
 │  ├─ campaign.ts                # 7-mission storyline (4 acts)
