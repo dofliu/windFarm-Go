@@ -27,7 +27,7 @@
   - 已查核確認乾淨：quiz 索引、跨檔 id 引用、i18n 完整性、Tier 閘門、派工守衛一致性、事件權重、案例去重。
 - **Pages 部署硬化**：`deploy.yml` 新增 `actions/configure-pages`(鎖定發佈來源為 GitHub Actions，避免誤切回「Deploy from a branch」導致線上端出未 build 原始碼)；`concurrency.cancel-in-progress` 改 false。
 
-**已知留待下次的候選（需設計決定，見下方「進行中或下一步」）**：bearing 類故障共用「變槳軸承」備品的命名/Tier 取捨；`crew_shortage`/`strike` 事件目前只影響展示用 `techAvail`，尚未接入實際派工邏輯。
+**本輪續作已完成（原留待下次的兩項）**：bearing 類故障備品正名（新增 Tier 3「傳動軸承組」`drive_bearing`，主軸承振動/發電機振動不再權宜共用「變槳軸承」，並補 `pitch_bearing_wear` 事件避免孤兒備品）；`crew_shortage`/`strike` 事件實效化（缺工直接折抵戰情室「可同時開的現場作業面」，滿編不懲罰、下限 1、可休整回復）。詳見 [GAME_DESIGN.md](GAME_DESIGN.md) §18。
 
 ---
 
@@ -79,8 +79,8 @@
 - **✅ 營運趨勢儀表板 / 賽後復盤** — 已完成。每次推進日累積 KPI 歷史,母港「📈 營運趨勢·賽後復盤」顯示妥善率/健康度/收入vs支出/淨額/累積發電的時間序列圖 + 期間摘要(平均/最低妥善率、總收入/支出/淨額、發電增量),作教學覆盤工具。
 - **✅ 登入畫面教師入口** — 已完成。登入畫面提供教師入口(免先登入遊戲),輸入班級碼+教師碼即可開啟唯讀教師檢視。
 - **✅ 出海決策支援・學習迴路收斂・無障礙**(本輪) — 見上方「本輪已完成」與 [GAME_DESIGN.md](GAME_DESIGN.md) §17。
-- **bearing 類故障備品命名/Tier 重新設計** — 主軸承振動(`bearing`)與發電機軸承磨損(`gen_vibration`)目前共用「變槳軸承」(`pitch_bearing`)備品(權宜規避 Tier 閘門,見本輪查核)。建議新增一個 Tier 3「發電機/主軸軸承」備品並重新指派,需與設計者確認 Tier 平衡影響。
-- **crew_shortage / strike 事件實效化** — 目前這兩個事件只調整展示用 `techAvail` 數字,未接入任何派工/派船的實際限制(`OPS_DISPATCH` 不讀取此欄位)。建議接上技師疲勞加成或派工人力上限檢查,讓事件真正影響決策而非純展示。
+- **✅ bearing 類故障備品命名/Tier 重新設計** — 已完成。新增 Tier 3「傳動軸承組(發電機/主軸)」(`drive_bearing`, ◎130 萬),主軸承振動(`bearing`)與發電機振動(`gen_vibration`)改指專屬備品,與 Tier 4「主軸承」全換(`main_bearing`)語意區隔;並新增 `pitch_bearing_wear`(變槳軸承磨耗)事件,讓變槳軸承備品保有真實消費端(呼應 `cs_pitch_bearing_wear` 案例)、不成孤兒。見 [GAME_DESIGN.md](GAME_DESIGN.md) §18。
+- **✅ crew_shortage / strike 事件實效化** — 已完成。缺工(`techTotal − techAvail`)直接折抵戰情室「可同時開的現場作業面」(`effectiveJobCapOf = max(1, jobCapOf − ⌈缺額/CREW_PER_JOB⌉)`):滿編不懲罰(以缺額計)、下限 1(短手仍可派一組、遠端重啟不占名額、主線不受限)、每日休整回復;開局改滿編 30/30、tech 升級同步 techAvail、戰情室顯示缺工折抵。事件從純展示變成「先遠端重啟軟故障/批次搶修/靠港補人」的真實取捨。見 [GAME_DESIGN.md](GAME_DESIGN.md) §18。
 - **試玩微調與平衡回測** — 依 `npm run sim` 持續校正故障率/經濟手感;本輪修正備品資料與每日任務發獎時機後,建議重跑一次完整回測。
 - **戰情室停機折抵「現金」收入的選項** — 目前停機已折抵淨發電；提供把戰情室層也接入售電現金的設定開關（需與設計者確認）。
 - **文件持續對齊** — README / 手冊 / 攻略隨數值變動同步維護；`docs/TEST_REPORT.md`、`docs/MANUAL.zh-TW.md`、`docs/WALKTHROUGH.md` 內的測試數/任務題數等統計為較早版本快照，下次更新時一併校正為 `npm test`/`TASKS.length` 實跑值。

@@ -122,6 +122,8 @@
 | **任務復盤（星級＋takeaway）＋診斷連對 streak** | ✅ 已實作（見 §17）|
 | **錯題本主動回想（檢索練習）** | ✅ 已實作（見 §17）`MistakeLog`|
 | **無障礙（減少動態＋色覺友善雙重編碼）** | ✅ 已實作（見 §17）`useReducedMotion`|
+| **人力短缺/罷工實效化（缺工折抵現場作業面）** | ✅ 已實作（見 §18）`effectiveJobCapOf`|
+| **軸承備品正名（傳動軸承組 T3，與主軸承全換區隔）** | ✅ 已實作（見 §18）`drive_bearing`|
 | CC0 實體音樂 / 每機獨立健康度 | ⏳ 規劃中（見 §14）|
 
 > 兩層架構：**評量層**＝全班相同的主線 7 關（教師按週開放、計成績）；**自由營運層**＝沙盒無限判斷型任務（永遠開放、只進排行榜）。
@@ -243,4 +245,14 @@ scores(user_id, score, availability, generation_mwh, missions_done, day, updated
   - **備品資料修正**：`sensor`(感測器誤報)誤耗發電機碳刷 → 改耗風速計；`pitch`/`pitch_fault`(變槳故障，quiz/SOP 皆講後備電池)誤耗液壓油 → 改耗變槳後備電池(液壓根因由 `pitch_hyd`/`pitch_hydraulic_leak` 負責)。
   - **主線防卡**：交易所預設依 Tier 過濾備品，但進行中工單的必備備品**永遠可見**(不受過濾)，避免主線卡在「找不到料」。
   - **移除 3 組重複任務模板**（`b_harmonics`/`g_medical_evac`/`c_dehumidify` 與既有題重複，避免同題雙倍抽中率）；`caseStudies.ts` 一則案例「正解」誤植安全事件(全內容唯一反例)已修正。
+
+## 18. 人力短缺實效化・軸承備品正名（本輪新增）
+接續 §17 的內容查核，補上兩處**邏輯完整性**缺口——把「只影響展示、不影響決策」的事件接上實際機制，並修正一組權宜共用的備品命名。
+
+- **人力短缺/罷工事件實效化（#crew，`crewShortfallJobs`/`effectiveJobCapOf`）**：`crew_shortage`(−3)、`strike`(−6) 事件原本只調整展示用 `techAvail`，`OPS_DISPATCH`/`OPS_INSPECT` 完全不讀 → 事件承諾了後果卻不兌現。現在缺工**直接折抵「可同時開的現場作業面」**：`crewShortfallJobs = ⌈(techTotal − techAvail) / CREW_PER_JOB⌉`（`CREW_PER_JOB=4`），有效上限 `effectiveJobCapOf = max(1, jobCapOf − crewShortfallJobs)`。設計要點：
+  - **滿編不懲罰**：以「缺額」而非「絕對人數」計，`techAvail=techTotal` 時 shortfall=0 → 不影響任何船隊（含頂級母船）；缺工愈多、可並行的作業面愈少。
+  - **下限 1**：極端缺工仍可派一組(短手應變)，且**遠端重啟不占名額、主線工單不受此限** → 不會硬鎖遊戲；`techAvail` 每日休整 +1 逐步回復，讓「罷工」有明確的止血與恢復節奏。
+  - **開局滿編 30/30**（原 24/30）＋ tech 升級同步 `techAvail`(+2)：避免「憑空缺額」在開局或擴編後誤觸折抵。
+  - **戰情室透明化**（`FleetOpsModal`）：新增「可出勤班組」統計；短手時顯示 👷 橫幅（`vesselCap → cap`、少 N 面）與「現場已滿」時的成因區分（人力 vs 船舶）。事件不再是純展示，而是「先遠端重啟軟故障、批次搶修、靠港補人」的真實取捨。
+- **軸承備品正名（#bearing，`drive_bearing`）**：主軸承振動事件(`bearing`)與發電機振動圖鑑故障(`gen_vibration`)原本權宜共用「變槳軸承」(`pitch_bearing`)備品（規避 Tier 閘門）。新增 Tier 3 專屬備品**「傳動軸承組(發電機/主軸)」**(`drive_bearing`, ◎130 萬)並重新指派兩者——與 Tier 4「主軸承」全換(`main_bearing`)語意區隔（振動維修級 vs 重吊更換）。同時新增 `pitch_bearing_wear`（變槳軸承磨耗）事件，讓 `pitch_bearing` 備品保有真實消費端（與既有 `cs_pitch_bearing_wear` 案例研究呼應），不成孤兒。
 

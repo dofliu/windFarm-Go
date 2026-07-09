@@ -97,6 +97,12 @@ export function activeVesselSpec(s: { activeVessel?: VesselClass; ownsSOV?: bool
 }
 export const seaTolOf = (s: { activeVessel?: VesselClass; ownsSOV?: boolean }): number => activeVesselSpec(s).seaTol;
 export const jobCapOf = (s: { activeVessel?: VesselClass; ownsSOV?: boolean; vesselLevel: number }): number => activeVesselSpec(s).jobCap + s.vesselLevel;
+// 人力短缺/罷工事件實效化（#crew）：可出勤班組(techAvail)缺額會折抵「可同時開的現場作業面」。
+// 滿編(techAvail=techTotal)時 shortfall=0 → 不影響頂級船隊；缺工愈多、可並行的作業面愈少，讓 crew_shortage/strike 真正影響決策而非純展示。
+export const CREW_PER_JOB = 4; // 每少 4 名可出勤班組 → 少 1 個現場作業面（tune：crew_shortage −3 折 1 面、strike −6 折 2 面）
+export const crewShortfallJobs = (s: { techAvail: number; techTotal: number }): number => Math.ceil(Math.max(0, s.techTotal - s.techAvail) / CREW_PER_JOB);
+// 有效現場工單上限 = 船舶上限 − 人力缺額折抵，下限 1（短手仍可派一組；遠端重啟不占用、且主線工單不受此限）。
+export const effectiveJobCapOf = (s: { activeVessel?: VesselClass; ownsSOV?: boolean; vesselLevel: number; techAvail: number; techTotal: number }): number => Math.max(1, jobCapOf(s) - crewShortfallJobs(s));
 export const sortieCostOf = (s: { activeVessel?: VesselClass; ownsSOV?: boolean }): number => activeVesselSpec(s).sortieCost;
 export const vesselWearOf = (s: { activeVessel?: VesselClass; ownsSOV?: boolean }): number => activeVesselSpec(s).wearRate;
 export const windowBonusOf = (s: { activeVessel?: VesselClass; ownsSOV?: boolean }): number => activeVesselSpec(s).windowBonus;
@@ -432,7 +438,7 @@ export const INITIAL: GameData = {
   budget: 84_200_000,
   xp: 0,
   day: 21,
-  techAvail: 24,
+  techAvail: 30, // 開局滿編（=techTotal），缺工由事件造成、隨休整回復（#crew 人力折抵作業面）
   techTotal: 30,
   availability: fleetUptime(INITIAL_FLEET), // 妥善率 = 機隊運轉比例（單一真實來源，#3）
   seaState: "workable",
@@ -894,7 +900,7 @@ export function reducer(s: GameData, a: Action): GameData {
       if (!inc || eng.discipline !== inc.discipline) return s; // 需對應科別技師
       if (fatigueOf(eng) >= FATIGUE_LIMIT) return s; // 過勞不可派
       if (engineerBusy(s.opsJobs, eng.id)) return s; // 該技師已在執行工單
-      if (onsiteJobCount(s.opsJobs) >= jobCapOf(s)) return s; // 船舶現場工單已達上限（依目前作業船，#4）
+      if (onsiteJobCount(s.opsJobs) >= effectiveJobCapOf(s)) return s; // 現場工單上限：船舶上限 − 人力缺額折抵（#4/#crew）
       if (SEA_INDEX[s.seaState] > seaTolOf(s)) return s; // 海象超過目前作業船耐受度，無法派船（可改遠端重啟或等天氣窗）
       if ((s.inventory[inc.part] ?? 0) <= 0) return s; // 缺必備備品，無法現場維修（接上真實備品價格）
       const inv = { ...s.inventory, [inc.part]: (s.inventory[inc.part] ?? 0) - 1 };
@@ -918,7 +924,7 @@ export function reducer(s: GameData, a: Action): GameData {
       if (!eng) return s;
       if (fatigueOf(eng) >= FATIGUE_LIMIT) return s; // 過勞不可派
       if (engineerBusy(s.opsJobs, eng.id)) return s; // 已在執行工單
-      if (onsiteJobCount(s.opsJobs) >= jobCapOf(s)) return s; // 船舶現場工單上限（依目前作業船，#4）
+      if (onsiteJobCount(s.opsJobs) >= effectiveJobCapOf(s)) return s; // 現場工單上限：船舶上限 − 人力缺額折抵（#4/#crew）
       if (SEA_INDEX[s.seaState] > seaTolOf(s)) return s; // 海象超過目前作業船耐受度，無法派船
       const job: OpsJob = { id: "ins_" + Math.random().toString(36).slice(2, 9), turbine: "__sweep__", engineerId: eng.id, discipline: eng.discipline, daysLeft: INSPECT_DAYS, kind: "inspect" };
       const newSortie = onsiteJobCount(s.opsJobs) === 0; // 定檢也算一趟出海
@@ -1016,7 +1022,7 @@ export function reducer(s: GameData, a: Action): GameData {
       if (a.cost > s.budget) return s;
       const adv = advance(s, 1); // 設施升級/訓練耗時 1 天（Phase B）
       const patch =
-        a.kind === "vessel" ? { vesselLevel: s.vesselLevel + 1 } : a.kind === "tech" ? { techLevel: s.techLevel + 1, techTotal: s.techTotal + 2 } : { toolLevel: s.toolLevel + 1 };
+        a.kind === "vessel" ? { vesselLevel: s.vesselLevel + 1 } : a.kind === "tech" ? { techLevel: s.techLevel + 1, techTotal: s.techTotal + 2, techAvail: s.techAvail + 2 } : { toolLevel: s.toolLevel + 1 }; // 招募擴編:新進即到位(techAvail 同步 +2),避免升級後憑空產生人力缺額
       return { ...s, ...adv, budget: Math.max(0, (adv.budget ?? s.budget) - a.cost), ...patch };
     }
     case "NEXT_QUEST": {

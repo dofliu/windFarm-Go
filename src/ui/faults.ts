@@ -105,7 +105,7 @@ export const FAULTS: Record<string, Fault> = {
       { zh: "復歸測試並回報 SCADA", en: "Reset test & report to SCADA" },
     ],
     knowledge_point: "vibration_bpfi",
-    part: "pitch_bearing",
+    part: "drive_bearing", // 修:發電機軸承改用專屬「傳動軸承組」(原權宜共用變槳軸承)
     discipline: "mechanical",
   },
   pitch_fault: {

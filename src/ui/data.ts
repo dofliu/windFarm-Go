@@ -19,6 +19,7 @@ export const PARTS: Part[] = [
   { id: "main_bearing", n: { zh: "主軸承", en: "Main Bearing" }, stars: 3, idx: 118, qty: 24, price: "3,500,000", minTier: 4 },
   { id: "converter", n: { zh: "變流器模組", en: "Converter Module" }, stars: 3, idx: 106, qty: 81, price: "2,600,000", minTier: 2 },
   { id: "pitch_bearing", n: { zh: "變槳軸承", en: "Pitch Bearing" }, stars: 3, idx: 122, qty: 65, price: "1,800,000", minTier: 3 },
+  { id: "drive_bearing", n: { zh: "傳動軸承組(發電機/主軸)", en: "Drivetrain Bearing Set (gen/main-shaft)" }, stars: 3, idx: 110, qty: 30, price: "1,300,000", minTier: 3 }, // 傳動鏈滾動軸承(發電機/主軸振動維修級);與 Tier4 主軸承全換(main_bearing)區隔
   { id: "igbt_module", n: { zh: "IGBT 功率模組", en: "IGBT Power Module" }, stars: 3, idx: 112, qty: 40, price: "1,200,000", minTier: 3 },
   // ── 中型組件（數十～數百萬）──
   { id: "main_controller", n: { zh: "主控制器 PLC", en: "Main Controller (PLC)" }, stars: 3, idx: 99, qty: 28, price: "900,000", minTier: 2 },

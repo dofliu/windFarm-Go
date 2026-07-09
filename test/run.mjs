@@ -455,6 +455,68 @@ test("remote resets do not count toward vessel cap", () => {
   eq(g.onsiteJobCount(s.opsJobs), 1, "crew dispatch still allowed");
 });
 
+// ───────────── 人力短缺/罷工事件實效化（#crew）：缺工折抵現場作業面 ─────────────
+test("crew shortfall folds into on-site cap; full crew never penalized; floor 1 (#crew)", () => {
+  eq(g.crewShortfallJobs({ techAvail: 30, techTotal: 30 }), 0, "full crew: no shortfall");
+  eq(g.crewShortfallJobs({ techAvail: 27, techTotal: 30 }), 1, "-3 crew → -1 slot (crew_shortage)");
+  eq(g.crewShortfallJobs({ techAvail: 24, techTotal: 30 }), 2, "-6 crew → -2 slots (strike)");
+  const sov = { activeVessel: "sov", ownsSOV: true, vesselLevel: 0 };
+  eq(g.effectiveJobCapOf({ ...sov, techAvail: 30, techTotal: 30 }), g.jobCapOf(sov), "full crew: eff cap == vessel cap (no nerf)");
+  eq(g.effectiveJobCapOf({ ...sov, techAvail: 24, techTotal: 30 }), g.jobCapOf(sov) - 2, "strike cuts 2 slots on SOV");
+  eq(g.effectiveJobCapOf({ activeVessel: "ctv", ownsSOV: false, vesselLevel: 0, techAvail: 0, techTotal: 30 }), 1, "floor at 1 even fully short-handed");
+});
+test("OPS_DISPATCH respects crew-reduced cap; full crew allows more (#crew)", () => {
+  const idxs = I.fleet.map((t, i) => (t.status === "ok" ? i : -1)).filter((i) => i >= 0).slice(0, 3);
+  const fleet = I.fleet.map((t, i) => (idxs.includes(i) ? { ...t, status: "fault", faultId: "gearbox" } : t));
+  const engineers = ["a", "b", "c"].map((id) => ({ id, name: id, discipline: "mechanical", level: 1, fatigue: 0 }));
+  const sovBase = { fleet, engineers, ownsSOV: true, ownedVessels: ["ctv", "sov"], activeVessel: "sov", vesselLevel: 0, inventory: { gearbox_oil: 9 } };
+  // 缺工 22/30 → shortfall 2 → SOV 有效上限 4−2=2：派 2 可、第 3 受阻
+  let s = { ...I, ...sovBase, techAvail: 22, techTotal: 30 };
+  eq(g.effectiveJobCapOf(s), 2, "SOV cap 4 − 2 crew shortfall = 2");
+  s = R(s, { type: "OPS_DISPATCH", turbine: fleet[idxs[0]].id, engineerId: "a" });
+  s = R(s, { type: "OPS_DISPATCH", turbine: fleet[idxs[1]].id, engineerId: "b" });
+  eq(g.onsiteJobCount(s.opsJobs), 2, "two on-site jobs under crew-reduced cap");
+  const before = s.opsJobs.length;
+  s = R(s, { type: "OPS_DISPATCH", turbine: fleet[idxs[2]].id, engineerId: "c" });
+  eq(s.opsJobs.length, before, "third dispatch blocked by crew shortfall");
+  // 對照：滿編 30/30 → 有效上限 4，同一 SOV 可派到 3
+  let full = { ...I, ...sovBase, techAvail: 30, techTotal: 30 };
+  full = R(full, { type: "OPS_DISPATCH", turbine: fleet[idxs[0]].id, engineerId: "a" });
+  full = R(full, { type: "OPS_DISPATCH", turbine: fleet[idxs[1]].id, engineerId: "b" });
+  full = R(full, { type: "OPS_DISPATCH", turbine: fleet[idxs[2]].id, engineerId: "c" });
+  eq(g.onsiteJobCount(full.opsJobs), 3, "full crew allows the third dispatch (SOV cap 4)");
+});
+test("crew_shortage/strike events reduce techAvail → fewer slots, not just HUD (#crew)", () => {
+  const cs = events.EVENTS.find((e) => e.id === "crew_shortage");
+  const st = events.EVENTS.find((e) => e.id === "strike");
+  ok(cs && st, "both crew events exist");
+  const base = { techAvail: 30, techTotal: 30 };
+  eq(cs.apply(base).techAvail, 27, "crew_shortage -3");
+  eq(st.apply(base).techAvail, 24, "strike -6");
+  const sov = { activeVessel: "sov", ownsSOV: true, vesselLevel: 0, techTotal: 30 };
+  ok(g.effectiveJobCapOf({ ...sov, techAvail: st.apply(base).techAvail }) < g.effectiveJobCapOf({ ...sov, techAvail: 30 }), "strike lowers effective on-site cap (wired to mechanic)");
+});
+test("INITIAL starts full-crew; tech upgrade keeps crew full — no phantom shortfall (#crew)", () => {
+  eq(I.techAvail, I.techTotal, "new game starts fully crewed");
+  eq(g.crewShortfallJobs(I), 0, "no shortfall at start");
+  const up = R({ ...I, budget: 999_999_999 }, { type: "UPGRADE", kind: "tech", cost: 0 });
+  eq(up.techTotal, I.techTotal + 2, "tech upgrade raises headcount");
+  eq(up.techAvail, up.techTotal, "new hires immediately available");
+  eq(g.crewShortfallJobs(up), 0, "still no shortfall after upgrade");
+});
+test("bearing parts: drive_bearing (T3) replaces the pitch_bearing workaround (#bearing)", () => {
+  const db = data.PARTS.find((p) => p.id === "drive_bearing");
+  ok(db, "drive_bearing part exists");
+  eq(db.minTier, 3, "drive_bearing is Tier 3");
+  eq(inc.incidentAt("bearing").part, "drive_bearing", "main-bearing vibration → drive_bearing (not pitch_bearing)");
+  eq(flt.FAULTS.gen_vibration.part, "drive_bearing", "generator vibration codex → drive_bearing");
+  // pitch_bearing 仍有真實消費端（pitch_bearing_wear 事件），未變孤兒；與 cs_pitch_bearing_wear 案例呼應
+  ok(inc.INCIDENTS.some((x) => x.part === "pitch_bearing"), "pitch_bearing still consumed by an incident (no orphan)");
+  ok(cs.CASE_STUDIES.some((c) => c.id === "cs_pitch_bearing_wear"), "pitch-bearing-wear case study still present");
+  // 沿用不變式：drive_bearing 消費端的 part tier ≤ incident tier（買得到）
+  for (const x of inc.INCIDENTS.filter((i) => i.part === "drive_bearing")) ok((db.minTier ?? 1) <= (x.minTier ?? 1), `incident ${x.id}: part tier <= incident tier`);
+});
+
 // ───────────────────────── C2：預防性定檢 ─────────────────────────
 test("OPS_INSPECT creates an inspect job; completion sets fault-rate buff", () => {
   let s = { ...I, engineers: [{ id: "k", name: "k", discipline: "control", level: 1, fatigue: 0 }] };

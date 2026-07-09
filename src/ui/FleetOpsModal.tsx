@@ -9,7 +9,7 @@ import { DISC } from "./disc";
 import { FARMS } from "../state/farms";
 import { incidentAt } from "../state/incidents";
 import { PARTS } from "./data";
-import { fleetUptime, engineerBusy, fatigueOf, FATIGUE_LIMIT, jobCapOf, onsiteJobCount, INSPECT_DAYS, SEA_INDEX, seaTolOf, activeVesselSpec, SEA_LABEL, dailyPayroll, toWan, sortieCostOf, QUARTER_DAYS, SLA_FLOOR } from "../state/game";
+import { fleetUptime, engineerBusy, fatigueOf, FATIGUE_LIMIT, jobCapOf, effectiveJobCapOf, crewShortfallJobs, onsiteJobCount, INSPECT_DAYS, SEA_INDEX, seaTolOf, activeVesselSpec, SEA_LABEL, dailyPayroll, toWan, sortieCostOf, QUARTER_DAYS, SLA_FLOOR } from "../state/game";
 import { LedgerView } from "./Ledger";
 
 const STATUS_COLOR: Record<string, string> = { ok: "#3f7d52", fault: "#c0463a", repair: "#cf9a35" };
@@ -51,7 +51,9 @@ export default function FleetOpsModal({ open, onClose }: { open: boolean; onClos
   const selT = sel ? fleet.find((t) => t.id === sel) : null;
   const inc = selT ? incidentAt(selT.faultId) : undefined;
   const candidates = inc ? data.engineers.filter((e) => e.discipline === inc.discipline && !engineerBusy(data.opsJobs, e.id) && fatigueOf(e) < FATIGUE_LIMIT) : [];
-  const cap = jobCapOf(data);
+  const vesselCap = jobCapOf(data); // 船舶本身的現場工單上限（未計人力）
+  const crewShort = crewShortfallJobs(data); // 人力缺額折抵的作業面數（#crew）
+  const cap = effectiveJobCapOf(data); // 有效上限 = 船舶上限 − 人力缺額折抵（下限 1）
   const onsite = onsiteJobCount(data.opsJobs);
   const atCap = onsite >= cap;
   const vSpec = activeVesselSpec(data);
@@ -86,6 +88,7 @@ export default function FleetOpsModal({ open, onClose }: { open: boolean; onClos
         <Stat label={t({ zh: "機組妥善", en: "Uptime" })} value={`${uptime}%`} color={uptime >= 90 ? C.green : uptime >= 75 ? C.amber : C.red} />
         <Stat label={t({ zh: "待修故障", en: "Faults" })} value={String(faults)} color={faults > 0 ? C.red : C.green} />
         <Stat label={t({ zh: "現場工單", en: "On-site jobs" })} value={`${onsite}/${cap}`} color={atCap ? C.amber : C.goldText} />
+        <Stat label={t({ zh: "可出勤班組", en: "Crew avail" })} value={`${data.techAvail}/${data.techTotal}`} color={crewShort > 0 ? C.amber : C.mist2} />
         <Stat label={t({ zh: "可用技師", en: "Free crew" })} value={`${freeCrew}/${data.engineers.length}`} />
         <Stat label={t({ zh: "停機損失", en: "Lost gen" })} value={`${data.fleetLostMWh} MWh`} color={C.amber2} />
         <Stat label={t({ zh: "已修復", en: "Resolved" })} value={String(data.fleetResolved)} color={C.green} />
@@ -102,6 +105,13 @@ export default function FleetOpsModal({ open, onClose }: { open: boolean; onClos
             ? t({ zh: " — 逼近底線,留意違約風險。", en: " — near the floor; watch breach risk." })
             : ""}
       </div>
+
+      {/* 人力短缺/罷工實效化（#crew）：缺工折抵可同時開的現場作業面 —— 只在短手時顯示 */}
+      {crewShort > 0 && (
+        <div style={{ marginBottom: 12, padding: "7px 10px", borderRadius: 5, background: "rgba(227,173,66,.12)", border: "1px solid rgba(227,173,66,.32)", fontSize: 12, color: C.amber2, lineHeight: 1.55 }}>
+          👷 {t({ zh: `人力短缺：可出勤班組 ${data.techAvail}/${data.techTotal} → 現場作業面上限 ${vesselCap} 降為 ${cap}（少 ${crewShort} 面）。可先遠端重啟軟故障、批次搶修，靠港休整後人力逐日回復。`, en: `Crew shortage: ${data.techAvail}/${data.techTotal} on duty → on-site slots cut ${vesselCap}→${cap} (−${crewShort}). Remote-restart soft faults, batch repairs; crew recovers daily with rest.` })}
+        </div>
+      )}
 
       {/* 海象限制派船（接上天氣預報） */}
       {!seaOk && (
@@ -185,7 +195,9 @@ export default function FleetOpsModal({ open, onClose }: { open: boolean; onClos
           {!seaOk ? (
             <div style={{ fontSize: 12, color: C.amber2 }}>{t({ zh: `海象「${SEA_LABEL[data.seaState].zh}」無法派船——等可作業天氣窗，或升級/購置 SOV（可在更高海象出航）。`, en: `Seas "${SEA_LABEL[data.seaState].en}" — can't deploy. Wait for a workable window or get an SOV.` })}</div>
           ) : atCap ? (
-            <div style={{ fontSize: 12, color: C.amber2 }}>{t({ zh: `船舶現場工單已滿（${onsite}/${cap}）。等工單完成、升級整備或購置 SOV 以提高並行數。`, en: `On-site jobs full (${onsite}/${cap}). Wait, upgrade the vessel or buy an SOV to raise concurrency.` })}</div>
+            <div style={{ fontSize: 12, color: C.amber2 }}>{crewShort > 0
+              ? t({ zh: `現場工單已滿（${onsite}/${cap}）——人力短缺折抵 ${crewShort} 面（船舶上限 ${vesselCap}）。等工單完成、靠港休整回復人力，或改遠端重啟。`, en: `On-site jobs full (${onsite}/${cap}) — crew shortage cuts ${crewShort} slot(s) (vessel cap ${vesselCap}). Wait for jobs to finish, rest crew, or use remote restart.` })
+              : t({ zh: `船舶現場工單已滿（${onsite}/${cap}）。等工單完成、升級整備或購置 SOV 以提高並行數。`, en: `On-site jobs full (${onsite}/${cap}). Wait, upgrade the vessel or buy an SOV to raise concurrency.` })}</div>
           ) : (data.inventory[inc.part] ?? 0) <= 0 ? (
             <div style={{ fontSize: 12, color: C.amber2 }}>{t({ zh: "缺必備備品，無法現場維修——先去備品交易所採購（或先遠端重啟可重啟的故障）。", en: "Missing the required part — buy it at the Parts Market first (or remote-restart resettable faults)." })}</div>
           ) : candidates.length === 0 ? (
