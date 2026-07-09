@@ -25,7 +25,7 @@ export const INCIDENTS: IncidentType[] = [
   { id: "pitch", name: { zh: "變槳故障", en: "Pitch fault" }, discipline: "control", repairDays: 2, part: "pitch_battery", weight: 4, minTier: 2 }, // 修:控制側變槳故障耗後備電池;液壓根因由 pitch_hyd(hydraulic_valve)負責
   { id: "yaw", name: { zh: "偏航失準", en: "Yaw misalignment" }, discipline: "control", repairDays: 1, resettable: true, part: "yaw_motor", weight: 4, minTier: 1 },
   { id: "converter", name: { zh: "變流器跳脫", en: "Converter trip" }, discipline: "electrical", repairDays: 1, resettable: true, part: "converter", weight: 3, minTier: 2 },
-  { id: "bearing", name: { zh: "主軸承振動", en: "Main-bearing vibration" }, discipline: "mechanical", repairDays: 3, part: "pitch_bearing", weight: 2, minTier: 3 },
+  { id: "bearing", name: { zh: "主軸承振動", en: "Main-bearing vibration" }, discipline: "mechanical", repairDays: 3, part: "drive_bearing", weight: 2, minTier: 3 }, // 修:改用專屬「傳動軸承組」(原權宜共用變槳軸承);與 Tier4 主軸承全換區隔
   { id: "cable", name: { zh: "海纜絕緣告警", en: "Cable insulation alarm" }, discipline: "electrical", repairDays: 2, part: "cable_joint", weight: 2, minTier: 3 },
   { id: "blade", name: { zh: "葉片損傷", en: "Blade damage" }, discipline: "structural", repairDays: 2, part: "gfrp_blade", weight: 1, minTier: 4 },
   // ── 擴充故障池（對應更多元的備品/科別；維持「耗材常見、大型罕見」的真實分布）──
@@ -41,6 +41,7 @@ export const INCIDENTS: IncidentType[] = [
   { id: "tower_bolt", name: { zh: "塔基螺栓鬆動", en: "Tower bolt loosening" }, discipline: "structural", repairDays: 2, part: "bolt_m36", weight: 2, minTier: 2 },
   { id: "lift", name: { zh: "升降機/安全系統", en: "Service lift fault" }, discipline: "hse", repairDays: 1, part: "lift_part", weight: 2, minTier: 2 },
   { id: "main_bearing", name: { zh: "主軸承磨耗", en: "Main-bearing wear" }, discipline: "mechanical", repairDays: 3, part: "main_bearing", weight: 1, minTier: 4 },
+  { id: "pitch_bearing_wear", name: { zh: "變槳軸承磨耗", en: "Pitch-bearing wear" }, discipline: "mechanical", repairDays: 3, part: "pitch_bearing", weight: 1, minTier: 3 }, // 變槳軸承專屬故障(與 cs_pitch_bearing_wear 案例呼應),使變槳軸承備品有真實消費端
   // ── #82 分層擴充:基礎防蝕(結構/Tier2)、變壓器套管(電氣/Tier3)、海纜接頭過熱(電氣/Tier3) ──
   { id: "corrosion", name: { zh: "基礎/塔基防蝕劣化", en: "Foundation corrosion" }, discipline: "structural", repairDays: 2, part: "corrosion_anode", weight: 2, minTier: 2 },
   { id: "bushing", name: { zh: "變壓器套管劣化", en: "Transformer bushing fault" }, discipline: "electrical", repairDays: 2, part: "transformer_bushing", weight: 1, minTier: 3 },
