@@ -1,10 +1,13 @@
-import { useState } from "react";
+import { useState, Fragment } from "react";
 import { C, FONT_SERIF, primaryBg, panel } from "./tokens";
 import { t } from "../game/systems/i18n";
 import { useLang } from "./useLang";
 import { getProfile } from "../state/profile";
 import { Sfx } from "../audio/sfx";
 import { cloudEnabled, fetchClassProgress, classRowsToCsv, type ClassRow } from "../cloud/api";
+import { parseMasterySummary, masteryRows, weakest, totalAnswered } from "../state/mastery";
+import { DISC } from "./disc";
+import { CAT_LABEL } from "../state/tasks";
 
 type Status = "form" | "loading" | "ok" | "error";
 
@@ -17,6 +20,7 @@ export default function TeacherModal({ open, onClose }: { open: boolean; onClose
   const [status, setStatus] = useState<Status>("form");
   const [rows, setRows] = useState<ClassRow[]>([]);
   const [err, setErr] = useState("");
+  const [openId, setOpenId] = useState<string | null>(null); // 個別學生鑽取展開(#mastery-cloud)
   if (!open) return null;
 
   const reset = () => { setStatus("form"); setRows([]); setErr(""); };
@@ -99,6 +103,13 @@ export default function TeacherModal({ open, onClose }: { open: boolean; onClose
                 )}
                 <button onClick={reset} style={{ marginLeft: rows.length > 0 ? 8 : "auto", padding: "6px 12px", borderRadius: 5, border: "1px solid rgba(214,167,84,.5)", background: "rgba(15,40,50,.82)", color: C.cream, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>{t({ zh: "← 重新查詢", en: "← New query" })}</button>
               </div>
+              {rows.length > 0 && (
+                <div style={{ fontSize: 11.5, color: rows.some((r) => totalAnswered(parseMasterySummary(r.mastery)) > 0) ? C.mist : C.amber2, marginBottom: 8, lineHeight: 1.5 }}>
+                  {rows.some((r) => totalAnswered(parseMasterySummary(r.mastery)) > 0)
+                    ? t({ zh: "💡 點任一列可展開該生「知識點掌握度」個別鑽取(各科別/類別正確率)。", en: "💡 Click a row to drill into that student's per-topic mastery (accuracy by discipline/category)." })
+                    : t({ zh: "ℹ 尚無掌握度資料 —— 需學生以新版更新存檔、且後端已更新至 v2.2(見 CLOUD_SETUP.md)。", en: "ℹ No mastery data yet — students must re-sync on the new build and the backend must be updated to v2.2 (see CLOUD_SETUP.md)." })}
+                </div>
+              )}
               {rows.length === 0 ? (
                 <div style={{ color: C.mist, fontSize: 13, padding: "24px 0", textAlign: "center" }}>{t({ zh: "此班尚無學生存檔資料。", en: "No student saves for this class yet." })}</div>
               ) : (
@@ -116,18 +127,31 @@ export default function TeacherModal({ open, onClose }: { open: boolean; onClose
                     </tr>
                   </thead>
                   <tbody>
-                    {rows.map((r, i) => (
-                      <tr key={r.studentId + i}>
-                        <td style={{ ...td, color: C.mist }}>{i + 1}</td>
-                        <td style={td}>{r.studentId}</td>
-                        <td style={td}>{r.nickname || "—"}</td>
-                        <td style={{ ...td, textAlign: "right", color: C.goldText, fontWeight: 800 }}>{(r.score || 0).toLocaleString()}</td>
-                        <td style={{ ...td, textAlign: "right" }}>{Math.max(0, (r.day || 0) - 21)}</td>
-                        <td style={{ ...td, textAlign: "right" }}>{r.availability || 0}%</td>
-                        <td style={{ ...td, textAlign: "right" }}>{(r.generation || 0).toLocaleString()}</td>
-                        <td style={{ ...td, color: C.mist2, fontSize: 11 }}>{fmtDate(r.updatedAt)}</td>
-                      </tr>
-                    ))}
+                    {rows.map((r, i) => {
+                      const isOpen = openId === r.studentId;
+                      const hasM = totalAnswered(parseMasterySummary(r.mastery)) > 0;
+                      return (
+                        <Fragment key={r.studentId + i}>
+                          <tr onClick={() => { Sfx.click(); setOpenId(isOpen ? null : r.studentId); }} style={{ cursor: "pointer", background: isOpen ? "rgba(217,164,65,.08)" : undefined }}>
+                            <td style={{ ...td, color: C.mist }}>{hasM ? (isOpen ? "▾" : "▸") : ""} {i + 1}</td>
+                            <td style={td}>{r.studentId}</td>
+                            <td style={td}>{r.nickname || "—"}</td>
+                            <td style={{ ...td, textAlign: "right", color: C.goldText, fontWeight: 800 }}>{(r.score || 0).toLocaleString()}</td>
+                            <td style={{ ...td, textAlign: "right" }}>{Math.max(0, (r.day || 0) - 21)}</td>
+                            <td style={{ ...td, textAlign: "right" }}>{r.availability || 0}%</td>
+                            <td style={{ ...td, textAlign: "right" }}>{(r.generation || 0).toLocaleString()}</td>
+                            <td style={{ ...td, color: C.mist2, fontSize: 11 }}>{fmtDate(r.updatedAt)}</td>
+                          </tr>
+                          {isOpen && (
+                            <tr>
+                              <td colSpan={8} style={{ padding: "10px 14px 14px", borderBottom: "1px solid rgba(255,255,255,.06)", background: "rgba(8,22,28,.5)" }}>
+                                <MasteryDrill row={r} />
+                              </td>
+                            </tr>
+                          )}
+                        </Fragment>
+                      );
+                    })}
                   </tbody>
                 </table>
               )}
@@ -135,6 +159,36 @@ export default function TeacherModal({ open, onClose }: { open: boolean; onClose
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+// 個別學生「知識點掌握度」鑽取(#mastery-cloud):把雲端摘要解回 Mastery,沿用 ProfileModal 同一套統計顯示。
+function MasteryDrill({ row }: { row: ClassRow }) {
+  const m = parseMasterySummary(row.mastery);
+  const discRows = masteryRows(m, "disc", DISC).filter((r) => r.n > 0);
+  const catRows = masteryRows(m, "cat", CAT_LABEL).filter((r) => r.n > 0);
+  const weak = weakest([...masteryRows(m, "disc", DISC), ...masteryRows(m, "cat", CAT_LABEL)]);
+  if (totalAnswered(m) === 0) return <div style={{ fontSize: 12, color: C.mist2 }}>{t({ zh: "此學生尚無作答資料。", en: "No answer data for this student yet." })}</div>;
+  const bar = (key: string, label: string, acc: number, n: number, ok: number) => {
+    const col = acc >= 80 ? C.green : acc >= 60 ? C.amber : C.red;
+    return (
+      <div key={key} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+        <span style={{ width: 100, flex: "none", fontSize: 11.5, color: C.mist }}>{label}</span>
+        <div style={{ flex: 1, height: 7, borderRadius: 4, background: "rgba(255,255,255,.1)", overflow: "hidden" }}>
+          <div style={{ width: `${acc}%`, height: "100%", background: col }} />
+        </div>
+        <span style={{ width: 74, flex: "none", textAlign: "right", fontSize: 11, color: col, fontVariantNumeric: "tabular-nums" }}>{acc}% ({ok}/{n})</span>
+      </div>
+    );
+  };
+  return (
+    <div>
+      <div style={{ fontSize: 11.5, color: C.gold, fontWeight: 700, marginBottom: 5 }}>{t({ zh: "科別掌握度", en: "By discipline" })}</div>
+      {discRows.length ? discRows.map((r) => bar("d" + r.key, t(r.label), r.acc, r.n, r.ok)) : <div style={{ fontSize: 11.5, color: C.mist2, marginBottom: 6 }}>—</div>}
+      {catRows.length > 0 && <div style={{ fontSize: 11.5, color: C.gold, fontWeight: 700, margin: "8px 0 5px" }}>{t({ zh: "任務類別", en: "By category" })}</div>}
+      {catRows.map((r) => bar("c" + r.key, t(r.label), r.acc, r.n, r.ok))}
+      {weak && <div style={{ fontSize: 11.5, color: C.amber2, marginTop: 8 }}>⚠ {t({ zh: "最弱項", en: "Weakest" })}: {t(weak.label)}（{weak.acc}%）</div>}
     </div>
   );
 }

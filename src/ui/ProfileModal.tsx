@@ -38,6 +38,7 @@ export default function ProfileModal({ open, onClose }: { open: boolean; onClose
     { label: { zh: "故障圖鑑", en: "Fault catalog" }, value: String(data.seenFaults?.length ?? 0), sub: { zh: `最多 ${rec.bestCatalog}`, en: `max ${rec.bestCatalog}` } },
     { label: { zh: "戰情室修復", en: "Ops resolved" }, value: String(data.fleetResolved ?? 0), sub: { zh: `最多 ${rec.bestResolved}`, en: `max ${rec.bestResolved}` } },
     { label: { zh: "營運風場", en: "Farms" }, value: String(data.farmsOwned) },
+    { label: { zh: "測驗最佳", en: "Exam best" }, value: rec.bestExam ? `${rec.bestExam}%` : "—", sub: { zh: "獨立測驗模式", en: "Exam Mode" } },
     { label: { zh: "安全事件", en: "Safety incidents" }, value: String(data.safetyIncidents ?? 0) },
   ];
 

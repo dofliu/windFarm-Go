@@ -59,6 +59,7 @@ const trends = await load("src/state/trends.ts");
 const mastery = await load("src/state/mastery.ts");
 const port = await load("src/state/port.ts");
 const events = await load("src/state/events.ts");
+const exam = await load("src/state/exam.ts");
 const R = g.reducer, I = g.INITIAL;
 
 // ───────────────────────── INITIAL 不變量 ─────────────────────────
@@ -1227,6 +1228,68 @@ test("records: unionRecord merges unlocks (earliest) and max bests", () => {
   eq(u.unlocked["multi_farm"], 800, "kept from b");
   eq(u.bestScore, 700, "max score");
   eq(u.bestGeneration, 1000, "max generation");
+});
+
+// ───────────── 獨立測驗模式（#exam） + 掌握度雲端摘要（#mastery-cloud） ─────────────
+test("exam: buildExam deterministic, right length, chartless pool, category spread", () => {
+  const a = exam.buildExam(12345, 10);
+  const b = exam.buildExam(12345, 10);
+  eq(a.length, 10, "right length");
+  eq(a.map((x) => x.id).join(","), b.map((x) => x.id).join(","), "same seed → same questions");
+  ok(a.every((x) => !x.chart), "exam questions are chartless (text-only → fair)");
+  eq(new Set(a.map((x) => x.id)).size, a.length, "no duplicate questions");
+  ok(new Set(a.map((x) => x.cat)).size >= 4, "spread across ≥4 categories");
+  ok(a.map((x) => x.id).join(",") !== exam.buildExam(999, 10).map((x) => x.id).join(","), "different seed → different draw");
+  ok(exam.EXAM_POOL.length >= 40 && exam.EXAM_POOL.every((t) => !t.chart), "EXAM_POOL is sizeable & chartless");
+});
+test("exam: gradeExam scores good choices; byCat sums; grade thresholds", () => {
+  const items = exam.buildExam(42, 6);
+  const allGood = items.map((tpl) => tpl.choices.findIndex((c) => c.good));
+  const perfect = exam.gradeExam(items, allGood);
+  eq(perfect.correct, items.length, "all-good picks → all correct");
+  eq(perfect.pct, 100, "100%");
+  eq(perfect.grade.key, "A", "A grade");
+  eq(perfect.wrong.length, 0, "no wrong entries");
+  const allBad = items.map((tpl) => tpl.choices.findIndex((c) => !c.good));
+  const bad = exam.gradeExam(items, allBad);
+  ok(bad.pct < perfect.pct, "non-good picks score lower");
+  eq(Object.values(perfect.byCat).reduce((s, c) => s + c.n, 0), items.length, "byCat n sums to total");
+  eq(exam.isCorrect(items[0], -1), false, "skip counts wrong");
+  eq(exam.isCorrect(items[0], 999), false, "out-of-range counts wrong");
+  eq(exam.examGrade(95).key, "A"); eq(exam.examGrade(85).key, "B"); eq(exam.examGrade(75).key, "C"); eq(exam.examGrade(65).key, "D"); eq(exam.examGrade(30).key, "F");
+});
+test("exam: RECORD_EXAM folds into mastery + mistakes, leaves xp/streak untouched", () => {
+  const before = { ...I, xp: 100, answerStreak: 4, mastery: {}, mistakes: [] };
+  const answers = [{ keys: ["cat:A"], correct: true }, { keys: ["cat:A"], correct: false }, { keys: ["cat:D"], correct: true }];
+  const mistakes = [{ topic: "cat:A", question: { zh: "q", en: "q" }, chosen: { zh: "x", en: "x" }, correct: { zh: "y", en: "y" }, day: 21 }];
+  const after = R(before, { type: "RECORD_EXAM", answers, mistakes });
+  eq(after.mastery["cat:A"].n, 2, "cat:A answered twice");
+  eq(after.mastery["cat:A"].ok, 1, "cat:A one correct");
+  eq(after.mastery["cat:D"].ok, 1, "cat:D correct");
+  eq(after.mistakes.length, 1, "one mistake logged");
+  ok(after.mistakes[0].id, "mistake got an id");
+  eq(after.xp, 100, "xp untouched (exam isolated from game economy)");
+  eq(after.answerStreak, 4, "streak untouched");
+});
+test("mastery-cloud: masterySummary compacts n>0 cells; parse round-trips + tolerant", () => {
+  const m = { "disc:mechanical": { n: 5, ok: 4 }, "cat:A": { n: 3, ok: 1 }, "disc:hse": { n: 0, ok: 0 } };
+  const s = mastery.masterySummary(m);
+  ok(s.length < 120, "summary is compact");
+  const back = mastery.parseMasterySummary(s);
+  eq(back["disc:mechanical"].n, 5); eq(back["disc:mechanical"].ok, 4);
+  eq(back["cat:A"].ok, 1, "cat:A round-trips");
+  ok(!("disc:hse" in back), "n=0 cells dropped");
+  eq(Object.keys(mastery.parseMasterySummary("not json")).length, 0, "bad json → empty");
+  eq(Object.keys(mastery.parseMasterySummary("")).length, 0, "empty → empty");
+  eq(Object.keys(mastery.parseMasterySummary(undefined)).length, 0, "undefined → empty");
+  // 容錯:亦接受 {n,ok} 物件形式
+  eq(mastery.parseMasterySummary('{"cat:B":{"n":2,"ok":2}}')["cat:B"].n, 2, "accepts object form too");
+});
+test("records: bestExam default 0, carried by merge, max by union", () => {
+  eq(recs.emptyRecord().bestExam, 0, "default 0");
+  const { rec } = recs.mergeRecord({ ...recs.emptyRecord(), bestExam: 80 }, { ...I }, 1000);
+  eq(rec.bestExam, 80, "mergeRecord carries bestExam through (not derived from GameData)");
+  eq(recs.unionRecord({ ...recs.emptyRecord(), bestExam: 60 }, { ...recs.emptyRecord(), bestExam: 90 }).bestExam, 90, "union takes max exam best");
 });
 
 // ───────────────────────── 每日任務（#78） ─────────────────────────

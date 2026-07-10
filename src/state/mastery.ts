@@ -36,6 +36,33 @@ export function weakest(rows: MasteryRow[], minN = 2): MasteryRow | null {
 // 總作答數(判斷是否已有足夠資料可顯示)。
 export const totalAnswered = (m: Mastery): number => Object.values(m || {}).reduce((a, c) => a + (c.n || 0), 0);
 
+// ───────── 掌握度雲端摘要(#mastery-cloud):隨存檔上傳,供教師端個別鑽取 ─────────
+// 壓成精簡字串:只帶有作答(n>0)的格,值以 [n, ok] 元組節省長度(十來個格,體積極小)。
+export function masterySummary(m: Mastery): string {
+  const out: Record<string, [number, number]> = {};
+  for (const k of Object.keys(m || {})) {
+    const c = (m || {})[k];
+    if (c && c.n > 0) out[k] = [c.n, c.ok];
+  }
+  return JSON.stringify(out);
+}
+// 解析雲端摘要回 Mastery(容錯:接受 [n,ok] 元組或 {n,ok} 物件;壞資料回 {})。
+export function parseMasterySummary(s: string | undefined | null): Mastery {
+  if (!s) return {};
+  try {
+    const raw = JSON.parse(s) as Record<string, [number, number] | { n?: number; ok?: number }>;
+    const out: Mastery = {};
+    for (const k of Object.keys(raw || {})) {
+      const v = raw[k];
+      if (Array.isArray(v)) out[k] = { n: Number(v[0]) || 0, ok: Number(v[1]) || 0 };
+      else if (v && typeof v === "object") out[k] = { n: Number(v.n) || 0, ok: Number(v.ok) || 0 };
+    }
+    return out;
+  } catch {
+    return {};
+  }
+}
+
 // ───────── 錯題本(#mistake-log):答錯即記錄情境/你的選擇/正解/教訓,供事後複習與反思 ─────────
 export interface Mistake {
   id: string;        // 唯一 id(reducer 指派)
