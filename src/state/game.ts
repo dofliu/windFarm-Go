@@ -738,6 +738,7 @@ export type Action =
   | { type: "ROLL_WEEKLY"; weekly: WeeklyState } // 產生當週主題挑戰（#79，由 WeeklyTracker 於週推進時派發）
   | { type: "CLAIM_WEEKLY"; xp: number; cash: number } // 發放本週挑戰獎勵（#79）
   | { type: "RECORD_ANSWER"; keys: string[]; correct: boolean } // 記錄一次作答(知識點掌握度 #mastery)
+  | { type: "RECORD_EXAM"; answers: { keys: string[]; correct: boolean }[]; mistakes: Omit<Mistake, "id" | "reviewed" | "reflection">[] } // 獨立測驗(#exam):批次計入掌握度+錯題本,不動 xp/streak(評量與遊戲經濟隔離)
   | { type: "RECORD_MISTAKE"; mk: Omit<Mistake, "id" | "reviewed" | "reflection"> } // 答錯→記入錯題本
   | { type: "REVIEW_MISTAKE"; id: string; reflection: string } // 複習錯題並寫反思
   | { type: "UPGRADE_PORT"; id: string; cost: number } // 母港建設升級(#port):扣預算、設施 +1 級
@@ -1097,6 +1098,15 @@ export function reducer(s: GameData, a: Action): GameData {
     case "RECORD_MISTAKE": {
       const id = `${a.mk.day}_${(s.mistakes ?? []).length}`;
       return { ...s, mistakes: addMistake(s.mistakes ?? [], { ...a.mk, id }) };
+    }
+    case "RECORD_EXAM": {
+      // 測驗批次計入:各題折入掌握度(#mastery),錯題收入錯題本;不動 xp/answerStreak → 評量不干擾遊戲經濟。
+      let mastery = s.mastery ?? {};
+      for (const ans of a.answers) mastery = recordAnswer(mastery, ans.keys, ans.correct);
+      let mistakes = s.mistakes ?? [];
+      const base = mistakes.length;
+      a.mistakes.forEach((mk, i) => { mistakes = addMistake(mistakes, { ...mk, id: `ex${mk.day}_${base + i}` }); });
+      return { ...s, mastery, mistakes };
     }
     case "REVIEW_MISTAKE":
       return { ...s, mistakes: reviewMistake(s.mistakes ?? [], a.id, a.reflection) };

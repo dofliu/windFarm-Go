@@ -31,6 +31,7 @@ const TrendsModal = lazy(() => import("./ui/TrendsModal"));
 const ProfileModal = lazy(() => import("./ui/ProfileModal"));
 const TeacherModal = lazy(() => import("./ui/TeacherModal"));
 const PortModal = lazy(() => import("./ui/PortModal"));
+const ExamModal = lazy(() => import("./ui/ExamModal"));
 import { GameProvider } from "./state/GameContext";
 import { DialogueProvider } from "./state/DialogueContext";
 import { TutorialProvider } from "./state/TutorialContext";
@@ -54,6 +55,7 @@ export default function App() {
   const [showBuild, setShowBuild] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const [showTeacher, setShowTeacher] = useState(false);
+  const [showExam, setShowExam] = useState(false);
   const [showCaseFile, setShowCaseFile] = useState(false);
   const [showTrends, setShowTrends] = useState(false);
   const [showPort, setShowPort] = useState(false);
@@ -126,7 +128,7 @@ export default function App() {
   // 彈窗:打開時才掛載 → 對應 chunk 才下載(code-split)。手機上由 .wfg-modal-panel 響應式縮放。
   const modals = (
     <Suspense fallback={null}>
-      {showCourse && <CourseModal open onClose={() => setShowCourse(false)} week={week} onSetWeek={changeWeek} onTeacher={() => { setShowCourse(false); setShowTeacher(true); }} />}
+      {showCourse && <CourseModal open onClose={() => setShowCourse(false)} week={week} onSetWeek={changeWeek} onTeacher={() => { setShowCourse(false); setShowTeacher(true); }} onExam={() => { setShowCourse(false); setShowExam(true); }} />}
       {showDispatch && <DispatchModal open onClose={() => setShowDispatch(false)} />}
       {showOps && <OpsCenterModal open onClose={() => setShowOps(false)} />}
       {showFleet && <FleetOpsModal open onClose={() => setShowFleet(false)} />}
@@ -134,9 +136,10 @@ export default function App() {
       {facility && <FacilityModal kind={facility} onClose={() => setFacility(null)} />}
       {showCaseFile && <CaseFileModal open onClose={() => setShowCaseFile(false)} />}
       {showTrends && <TrendsModal open onClose={() => setShowTrends(false)} />}
-      {showPort && <PortModal open onClose={() => setShowPort(false)} />}
+      {showPort && <PortModal open onClose={() => setShowPort(false)} mode={mode} />}
       {showProfile && <ProfileModal open onClose={() => setShowProfile(false)} />}
       {showTeacher && <TeacherModal open onClose={() => setShowTeacher(false)} />}
+      {showExam && <ExamModal open onClose={() => setShowExam(false)} />}
     </Suspense>
   );
   const trackers = (<><ScoreSync /><RecordsTracker /><DailyTracker /><WeeklyTracker /><WelcomeOnLogin /><LedgerToaster /><Toaster /></>);

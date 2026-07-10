@@ -12,9 +12,13 @@
  *
  * 分頁（自動建立）：
  *   accounts: key | studentId | classCode | nickname | pinHash | createdAt
- *   saves:    key | savedAt | state | score | day | availability | generation | nickname
+ *   saves:    key | savedAt | state | score | day | availability | generation | nickname | mastery
  *   records:  key | updatedAt | record
  *   Sheet1（排行，沿用）：時間 | 暱稱 | 班級碼 | 績效分 | 可用率 | 發電量 | 天數 | 學號
+ *
+ * v2.2 變更(#mastery-cloud):saves 新增第 9 欄 mastery(掌握度精簡摘要 JSON),隨存檔一併寫入;
+ *   teacher 端回傳每位學生的 mastery,供教師面板「個別鑽取」各科別正確率。改檔後務必「新版本」重部署;
+ *   既有 saves 分頁的舊列第 9 欄留空即可(教師端優雅降級,不影響原有欄位)。
  */
 
 var SIGN_SECRET = 'wfg-2026-oandm'; // 與前端 src/cloud/sheet.ts 一致（排行送分簽章）
@@ -120,7 +124,8 @@ function doGet(e) {
         nickname: String(row2[7] || ''),
         savedAt: Number(row2[1]) || 0, updatedAt: Number(row2[1]) || 0,
         score: Number(row2[3]) || 0, day: Number(row2[4]) || 0,
-        availability: Number(row2[5]) || 0, generation: Number(row2[6]) || 0
+        availability: Number(row2[5]) || 0, generation: Number(row2[6]) || 0,
+        mastery: String(row2[8] || '') // #mastery-cloud:掌握度精簡摘要,供教師端個別鑽取
       });
     }
     out.sort(function (a, b) { return b.score - a.score; });
@@ -159,10 +164,11 @@ function doPost(e) {
         var key = keyOf(cls, sid);
         var nick = (getAccount(cls, sid) || {}).nickname || '';
         var state = String(p.state || '').slice(0, 90000);
+        var mastery = String(p.mastery || '').slice(0, 4000); // #mastery-cloud:掌握度精簡摘要(第 9 欄)
         var rowVals = [key, Number(p.savedAt) || (new Date()).getTime(), state,
-          clampInt(p.score, 0, 9e8), clampInt(p.day, 0, 3650), clampInt(p.availability, 0, 100), clampInt(p.generation, 0, 9e8), nick];
+          clampInt(p.score, 0, 9e8), clampInt(p.day, 0, 3650), clampInt(p.availability, 0, 100), clampInt(p.generation, 0, 9e8), nick, mastery];
         var row = findRow(sh, key);
-        if (row > 0) sh.getRange(row, 1, 1, 8).setValues([rowVals]);
+        if (row > 0) sh.getRange(row, 1, 1, 9).setValues([rowVals]);
         else sh.appendRow(rowVals);
         return json({ ok: true });
       });

@@ -5,11 +5,12 @@ import { useGame } from "../state/GameContext";
 import { toWan } from "../state/game";
 import { Sfx } from "../audio/sfx";
 import { toast } from "./toast";
-import PortScene from "./PortScene";
+import PortScene, { type PortBgMode } from "./PortScene";
 import { PORT_FACILITIES, portFacLevel, nextPortCost, portLevel, PORT_MAX_LEVEL } from "../state/port";
 
 // 母港建設(#port):用獲利升級母港設施,即時預覽視覺成長。永遠開放(沙盒)。
-export default function PortModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+// mode 跟隨全域背景切換(模擬/實境/漫畫):實境/漫畫時建設成果疊在母港實景照片上。
+export default function PortModal({ open, onClose, mode = "sim" }: { open: boolean; onClose: () => void; mode?: PortBgMode }) {
   useLang();
   const { data, dispatch } = useGame();
   if (!open) return null;
@@ -29,8 +30,11 @@ export default function PortModal({ open, onClose }: { open: boolean; onClose: (
             {t({ zh: "用營運獲利美化、擴建母港 —— 每次升級都會讓港區畫面成長,把數值變成看得見的成就。", en: "Reinvest your profits to expand and beautify the home port — each upgrade visibly grows the harbour, turning numbers into achievement." })}
           </div>
 
-          {/* 即時預覽:會隨升級長大 */}
-          <PortScene u={u} />
+          {/* 即時預覽:會隨升級長大;實境/漫畫背景模式時疊在母港照片上 */}
+          <PortScene u={u} mode={mode} />
+          <div style={{ fontSize: 10.5, color: C.mist2, marginTop: 5, textAlign: "right" }}>
+            {t({ zh: `背景：${mode === "real" ? "實境" : mode === "comic" ? "漫畫" : "模擬"}(於母港右上「🎬 背景」切換)`, en: `Backdrop: ${mode === "real" ? "Realistic" : mode === "comic" ? "Comic" : "Simulated"} (toggle via 🎬 on the Hub)` })}
+          </div>
 
           <div style={{ display: "flex", alignItems: "center", margin: "12px 0 8px" }}>
             <span style={{ color: C.gold, fontSize: 12.5, fontWeight: 700, letterSpacing: ".06em" }}>{t({ zh: "母港等級", en: "Port level" })}</span>

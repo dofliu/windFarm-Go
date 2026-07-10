@@ -84,6 +84,7 @@ export interface ProgressSummary {
   day: number;
   availability: number;
   generation: number;
+  mastery?: string; // 知識點掌握度精簡摘要(#mastery-cloud)：供教師端個別鑽取；後端存欄、teacher 端回傳
 }
 export async function loadStateCloud(p: CloudIdentity): Promise<SaveEnvelope | null> {
   const j = await getJson<{ ok?: boolean; state?: string | null; savedAt?: number }>({ do: "load", studentId: p.studentId, classCode: p.classCode, pinHash: p.pinHash });
@@ -120,6 +121,7 @@ export interface ClassRow {
   availability: number;
   generation: number;
   updatedAt: number;
+  mastery?: string; // 掌握度精簡摘要(#mastery-cloud)；舊後端未回傳時為 undefined → 教師端優雅降級
 }
 export interface TeacherResult {
   ok: boolean;

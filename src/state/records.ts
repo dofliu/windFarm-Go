@@ -44,10 +44,11 @@ export interface RecordData {
   bestMissions: number; // 最多完成任務數
   bestCatalog: number; // 最多圖鑑數
   bestResolved: number; // 最多戰情室修復
+  bestExam?: number; // 獨立測驗最佳成績(%)(#exam);選填→舊存檔相容
   updatedAt: number;
 }
 
-export const emptyRecord = (): RecordData => ({ unlocked: {}, bestScore: 0, bestDay: 0, bestGeneration: 0, bestMissions: 0, bestCatalog: 0, bestResolved: 0, updatedAt: 0 });
+export const emptyRecord = (): RecordData => ({ unlocked: {}, bestScore: 0, bestDay: 0, bestGeneration: 0, bestMissions: 0, bestCatalog: 0, bestResolved: 0, bestExam: 0, updatedAt: 0 });
 
 // 目前狀態下「已滿足」的成就 id（純函式）
 export function evaluateAchievements(d: GameData): string[] {
@@ -76,6 +77,7 @@ export function mergeRecord(prev: RecordData, d: GameData, now: number): { rec: 
     bestMissions: Math.max(prev.bestMissions, d.missionsDone),
     bestCatalog: Math.max(prev.bestCatalog, d.seenFaults?.length ?? 0),
     bestResolved: Math.max(prev.bestResolved, d.fleetResolved ?? 0),
+    bestExam: prev.bestExam ?? 0, // 測驗成績非源自 GameData → 沿用既有紀錄(由 ExamModal 直接更新)
     updatedAt: newly.length || score > prev.bestScore ? now : prev.updatedAt,
   };
   return { rec, newly };
@@ -95,6 +97,7 @@ export function unionRecord(a: RecordData, b: RecordData): RecordData {
     bestMissions: Math.max(a.bestMissions, b.bestMissions),
     bestCatalog: Math.max(a.bestCatalog, b.bestCatalog),
     bestResolved: Math.max(a.bestResolved, b.bestResolved),
+    bestExam: Math.max(a.bestExam ?? 0, b.bestExam ?? 0),
     updatedAt: Math.max(a.updatedAt, b.updatedAt),
   };
 }

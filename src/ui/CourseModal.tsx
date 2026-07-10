@@ -19,7 +19,7 @@ function toI18n(v: unknown, fallback: I18n): I18n {
 }
 
 // 課程模式（#6）：一鍵把某週故障指派為下一筆工單，或匯入自訂任務 JSON。
-export default function CourseModal({ open, onClose, week = 1, onSetWeek, onTeacher }: { open: boolean; onClose: () => void; week?: number; onSetWeek?: (w: number) => void; onTeacher?: () => void }) {
+export default function CourseModal({ open, onClose, week = 1, onSetWeek, onTeacher, onExam }: { open: boolean; onClose: () => void; week?: number; onSetWeek?: (w: number) => void; onTeacher?: () => void; onExam?: () => void }) {
   useLang();
   const { dispatch } = useGame();
   const { start: startTutorial } = useTutorial();
@@ -106,6 +106,21 @@ export default function CourseModal({ open, onClose, week = 1, onSetWeek, onTeac
             </div>
             <span style={{ color: C.mist2, fontSize: 14 }}>▶</span>
           </button>
+
+          {/* 獨立測驗模式（#exam）：正式評量,跨科別抽題、無提示、單次作答,計入掌握度/錯題本 */}
+          {onExam && (
+            <button
+              onClick={() => { Sfx.click(); onExam(); }}
+              style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 6, background: "rgba(127,206,142,.12)", border: "1px solid rgba(127,206,142,.4)", color: C.cream, cursor: "pointer", marginBottom: 14, textAlign: "left" }}
+            >
+              <span style={{ fontSize: 20 }}>📝</span>
+              <div style={{ flex: 1 }}>
+                <div style={{ color: C.goldText, fontWeight: 900, fontFamily: FONT_SERIF, fontSize: 14 }}>{t({ zh: "獨立測驗模式", en: "Exam Mode" })}</div>
+                <div style={{ color: C.mist, fontSize: 11.5, marginTop: 2 }}>{t({ zh: "跨科別抽題正式評量,無提示、單次作答,測完給分與覆盤。", en: "A no-hint, single-attempt assessment with scoring & review." })}</div>
+              </div>
+              <span style={{ color: C.mist2, fontSize: 14 }}>▶</span>
+            </button>
+          )}
 
           {/* 教師檢視：班級碼 + 教師碼 → 唯讀檢視全班進度（雲端） */}
           {onTeacher && (

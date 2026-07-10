@@ -3,6 +3,7 @@ import { INITIAL, reducer, migrateSave, computeScore, type Action, type GameData
 import { getProfile, saveKeyFor, isAuthed } from "./profile";
 import { SAVE_SYNC, loadCloudState, saveCloudState, CLOUD_FIRST } from "../cloud/sheet";
 import { cloudEnabled, identityOf, loadStateCloud, saveStateCloud, pickNewer, type SaveEnvelope } from "../cloud/api";
+import { masterySummary } from "./mastery";
 
 // 依登入身分取得存檔 key —— 每位使用者資料獨立，互不沿用
 function saveKey(): string {
@@ -88,6 +89,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
         day: data.day,
         availability: data.availability,
         generation: data.generationMWh,
+        mastery: masterySummary(data.mastery ?? {}), // 掌握度摘要隨存檔上傳,供教師端個別鑽取(#mastery-cloud)
       });
     }, 1500);
     return () => window.clearTimeout(id);

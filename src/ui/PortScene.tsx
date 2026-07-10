@@ -2,13 +2,20 @@ import { C, FONT_SERIF } from "./tokens";
 import { t } from "../game/systems/i18n";
 import { portFacLevel, portLevel, PORT_MAX_LEVEL, type PortUpgrades } from "../state/port";
 
-// 母港視覺成長場景(#port):純 CSS,依各設施等級「長大」——碼頭/倉庫/貨櫃/起重機/燈塔。
-export default function PortScene({ u, height = 200 }: { u: PortUpgrades; height?: number }) {
+// 母港建設疊到實境/漫畫背景(#port):依全域背景模式,選對應母港實景照片作底,建設 sprite 疊其上。
+export type PortBgMode = "sim" | "real" | "comic";
+const PORT_PHOTO: Record<PortBgMode, string | null> = { sim: null, real: "harbor.jpg", comic: "comic_harbor.jpg" };
+
+// 母港視覺成長場景(#port):依各設施等級「長大」——碼頭/倉庫/貨櫃/起重機/燈塔。
+// mode = sim → 純 CSS 漸層天海(預設);real/comic → 母港實景/漫畫照片作底,建設 sprite 疊其上(對應 GAME_DESIGN §16 收尾)。
+export default function PortScene({ u, height = 200, mode = "sim" }: { u: PortUpgrades; height?: number; mode?: PortBgMode }) {
   const quay = portFacLevel(u, "quay");
   const wh = portFacLevel(u, "warehouse");
   const crane = portFacLevel(u, "crane");
   const beacon = portFacLevel(u, "beacon");
   const lv = portLevel(u);
+  const photo = PORT_PHOTO[mode];
+  const photoUrl = photo ? `${import.meta.env.BASE_URL}assets/scenes/${photo}` : null;
 
   const deckW = [58, 72, 86, 100][quay]; // 碼頭延伸寬度(%)
   const whW = [34, 46, 58, 70][wh]; // 倉庫寬
@@ -21,12 +28,22 @@ export default function PortScene({ u, height = 200 }: { u: PortUpgrades; height
   const cont = ["#3f8f6e", "#c07a2e", "#8a5fb0", "#3f6f9f", "#b04a4a", "#6f8a3f"];
 
   return (
-    <div style={{ position: "relative", width: "100%", height, borderRadius: 8, overflow: "hidden", border: "1px solid rgba(214,167,84,.35)", background: "linear-gradient(180deg,#2a3550 0%,#5a5d72 36%,#b88a5a 60%,#caa06a 66%)" }}>
-      {/* 夕陽光暈 */}
-      <div style={{ position: "absolute", left: 0, right: 0, top: 0, height: "66%", background: "radial-gradient(circle at 64% 92%, rgba(255,214,160,.65), rgba(255,214,160,0) 46%)" }} />
-      {/* 海 */}
-      <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: "40%", background: "linear-gradient(180deg,#2f6678 0%,#1c4858 45%,#123442 100%)" }} />
-      <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: "40%", background: "repeating-linear-gradient(180deg, rgba(255,255,255,.05) 0 2px, rgba(255,255,255,0) 2px 22px)" }} />
+    <div style={{ position: "relative", width: "100%", height, borderRadius: 8, overflow: "hidden", border: "1px solid rgba(214,167,84,.35)", background: photoUrl ? "#0f2028" : "linear-gradient(180deg,#2a3550 0%,#5a5d72 36%,#b88a5a 60%,#caa06a 66%)" }}>
+      {photoUrl ? (
+        /* 實境/漫畫:母港照片作底 + 下半暗化,讓建設 sprite 讀得清楚 */
+        <>
+          <div style={{ position: "absolute", inset: 0, backgroundImage: `url("${photoUrl}")`, backgroundSize: "cover", backgroundPosition: "center" }} />
+          <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: "58%", background: "linear-gradient(180deg, rgba(8,20,26,0) 0%, rgba(8,20,26,.35) 45%, rgba(8,20,26,.62) 100%)" }} />
+        </>
+      ) : (
+        <>
+          {/* 夕陽光暈 */}
+          <div style={{ position: "absolute", left: 0, right: 0, top: 0, height: "66%", background: "radial-gradient(circle at 64% 92%, rgba(255,214,160,.65), rgba(255,214,160,0) 46%)" }} />
+          {/* 海 */}
+          <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: "40%", background: "linear-gradient(180deg,#2f6678 0%,#1c4858 45%,#123442 100%)" }} />
+          <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: "40%", background: "repeating-linear-gradient(180deg, rgba(255,255,255,.05) 0 2px, rgba(255,255,255,0) 2px 22px)" }} />
+        </>
+      )}
 
       {/* 燈塔(右) */}
       <div style={{ position: "absolute", right: "5%", bottom: "34%", width: 12, height: [28, 40, 50, 58][beacon] || 24, background: "linear-gradient(180deg,#e9e2d2,#b9b0a0)", borderRadius: "3px 3px 0 0" }}>
