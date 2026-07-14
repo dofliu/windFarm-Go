@@ -1,6 +1,6 @@
 # 交接紀錄 — Session Handoff
 
-> 給下一個開發 session 的快速接手筆記。最後更新:**2026-07-10**。
+> 給下一個開發 session 的快速接手筆記。最後更新:**2026-07-14**。
 > 完整藍圖見 [ROADMAP.md](ROADMAP.md);設計權威版見 [GAME_DESIGN.md](GAME_DESIGN.md)(§17 出海決策/§18 人力・軸承/§19 測驗・掌握度・母港);專案現況見 `../STATUS.yaml`。
 > 測試數以 `npm test` 實跑為準(目前 **164**);判斷任務題數以 `TASKS.length` 為準(**192**)。
 
