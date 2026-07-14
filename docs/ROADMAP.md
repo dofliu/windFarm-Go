@@ -2,7 +2,7 @@
 
 > 以 zh-TW 為主、English secondary。本藍圖依現況（[STATUS.yaml](../STATUS.yaml)、[GAME_DESIGN.md](GAME_DESIGN.md)）盤點已完成與待辦，並提出**規劃方向**。
 > ⚠ 標示為**規劃中／推測（speculative）**者尚未實作，請勿當成現況；本文為**規劃**而非承諾。
-> Lead with zh-TW; English summaries follow. Last reviewed: 2026-07-08.
+> Lead with zh-TW; English summaries follow. Last reviewed: 2026-07-14.
 
 ---
 
@@ -27,7 +27,28 @@
   - 已查核確認乾淨：quiz 索引、跨檔 id 引用、i18n 完整性、Tier 閘門、派工守衛一致性、事件權重、案例去重。
 - **Pages 部署硬化**：`deploy.yml` 新增 `actions/configure-pages`(鎖定發佈來源為 GitHub Actions，避免誤切回「Deploy from a branch」導致線上端出未 build 原始碼)；`concurrency.cancel-in-progress` 改 false。
 
-**本輪續作已完成（原留待下次的兩項）**：bearing 類故障備品正名（新增 Tier 3「傳動軸承組」`drive_bearing`，主軸承振動/發電機振動不再權宜共用「變槳軸承」，並補 `pitch_bearing_wear` 事件避免孤兒備品）；`crew_shortage`/`strike` 事件實效化（缺工直接折抵戰情室「可同時開的現場作業面」，滿編不懲罰、下限 1、可休整回復）。詳見 [GAME_DESIGN.md](GAME_DESIGN.md) §18。
+**續作已完成（PR #116，原留待下次的兩項，見 §18）**：bearing 類故障備品正名（新增 Tier 3「傳動軸承組」`drive_bearing`，主軸承振動/發電機振動不再權宜共用「變槳軸承」，並補 `pitch_bearing_wear` 事件避免孤兒備品）；`crew_shortage`/`strike` 事件實效化（缺工直接折抵戰情室「可同時開的現場作業面」，滿編不懲罰、下限 1、可休整回復）。
+
+**再一輪已完成（PR #117，收尾三項延伸候選，見 §19）**：**獨立測驗模式**（跨科別均衡抽題、無提示單次作答、A–F 等第＋各類別對錯＋錯題覆盤；`RECORD_EXAM` 計入掌握度與錯題本但不動遊戲分數）；**掌握度雲端同步・教師端個別鑽取**（存檔夾帶掌握度摘要、後端 `Code.gs` v2.2 存/回、教師面板點列展開各科別正確率，向後相容）；**母港建設疊實境/漫畫背景**（`PortScene` 依背景模式疊 `harbor.jpg`/`comic_harbor.jpg`）。
+
+---
+
+## 後續接續工作 — Next（給下一個 session 的接手清單）
+
+> 依「立即可做 → 需後端 → 願景」排序；交接細節見 [HANDOFF.md](HANDOFF.md)。
+
+**立即可做（免後端）**
+- **戰情室停機折抵「現金」收入的設定開關** — 目前停機只折抵淨發電；提供設定把戰情室層接入售電現金流（需確認經濟平衡）。
+- **每機獨立健康度 / RUL 預測性維護** — 由全場 `fleetHealth` 延伸到每台機組健康指標與剩餘壽命建模，深化 CBM／預測性維護教學（中大型，建議先出設計草案）。
+- **無障礙延伸** — 鍵盤操作、更全面色盲配色審查、對話／音效字幕與旁白。
+- **舊文件統計校正** — `docs/TEST_REPORT.md`、`docs/MANUAL.zh-TW.md`、`docs/WALKTHROUGH.md` 內殘留的舊測試數/題數，下次校正為 `npm test`(164)／`TASKS.length`(192)。
+
+**需後端（先重新部署 Apps Script `Code.gs`）**
+- **⚠ 啟用教師端掌握度鑽取（唯一部署待辦）** — client 與 `Code.gs` v2.2 皆就緒且向後相容；要讓教師面板**顯示鑽取資料**，需把後端更新到 v2.2 並「**新版本**」重部署（見 [CLOUD_SETUP.md](CLOUD_SETUP.md)）。未部署時前端照舊、教師面板顯示「尚無掌握度資料」。
+- **Exam Mode 進階版（教師發布＋雲端報告）** — 目前為本機評量；進階為教師發布指定測驗、結束生成報告並同步教師端、動態參數防抄襲。
+- **掌握度鑽取改雷達視覺** — 教師端目前用長條，可重用 `RadarChart.tsx` 改雷達。
+
+**願景（未排程）**：多人／班級競賽賽季、CC0 音樂與各地點美術、內容編輯器（教師資料驅動新增故障）。
 
 ---
 
@@ -59,7 +80,7 @@
 - **直升機進場 / 電網限電真實權衡任務**：自由營運沙盒新增 8 題真實運維判斷——直升機吊掛進場(封船海象/遠海急件/作業限值/成本效益)與電網限電(負電價降載/限電補償/低電壓穿越 FRT/順勢維修)。
   *Real-ops tradeoffs: helicopter access & grid-curtailment judgment tasks.*
 - **呈現**：三模式背景（模擬/實境/漫畫）、60° 俯瞰、多場景登塔（機艙/塔架/輪轂/甲板，含實景/漫畫情境圖與出海/大修場景影片）、Web Audio 音效音樂、中英雙語。母港左側「設施／風場動態」面板可各自獨立收合，設施項目皆有專屬圖示（含技師人物立繪）。
-- **工程**：自動化測試 `npm test`（154 項）、平衡模擬器 `npm run sim`、併發壓力測試 `npm run stress`、PR CI（typecheck/test/build）。完整系統測試紀錄見 [TEST_REPORT.md](TEST_REPORT.md)（測試數為本文撰寫時的既有紀錄，隨版本增加，以 `npm test` 實跑結果為準）、壓測細節見 [STRESS_TEST.md](STRESS_TEST.md)。
+- **工程**：自動化測試 `npm test`（164 項）、平衡模擬器 `npm run sim`、併發壓力測試 `npm run stress`、PR CI（typecheck/test/build）。完整系統測試紀錄見 [TEST_REPORT.md](TEST_REPORT.md)（測試數為本文撰寫時的既有紀錄，隨版本增加，以 `npm test` 實跑結果為準）、壓測細節見 [STRESS_TEST.md](STRESS_TEST.md)。
 
 ---
 
