@@ -1,11 +1,12 @@
 # 交接紀錄 — Session Handoff
 
-> 給下一個開發 session 的快速接手筆記。最後更新:**2026-07-14**。
+> 給下一個開發 session 的快速接手筆記。最後更新:**2026-07-29**。
 > 完整藍圖見 [ROADMAP.md](ROADMAP.md);設計權威版見 [GAME_DESIGN.md](GAME_DESIGN.md)(§17 出海決策/§18 人力・軸承/§19 測驗・掌握度・母港);專案現況見 `../STATUS.yaml`。
 > 測試數以 `npm test` 實跑為準(目前 **164**);判斷任務題數以 `TASKS.length` 為準(**192**)。
 
 ## 目前狀態
-- `main` 為最新;所有功能皆已合併(最新:**PR #117**)。`npm test` = **164 全綠**,`npm run typecheck` / `npm run build` 乾淨。
+- `main` 為最新;所有功能皆已合併(最新:**PR #118**)。`npm test` = **164 全綠**,`npm run typecheck` / `npm run build` 乾淨。
+- 本輪(issue #119):校正 `docs/TEST_REPORT.md`/`docs/MANUAL.zh-TW.md` 內殘留較早快照的測試數/題數/故障種數/備品種數,對齊 `npm test`(164)/`TASKS.length`(192)/`FAULTS`(25)/`PARTS`(34) 實跑值(`docs/WALKTHROUGH.md` 查核後確認無殘留舊統計,免改動)。純文件變更,不影響程式邏輯。
 - `npm run sim`(平衡)、`npm run stress`(併發)皆通過。⚠ `npm run sim` 的**絕對數字**會隨故障/備品/任務資料變動而整段跳動(見下「模擬器蝴蝶效應」),回測時只需確認**相對排序**(passive ≪ active < full-crew)與梯度健康,不必追求絕對值穩定。
 - 開發分支:**`claude/wind-farm-game-dev-ik3kt7`**(每次 PR 合併後從最新 `main` reset 同步,沿用同名分支)。
 - GitHub Pages 部署來源已鎖定為 **GitHub Actions**(`deploy.yml` 內 `actions/configure-pages`,`enablement: true`);若日後又被誤切回「Deploy from a branch」,下次部署會自動修正。**切勿用 Actions 頁面的「Re-run」重跑 Pages 部署**(會觸發「重複 github-pages artifact」錯誤);要重部署請用 `Run workflow` 開新的一次。
@@ -33,7 +34,6 @@
 - **戰情室停機折抵「現金」收入的設定開關** — 目前停機只折抵淨發電(少賺+扣分);提供設定把戰情室層也接入售電現金流(需與設計者確認經濟平衡)。
 - **每機獨立健康度 / RUL 預測性維護** — 由全場 `fleetHealth` 延伸到每台機組的健康指標與剩餘壽命(Remaining Useful Life)建模,深化 CBM/預測性維護教學。中大型工作,建議先出設計草案再動手。
 - **無障礙延伸** — 鍵盤操作(Tab/Enter 走完工單循環)、更全面的色盲友善配色審查、對話/音效字幕與旁白。
-- **文件內殘留舊統計校正** — `docs/TEST_REPORT.md`(舊記 140/154 項)、`docs/MANUAL.zh-TW.md`、`docs/WALKTHROUGH.md`(舊記 151 題)為較早快照;本輪已對齊 README/ROADMAP/GAME_DESIGN/STATUS/HANDOFF,這三份下次一併校正為 `npm test`(164)/`TASKS.length`(192)實跑值。
 
 ### 需後端(先重新部署 Apps Script `docs/leaderboard-appsscript/Code.gs`)
 - **⚠ 啟用教師端掌握度鑽取(唯一的部署待辦)** — client 與 `Code.gs` v2.2 皆已就緒且向後相容,但要讓教師面板**看到鑽取資料**,需把後端更新到 v2.2 並在「管理部署作業 → 編輯 → 版本:**新版本**」重部署(見 [CLOUD_SETUP.md](CLOUD_SETUP.md) v2.2 段)。未部署時前端一切照舊、教師面板顯示「尚無掌握度資料」提示。
