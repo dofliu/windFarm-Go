@@ -8,6 +8,7 @@ import { cloudEnabled, fetchClassProgress, classRowsToCsv, type ClassRow } from 
 import { parseMasterySummary, masteryRows, weakest, totalAnswered } from "../state/mastery";
 import { DISC } from "./disc";
 import { CAT_LABEL } from "../state/tasks";
+import RadarChart, { type RadarAxis } from "./RadarChart";
 
 type Status = "form" | "loading" | "ok" | "error";
 
@@ -182,8 +183,15 @@ function MasteryDrill({ row }: { row: ClassRow }) {
       </div>
     );
   };
+  const axes: RadarAxis[] = masteryRows(m, "disc", DISC).map((r) => ({ label: t(r.label), value: r.acc, n: r.n }));
   return (
     <div>
+      {discRows.length >= 1 && (
+        <div style={{ margin: "0 0 8px", textAlign: "center" }}>
+          <div style={{ fontSize: 11, color: C.mist, marginBottom: 2 }}>{t({ zh: "能力雷達 · 各科別", en: "Ability radar · by discipline" })}</div>
+          <RadarChart axes={axes} size={180} />
+        </div>
+      )}
       <div style={{ fontSize: 11.5, color: C.gold, fontWeight: 700, marginBottom: 5 }}>{t({ zh: "科別掌握度", en: "By discipline" })}</div>
       {discRows.length ? discRows.map((r) => bar("d" + r.key, t(r.label), r.acc, r.n, r.ok)) : <div style={{ fontSize: 11.5, color: C.mist2, marginBottom: 6 }}>—</div>}
       {catRows.length > 0 && <div style={{ fontSize: 11.5, color: C.gold, fontWeight: 700, margin: "8px 0 5px" }}>{t({ zh: "任務類別", en: "By category" })}</div>}

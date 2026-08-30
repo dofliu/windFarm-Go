@@ -263,6 +263,6 @@ scores(user_id, score, availability, generation_mwh, missions_done, day, updated
 收尾三項延伸候選，把既有「判斷型任務／掌握度／母港建設」延展為評量、教師洞察與視覺收束。
 
 - **獨立測驗模式（#exam，`state/exam.ts` + `ExamModal`）**：把判斷型題庫抽成一份正式評量——固定 10/20 題、跨科別均衡抽題（各類別洗牌後 round-robin）、**排除需輔助圖者**以確保純文字公平作答；**作答當下不給提示、不揭示對錯**，結束才公布 `pct`、A–F 等第、各類別對錯與**錯題覆盤**（揭示正解＋教訓）。純函式引擎 `buildExam`(可決定性種子)/`gradeExam` 集中於 `exam.ts`；作答經 **`RECORD_EXAM`** 批次計入知識點掌握度與錯題本(供主動回想)，但**不動 xp/answerStreak** → 評量與遊戲經濟隔離。最佳成績 `bestExam` 存學習紀錄(只增不減、雲端聯集取大)，個人檔案頁顯示。入口在 ⚙ 課程模式。
-- **掌握度雲端同步・教師端個別鑽取（#mastery-cloud）**：存檔上傳時夾帶**掌握度精簡摘要**(`masterySummary`：只帶 n>0 的格、[n,ok] 元組)；後端 `Code.gs` v2.2 於 `saves` 新增第 9 欄 `mastery`，`teacher` 端回傳。教師檢視面板可**點任一學生列展開鑽取**：以 `parseMasterySummary` 還原後，沿用個人檔案頁同一套 `masteryRows(disc/cat)` 顯示各科別/類別正確率條與最弱項。全程**向後相容**：舊後端不回傳 `mastery` → 教師端優雅降級並提示需升級 v2.2(見 [CLOUD_SETUP.md](CLOUD_SETUP.md))。
+- **掌握度雲端同步・教師端個別鑽取（#mastery-cloud）**：存檔上傳時夾帶**掌握度精簡摘要**(`masterySummary`：只帶 n>0 的格、[n,ok] 元組)；後端 `Code.gs` v2.2 於 `saves` 新增第 9 欄 `mastery`，`teacher` 端回傳。教師檢視面板可**點任一學生列展開鑽取**：以 `parseMasterySummary` 還原後，沿用個人檔案頁同一套 `masteryRows(disc/cat)` 顯示各科別/類別正確率條與最弱項。全程**向後相容**：舊後端不回傳 `mastery` → 教師端優雅降級並提示需升級 v2.2(見 [CLOUD_SETUP.md](CLOUD_SETUP.md))。**✅ 後續已完成**:鑽取畫面新增能力雷達圖(重用 `RadarChart.tsx`,與個人檔案頁一致),正確率條保留於雷達下方互補顯示精確數字與樣本數。
 - **母港建設疊實境/漫畫背景（#port）**：`PortScene` 依全域背景模式(模擬/實境/漫畫)選底——實境→`harbor.jpg`、漫畫→`comic_harbor.jpg`，母港建設 sprite(碼頭/倉庫/起重機/燈塔/貨櫃/停泊船)疊其上，加下半暗化 scrim 保可讀；模擬模式維持原 CSS 漸層(向後相容)。呼應 §16「後續可把 PortScene 疊到母港實景背景」的收尾。
 
