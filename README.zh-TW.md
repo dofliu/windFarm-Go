@@ -95,11 +95,13 @@ docs/                            # 設計、手冊、藍圖、攻略
 ```
 
 ## 文件
+完整文件地圖見 **[docs/README.md](docs/README.md)**（依玩家／教師／開發者分類）。重點文件：
 - **[遊戲使用說明手冊（繁中）](docs/MANUAL.zh-TW.md)** — 完整玩法手冊。
 - **[未來藍圖規劃 Roadmap](docs/ROADMAP.md)** — 已完成與規劃中的項目。
 - **[遊戲設計文件（權威版）](docs/GAME_DESIGN.md)** — 出勤就緒閘門、經濟、KPI、擬真系統。
 - **[攻略／教學說明](docs/WALKTHROUGH.md)** — 主線攻略與建議修課評量。
-- **[人物](docs/CHARACTERS.md)** · **[排行榜設定](docs/LEADERBOARD_SETUP.md)** · 歷史概念：[GDD.md](docs/GDD.md)。
+- **[雲端帳號與教師檢視部署](docs/CLOUD_SETUP.md)** · **[排行榜設定](docs/LEADERBOARD_SETUP.md)** — 教師部署指南。
+- **[人物](docs/CHARACTERS.md)** · 歷史概念：[GDD.md](docs/GDD.md)。
 
 ## 後續工作
 未來規劃見 **[docs/ROADMAP.md](docs/ROADMAP.md)**。日常工作項目於 [GitHub Issues](https://github.com/dofliu/windFarm-Go/issues) 追蹤。

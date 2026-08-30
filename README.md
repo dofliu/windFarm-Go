@@ -95,11 +95,13 @@ docs/                            # design, manual, roadmap, walkthrough
 ```
 
 ## Documentation
+Full map of all project docs: **[docs/README.md](docs/README.md)** (by audience: players / instructors / developers). Highlights:
 - **[Player Manual (zh-TW)](docs/MANUAL.zh-TW.md)** — full how-to-play guide.
 - **[Roadmap](docs/ROADMAP.md)** — what's shipped and what's planned.
 - **[Game Design (authoritative)](docs/GAME_DESIGN.md)** — the mobilization-gated O&M loop, economy, KPIs, realism systems.
 - **[Walkthrough / Teaching Guide](docs/WALKTHROUGH.md)** — campaign walkthrough and suggested course rubric.
-- **[Characters](docs/CHARACTERS.md)** · **[Leaderboard Setup](docs/LEADERBOARD_SETUP.md)** · historical concept: [GDD.md](docs/GDD.md).
+- **[Cloud Accounts & Teacher Setup](docs/CLOUD_SETUP.md)** · **[Leaderboard Setup](docs/LEADERBOARD_SETUP.md)** — instructor deployment guides.
+- **[Characters](docs/CHARACTERS.md)** · historical concept: [GDD.md](docs/GDD.md).
 
 ## Roadmap
 See **[docs/ROADMAP.md](docs/ROADMAP.md)** for the forward plan. Day-to-day work items are tracked in [GitHub Issues](https://github.com/dofliu/windFarm-Go/issues).

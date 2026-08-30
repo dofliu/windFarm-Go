@@ -2,11 +2,35 @@
 
 > 以 zh-TW 為主、English secondary。本藍圖依現況（[STATUS.yaml](../STATUS.yaml)、[GAME_DESIGN.md](GAME_DESIGN.md)）盤點已完成與待辦，並提出**規劃方向**。
 > ⚠ 標示為**規劃中／推測（speculative）**者尚未實作，請勿當成現況；本文為**規劃**而非承諾。
-> Lead with zh-TW; English summaries follow. Last reviewed: 2026-07-14.
+> Lead with zh-TW; English summaries follow. Last reviewed: 2026-08-30.
 
 ---
 
-## 本輪已完成 — 出海決策支援・學習迴路收斂・無障礙・內容全面查核
+## 2026-08-30 專案盤點與整備 — Repo audit & cleanup
+
+程式功能無變動,本輪為**倉庫健康度整理**(全數 120 個 PR 已合併、`npm test` 164 全綠):
+
+- **分支稽核**:逐一驗證 45 個遠端分支——每個歷史分支的 tip 皆「是 main 的祖先」或「等於某個已合併 PR 的 head」(早期 PR 採 squash merge,SHA 不同但內容已進 main)。**43 個可安全刪除**,一鍵指令見 `scripts/cleanup-merged-branches.sh`。
+- **文件整理**:新增 [docs/README.md](README.md) 文件索引(依玩家/教師/開發者分類);移除 2 個冗餘 zip(內容已解壓於 `design_handoff_offshore_om_game/`);校正本文備品/戰情室故障池統計為實跑值(34 備品 / 27 戰情室故障)。
+
+### ⚠ 待專案擁有者決策 — Decisions needed
+
+1. **`claude/cloud-first-accounts` 分支上的未合併部署設定**(commit `ff9d2f6`,2026-06-25 擁有者手動提交):把 `src/cloud/sheet.ts` 的 `CLOUD_FIRST` 改 `true`、`TEACHER_CODE` 填入實際教師碼。這是**全部 45 個分支中唯一未進 main 的內容**。合併它會讓正式站切換成「雲端為主帳號」,前提是後端 `Code.gs` 已重新部署為 v2+(建議直接部署 v2.2,順帶啟用教師掌握度鑽取);教師碼也會公開於 main(前端本來就藏不住,見 CLOUD_SETUP.md 安全層級說明,但請確認可接受)。**決定合併或棄用後,即可刪除該分支。**
+2. **後端 v2.2 重新部署**(既有待辦,見下方「後續接續工作」):這是啟用教師端掌握度鑽取的唯一部署動作,與上一項可一次處理。
+
+### 建議下一步優先序 — Proposed next steps (2026-08-30)
+
+功能面已達可授課完成度(120 PR、164 測試全綠),建議把重心從「加功能」轉為「**部署上線 → 課堂實測 → 依數據迭代**」:
+
+1. **P0・部署整備(開學前,一次做完)**:重新部署 `Code.gs` v2.2(新版本部署)→ 決策並處理 `CLOUD_FIRST`/教師碼(上方決策事項 1)→ `npm run live-check` 驗證線上後端 → 跑一次 `scripts/cleanup-merged-branches.sh` 完成分支清理。
+2. **P1・課堂試用回饋循環(新學期)**:實際班級投放(學號帳號+班級碼),每週用教師面板 CSV/掌握度鑽取觀察學習成效;回饋開成 GitHub Issues 作為下一輪功能依據。搭配一次 `npm run sim` 完整平衡回測(內容修正後尚未重跑)。
+3. **P2・教學深化(依課堂數據擇一)**:每機獨立健康度/RUL 預測性維護(建議先出設計草案)、Exam 進階版(教師發布+雲端報告)、內容編輯器(教師資料驅動新增故障)。
+4. **P2・無障礙延伸**:鍵盤操作走完工單循環、色盲配色全面審查、對話/音效字幕。
+5. **持續・工程健康**:分支策略改「短命分支、合併即刪」;建議在 GitHub 設定 main 分支保護(要求 CI 綠才可合併);逐步補 Playwright UI 迴歸測試(HANDOFF 已有可重現流程)。
+
+---
+
+## 前輪已完成 — 出海決策支援・學習迴路收斂・無障礙・內容全面查核
 
 對應 [GAME_DESIGN.md](GAME_DESIGN.md) §17：
 
@@ -72,8 +96,8 @@
   *Student-ID accounts + server-verified passcode; cloud-first saves/records with offline cache.*
 - **學習歷程・成就・個人檔案頁**：15 項里程碑成就（任務/戰役/番外篇/圖鑑/發電/戰情室/風場/零事故/SLA/船隊/績效），個人最佳紀錄（只增不減）跨裝置同步；右上角頭像開啟個人檔案頁。
 - **遊戲內教師檢視面板**：⚙ 課程模式 →「教師檢視」，輸入**班級碼＋教師碼**唯讀檢視全班績效/天數/可用率/發電量/更新時間。
-- **故障型錄與備品擴充**：故障 25 種(涵蓋機械/電氣/控制/結構/HSE 五大科別、「同元件不同根因」)、備品 33 種、戰情室故障池 25 種,並串接課程週次。
-  *Expanded to 25 faults across all 5 disciplines, 33 parts, 25 fleet incidents.*
+- **故障型錄與備品擴充**：故障 25 種(涵蓋機械/電氣/控制/結構/HSE 五大科別、「同元件不同根因」)、備品 34 種、戰情室故障池 27 種,並串接課程週次。
+  *Expanded to 25 faults across all 5 disciplines, 34 parts, 27 fleet incidents.*
 - **HSE 科別加厚**：新增 LOTO 能量隔離、高處墜落防護、SIMOPS 同時作業三類工安情境(完整診斷測驗＋SOP＋圖鑑五欄＋戰情室事件＋需 HSE 技師);HSE 元件群成為多重根因,可做工安鑑別診斷練習。安全永遠優先於發電。
   *HSE depth: LOTO / fall-protection / SIMOPS scenarios with full quiz, SOP, codex & fleet incidents — safety before output.*
 - **知識點掌握度**：統計學生各科別/各任務類型的答題正確率,於個人檔案頁顯示掌握度並給弱點補強建議(導向圖鑑複習/沙盒多練)。
@@ -100,7 +124,7 @@
 - **✅ 教師面板 CSV 匯出** — 已完成。教師檢視面板可一鍵「⬇ 匯出 CSV」全班績效/天數/可用率/發電量,前端產檔下載、不經雲端,方便登分與課後分析。
 - **✅ 營運趨勢儀表板 / 賽後復盤** — 已完成。每次推進日累積 KPI 歷史,母港「📈 營運趨勢·賽後復盤」顯示妥善率/健康度/收入vs支出/淨額/累積發電的時間序列圖 + 期間摘要(平均/最低妥善率、總收入/支出/淨額、發電增量),作教學覆盤工具。
 - **✅ 登入畫面教師入口** — 已完成。登入畫面提供教師入口(免先登入遊戲),輸入班級碼+教師碼即可開啟唯讀教師檢視。
-- **✅ 出海決策支援・學習迴路收斂・無障礙**(本輪) — 見上方「本輪已完成」與 [GAME_DESIGN.md](GAME_DESIGN.md) §17。
+- **✅ 出海決策支援・學習迴路收斂・無障礙** — 見上方「前輪已完成」與 [GAME_DESIGN.md](GAME_DESIGN.md) §17。
 - **✅ bearing 類故障備品命名/Tier 重新設計** — 已完成。新增 Tier 3「傳動軸承組(發電機/主軸)」(`drive_bearing`, ◎130 萬),主軸承振動(`bearing`)與發電機振動(`gen_vibration`)改指專屬備品,與 Tier 4「主軸承」全換(`main_bearing`)語意區隔;並新增 `pitch_bearing_wear`(變槳軸承磨耗)事件,讓變槳軸承備品保有真實消費端(呼應 `cs_pitch_bearing_wear` 案例)、不成孤兒。見 [GAME_DESIGN.md](GAME_DESIGN.md) §18。
 - **✅ crew_shortage / strike 事件實效化** — 已完成。缺工(`techTotal − techAvail`)直接折抵戰情室「可同時開的現場作業面」(`effectiveJobCapOf = max(1, jobCapOf − ⌈缺額/CREW_PER_JOB⌉)`):滿編不懲罰(以缺額計)、下限 1(短手仍可派一組、遠端重啟不占名額、主線不受限)、每日休整回復;開局改滿編 30/30、tech 升級同步 techAvail、戰情室顯示缺工折抵。事件從純展示變成「先遠端重啟軟故障/批次搶修/靠港補人」的真實取捨。見 [GAME_DESIGN.md](GAME_DESIGN.md) §18。
 - **試玩微調與平衡回測** — 依 `npm run sim` 持續校正故障率/經濟手感;本輪修正備品資料與每日任務發獎時機後,建議重跑一次完整回測。

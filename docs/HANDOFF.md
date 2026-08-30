@@ -1,14 +1,15 @@
 # 交接紀錄 — Session Handoff
 
-> 給下一個開發 session 的快速接手筆記。最後更新:**2026-07-29**。
-> 完整藍圖見 [ROADMAP.md](ROADMAP.md);設計權威版見 [GAME_DESIGN.md](GAME_DESIGN.md)(§17 出海決策/§18 人力・軸承/§19 測驗・掌握度・母港);專案現況見 `../STATUS.yaml`。
+> 給下一個開發 session 的快速接手筆記。最後更新:**2026-08-30**。
+> 完整藍圖見 [ROADMAP.md](ROADMAP.md);設計權威版見 [GAME_DESIGN.md](GAME_DESIGN.md)(§17 出海決策/§18 人力・軸承/§19 測驗・掌握度・母港);專案現況見 `../STATUS.yaml`;文件地圖見 [docs/README.md](README.md)。
 > 測試數以 `npm test` 實跑為準(目前 **164**);判斷任務題數以 `TASKS.length` 為準(**192**)。
 
 ## 目前狀態
-- `main` 為最新;所有功能皆已合併(最新:**PR #118**)。`npm test` = **164 全綠**,`npm run typecheck` / `npm run build` 乾淨。
-- 本輪(issue #119):校正 `docs/TEST_REPORT.md`/`docs/MANUAL.zh-TW.md` 內殘留較早快照的測試數/題數/故障種數/備品種數,對齊 `npm test`(164)/`TASKS.length`(192)/`FAULTS`(25)/`PARTS`(34) 實跑值(`docs/WALKTHROUGH.md` 查核後確認無殘留舊統計,免改動)。純文件變更,不影響程式邏輯。
+- `main` 為最新;**全部 120 個 PR 皆已合併**(最新:#120,squash)。`npm test` = **164 全綠**,`npm run typecheck` / `npm run build` 乾淨。
+- 本輪(2026-08-30,倉庫整理、無程式變動):45 個遠端分支逐一稽核完畢——43 個歷史分支內容皆已在 main,可用 `scripts/cleanup-merged-branches.sh` 一鍵刪除;**唯一未進 main 的內容**是 `claude/cloud-first-accounts` 上擁有者手動提交的部署設定(`CLOUD_FIRST=true`+教師碼,commit `ff9d2f6`),合併與否屬部署決策,見 [ROADMAP.md](ROADMAP.md)「待專案擁有者決策」。另新增 [docs/README.md](README.md) 文件索引、移除 2 個冗餘 zip、校正 ROADMAP 統計(34 備品/27 戰情室故障)。
+- 前輪(issue #119):校正 `docs/TEST_REPORT.md`/`docs/MANUAL.zh-TW.md` 內殘留較早快照的測試數/題數/故障種數/備品種數,對齊 `npm test`(164)/`TASKS.length`(192)/`FAULTS`(25)/`PARTS`(34) 實跑值(`docs/WALKTHROUGH.md` 查核後確認無殘留舊統計,免改動)。純文件變更,不影響程式邏輯。
 - `npm run sim`(平衡)、`npm run stress`(併發)皆通過。⚠ `npm run sim` 的**絕對數字**會隨故障/備品/任務資料變動而整段跳動(見下「模擬器蝴蝶效應」),回測時只需確認**相對排序**(passive ≪ active < full-crew)與梯度健康,不必追求絕對值穩定。
-- 開發分支:**`claude/wind-farm-game-dev-ik3kt7`**(每次 PR 合併後從最新 `main` reset 同步,沿用同名分支)。
+- 開發分支:**建議每輪從最新 `main` 開新的短命分支,合併後即刪**(舊慣用分支 `claude/wind-farm-game-dev-ik3kt7` 已列入清理清單);本輪整理工作在 `claude/project-cleanup-planning-5feyhn`。
 - GitHub Pages 部署來源已鎖定為 **GitHub Actions**(`deploy.yml` 內 `actions/configure-pages`,`enablement: true`);若日後又被誤切回「Deploy from a branch」,下次部署會自動修正。**切勿用 Actions 頁面的「Re-run」重跑 Pages 部署**(會觸發「重複 github-pages artifact」錯誤);要重部署請用 `Run workflow` 開新的一次。
 
 ## 最近兩輪已完成 — Recently shipped
