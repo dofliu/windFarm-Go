@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode, type RefObject } from "react";
 import { C, FONT_SERIF, primaryBg, panel } from "./tokens";
 import { t } from "../game/systems/i18n";
 import { useLang } from "./useLang";
@@ -6,14 +6,16 @@ import { useGame } from "../state/GameContext";
 import { Sfx } from "../audio/sfx";
 import { toWan } from "../state/game";
 import { BUILD_STAGES, BUILD_STAGE_COUNT, BUILD_MAX_SCORE, BUILD_REWARD_BASE, BUILD_REWARD_PER_SCORE, buildGrade } from "../state/construction";
+import { onKeyActivate } from "./a11y";
+import { useFocusTrap } from "./useFocusTrap";
 
-function shell(title: string, onClose: () => void, body: ReactNode) {
+function shell(title: string, onClose: () => void, body: ReactNode, panelRef: RefObject<HTMLDivElement>) {
   return (
     <div onClick={onClose} style={{ position: "absolute", inset: 0, zIndex: 60, background: "rgba(6,16,22,.6)", display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(2px)" }}>
-      <div onClick={(e) => e.stopPropagation()} className="wfg-modal-panel" style={{ ...panel, width: 580, maxHeight: 780, overflow: "auto", padding: 0 }}>
+      <div ref={panelRef} tabIndex={-1} role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()} className="wfg-modal-panel" style={{ ...panel, width: 580, maxHeight: 780, overflow: "auto", padding: 0 }}>
         <div style={{ display: "flex", alignItems: "center", padding: "12px 16px", background: "linear-gradient(180deg, rgba(217,164,65,.22), rgba(217,164,65,.05))", borderBottom: "1px solid rgba(214,167,84,.35)" }}>
           <span style={{ fontFamily: FONT_SERIF, fontWeight: 900, fontSize: 16, color: C.cream }}>{title}</span>
-          <span style={{ marginLeft: "auto", cursor: "pointer", color: C.mist, fontSize: 18 }} onClick={onClose}>✕</span>
+          <span role="button" tabIndex={0} aria-label={t({ zh: "關閉", en: "Close" })} style={{ marginLeft: "auto", cursor: "pointer", color: C.mist, fontSize: 18 }} onClick={onClose} onKeyDown={onKeyActivate(onClose)}>✕</span>
         </div>
         <div style={{ padding: "14px 16px" }}>{body}</div>
       </div>
@@ -47,6 +49,7 @@ export default function ConstructionModal({ open, onClose }: { open: boolean; on
   const [pick, setPick] = useState<number | null>(null);
   // 階段推進後清除選擇
   useEffect(() => { setPick(null); }, [data.buildStage, data.buildDone]);
+  const panelRef = useFocusTrap(onClose);
   if (!open) return null;
 
   const title = `🏗️ ${t({ zh: "風場建置 · 番外篇短戰役", en: "Farm Construction · Side Campaign" })}`;
@@ -70,7 +73,7 @@ export default function ConstructionModal({ open, onClose }: { open: boolean; on
           🔁 {t({ zh: "再建一座（重玩番外篇）", en: "Build another (replay)" })}
         </button>
       </div>
-    ));
+    ), panelRef);
   }
 
   const stage = BUILD_STAGES[data.buildStage];
@@ -126,5 +129,5 @@ export default function ConstructionModal({ open, onClose }: { open: boolean; on
       )}
       <div style={{ fontSize: 11, color: C.mist, marginTop: 10, textAlign: "center" }}>{t({ zh: "工程決策多有取捨：省成本/搶工期常埋下風險。完工後依品質分評等與發獎。", en: "Decisions trade off: cutting cost/time often buries risk. Graded & rewarded by quality at completion." })}</div>
     </div>
-  ));
+  ), panelRef);
 }

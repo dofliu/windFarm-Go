@@ -102,3 +102,10 @@ body.wfg-reduced *::after {
   outline-offset: 2px;
 }
 
+/* 無障礙:彈窗 focus trap(見 src/ui/useFocusTrap.ts)——面板本身可被程式化聚焦
+   (面板內若無其他可聚焦元素時的退路),同樣給鍵盤聚焦可見樣式。 */
+.wfg-modal-panel:focus-visible {
+  outline: 2px solid #f4d58d;
+  outline-offset: -2px;
+}
+

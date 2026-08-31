@@ -11,6 +11,8 @@ import { WEEKS_TOTAL, MISSIONS_PER_WEEK } from "../state/course";
 import { parseScenarioPack, setActivePack, getActivePack } from "../state/scenarioPack";
 import type { Quest } from "../state/game";
 import type { I18n } from "../game/systems/types";
+import { onKeyActivate } from "./a11y";
+import { useFocusTrap } from "./useFocusTrap";
 
 function toI18n(v: unknown, fallback: I18n): I18n {
   if (v && typeof v === "object" && "zh" in v && "en" in v) return v as I18n;
@@ -29,6 +31,7 @@ export default function CourseModal({ open, onClose, week = 1, onSetWeek, onTeac
   const [packText, setPackText] = useState("");
   const [packErr, setPackErr] = useState("");
   const [packTick, setPackTick] = useState(0); // 觸發重讀目前情境包
+  const panelRef = useFocusTrap(onClose);
   if (!open) return null;
 
   const activePack = getActivePack();
@@ -87,10 +90,10 @@ export default function CourseModal({ open, onClose, week = 1, onSetWeek, onTeac
 
   return (
     <div onClick={onClose} style={{ position: "absolute", inset: 0, zIndex: 60, background: "rgba(6,16,22,.6)", display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(2px)" }}>
-      <div onClick={(e) => e.stopPropagation()} className="wfg-modal-panel" style={{ ...panel, width: 560, maxHeight: 720, overflow: "auto", padding: 0 }}>
+      <div ref={panelRef} tabIndex={-1} role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()} className="wfg-modal-panel" style={{ ...panel, width: 560, maxHeight: 720, overflow: "auto", padding: 0 }}>
         <div style={{ display: "flex", alignItems: "center", padding: "12px 16px", background: "linear-gradient(180deg, rgba(217,164,65,.22), rgba(217,164,65,.05))", borderBottom: "1px solid rgba(214,167,84,.35)" }}>
           <span style={{ fontFamily: FONT_SERIF, fontWeight: 900, fontSize: 16, color: C.cream }}>📚 {t({ zh: "課程模式", en: "Course Mode" })}</span>
-          <span style={{ marginLeft: "auto", cursor: "pointer", color: C.mist, fontSize: 18 }} onClick={onClose}>✕</span>
+          <span role="button" tabIndex={0} aria-label={t({ zh: "關閉", en: "Close" })} style={{ marginLeft: "auto", cursor: "pointer", color: C.mist, fontSize: 18 }} onClick={onClose} onKeyDown={onKeyActivate(onClose)}>✕</span>
         </div>
 
         <div style={{ padding: "14px 16px" }}>

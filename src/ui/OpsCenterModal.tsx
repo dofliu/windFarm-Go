@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode, type RefObject } from "react";
 import { C, FONT_SERIF, primaryBg, panel } from "./tokens";
 import { t } from "../game/systems/i18n";
 import { getLang } from "../game/systems/i18n";
@@ -10,6 +10,8 @@ import { CAT_LABEL, generateTask, type TaskChoice, type TaskInstance } from "../
 import { randomCaseDrill, visibleSources, type CaseStudy, type CaseChoice } from "../state/caseStudies";
 import { toast } from "./toast";
 import type { I18n } from "../game/systems/types";
+import { onKeyActivate } from "./a11y";
+import { useFocusTrap } from "./useFocusTrap";
 
 const CAT_COLOR: Record<string, string> = { A: "#dc6450", B: "#5fa8d9", C: "#7fce8e", D: "#e3ad42", E: "#b08adf", F: "#e89a5b", G: "#d98ac0" };
 
@@ -127,13 +129,13 @@ function TaskChart({ kind, diag }: { kind: string; diag: boolean }) {
   );
 }
 
-function shell(title: string, onClose: () => void, body: ReactNode) {
+function shell(title: string, onClose: () => void, body: ReactNode, panelRef: RefObject<HTMLDivElement>) {
   return (
     <div onClick={onClose} style={{ position: "absolute", inset: 0, zIndex: 60, background: "rgba(6,16,22,.6)", display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(2px)" }}>
-      <div onClick={(e) => e.stopPropagation()} className="wfg-modal-panel" style={{ ...panel, width: 560, maxHeight: 760, overflow: "auto", padding: 0 }}>
+      <div ref={panelRef} tabIndex={-1} role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()} className="wfg-modal-panel" style={{ ...panel, width: 560, maxHeight: 760, overflow: "auto", padding: 0 }}>
         <div style={{ display: "flex", alignItems: "center", padding: "12px 16px", background: "linear-gradient(180deg, rgba(217,164,65,.22), rgba(217,164,65,.05))", borderBottom: "1px solid rgba(214,167,84,.35)" }}>
           <span style={{ fontFamily: FONT_SERIF, fontWeight: 900, fontSize: 16, color: C.cream }}>{title}</span>
-          <span style={{ marginLeft: "auto", cursor: "pointer", color: C.mist, fontSize: 18 }} onClick={onClose}>✕</span>
+          <span role="button" tabIndex={0} aria-label={t({ zh: "關閉", en: "Close" })} style={{ marginLeft: "auto", cursor: "pointer", color: C.mist, fontSize: 18 }} onClick={onClose} onKeyDown={onKeyActivate(onClose)}>✕</span>
         </div>
         <div style={{ padding: "14px 16px" }}>{body}</div>
       </div>
@@ -148,6 +150,7 @@ export default function OpsCenterModal({ open, onClose }: { open: boolean; onClo
   const [draw, setDraw] = useState<Draw>(() => makeDraw(data.seenCases ?? []));
   const [picked, setPicked] = useState<number | null>(null);
   const [count, setCount] = useState(0);
+  const panelRef = useFocusTrap(onClose);
   if (!open) return null;
 
   const isCase = draw.kind === "case";
@@ -283,5 +286,5 @@ export default function OpsCenterModal({ open, onClose }: { open: boolean; onClo
       )}
       <div style={{ fontSize: 11, color: C.mist, marginTop: 10, textAlign: "center" }}>{t({ zh: "判斷型任務 + 真實/擬真案例演練：多數選項各有取捨，回饋說明「為什麼」。", en: "Judgment tasks + real/realistic case drills: most options have trade-offs; feedback explains why." })}</div>
     </div>
-  ));
+  ), panelRef);
 }

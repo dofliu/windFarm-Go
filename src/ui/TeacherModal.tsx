@@ -9,6 +9,8 @@ import { parseMasterySummary, masteryRows, weakest, totalAnswered } from "../sta
 import { DISC } from "./disc";
 import { CAT_LABEL } from "../state/tasks";
 import RadarChart, { type RadarAxis } from "./RadarChart";
+import { onKeyActivate } from "./a11y";
+import { useFocusTrap } from "./useFocusTrap";
 
 type Status = "form" | "loading" | "ok" | "error";
 
@@ -22,10 +24,10 @@ export default function TeacherModal({ open, onClose }: { open: boolean; onClose
   const [rows, setRows] = useState<ClassRow[]>([]);
   const [err, setErr] = useState("");
   const [openId, setOpenId] = useState<string | null>(null); // 個別學生鑽取展開(#mastery-cloud)
-  if (!open) return null;
-
   const reset = () => { setStatus("form"); setRows([]); setErr(""); };
   const close = () => { reset(); setCode(""); onClose(); };
+  const panelRef = useFocusTrap(close);
+  if (!open) return null;
 
   // 匯出 CSV(教師登分/課後分析):前端產檔下載,不經雲端。
   const exportCsv = () => {
@@ -72,10 +74,10 @@ export default function TeacherModal({ open, onClose }: { open: boolean; onClose
 
   return (
     <div onClick={close} style={{ position: "absolute", inset: 0, zIndex: 65, background: "rgba(6,16,22,.6)", display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(2px)" }}>
-      <div onClick={(e) => e.stopPropagation()} className="wfg-modal-panel" style={{ ...panel, width: status === "ok" ? 720 : 460, maxHeight: 760, overflow: "auto", padding: 0 }}>
+      <div ref={panelRef} tabIndex={-1} role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()} className="wfg-modal-panel" style={{ ...panel, width: status === "ok" ? 720 : 460, maxHeight: 760, overflow: "auto", padding: 0 }}>
         <div style={{ display: "flex", alignItems: "center", padding: "12px 16px", background: "linear-gradient(180deg, rgba(217,164,65,.22), rgba(217,164,65,.05))", borderBottom: "1px solid rgba(214,167,84,.35)" }}>
           <span style={{ fontFamily: FONT_SERIF, fontWeight: 900, fontSize: 16, color: C.cream }}>👩‍🏫 {t({ zh: "教師檢視 · 班級進度", en: "Instructor · Class Progress" })}</span>
-          <span style={{ marginLeft: "auto", cursor: "pointer", color: C.mist, fontSize: 18 }} onClick={close}>✕</span>
+          <span role="button" tabIndex={0} aria-label={t({ zh: "關閉", en: "Close" })} style={{ marginLeft: "auto", cursor: "pointer", color: C.mist, fontSize: 18 }} onClick={close} onKeyDown={onKeyActivate(close)}>✕</span>
         </div>
 
         <div style={{ padding: "16px" }}>
