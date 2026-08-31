@@ -6,6 +6,7 @@ import { useGame } from "../state/GameContext";
 import { Sfx } from "../audio/sfx";
 import { toast } from "./toast";
 import type { I18n } from "../game/systems/types";
+import { onKeyActivate } from "./a11y";
 
 interface Routine {
   name: I18n;
@@ -44,7 +45,7 @@ export default function DispatchModal({ open, onClose }: { open: boolean; onClos
       <div onClick={(e) => e.stopPropagation()} className="wfg-modal-panel" style={{ ...panel, width: 520, padding: 0 }}>
         <div style={{ display: "flex", alignItems: "center", padding: "12px 16px", background: "linear-gradient(180deg, rgba(217,164,65,.22), rgba(217,164,65,.05))", borderBottom: "1px solid rgba(214,167,84,.35)" }}>
           <span style={{ fontFamily: FONT_SERIF, fontWeight: 900, fontSize: 16, color: C.cream }}>🗂 {t({ zh: "調度中心 · 例行工單", en: "Dispatch · Routine Jobs" })}</span>
-          <span style={{ marginLeft: "auto", cursor: "pointer", color: C.mist, fontSize: 18 }} onClick={onClose}>✕</span>
+          <span role="button" tabIndex={0} aria-label={t({ zh: "關閉", en: "Close" })} style={{ marginLeft: "auto", cursor: "pointer", color: C.mist, fontSize: 18 }} onClick={onClose} onKeyDown={onKeyActivate(onClose)}>✕</span>
         </div>
         <div style={{ padding: "14px 16px" }}>
           <div style={{ fontSize: 12, color: C.mist, marginBottom: 10 }}>{t({ zh: "快速小任務：穩定累積預算與資歷，用來購買備品與升級。", en: "Quick jobs: steady budget & XP to buy parts and upgrades." })}</div>

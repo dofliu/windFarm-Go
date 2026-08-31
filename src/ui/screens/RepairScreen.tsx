@@ -18,6 +18,7 @@ import { toast } from "../toast";
 import { PARTS } from "../data";
 import { missionInstance } from "../campaign";
 import type { Screen } from "../../App";
+import { onKeyActivate } from "../a11y";
 
 export default function RepairScreen({ setScreen, mode = "sim", mobile = false }: { setScreen: (s: Screen) => void; mode?: "sim" | "real" | "comic"; mobile?: boolean }) {
   useLang();
@@ -353,26 +354,31 @@ export default function RepairScreen({ setScreen, mode = "sim", mobile = false }
               if (quizCorrect && i === q.correct) { bd = C.green; bg = "rgba(127,206,142,.16)"; col = "#cdeccf"; }
               else if (!quizCorrect && i === pick) { bd = C.red; bg = "rgba(220,100,80,.16)"; col = C.redText; }
               const s: CSSProperties = { display: "block", width: "100%", textAlign: "left", padding: "10px 12px", marginBottom: 8, borderRadius: 4, border: `1px solid ${bd}`, background: bg, color: col, fontSize: 13.5, fontWeight: 500, cursor: quizCorrect ? "default" : "pointer" };
+              const pickOption = () => {
+                if (failed || quizCorrect || i === pick) return; // 已答對/已撤離不可再動；點同一選項不重複扣窗
+                (i === q.correct ? Sfx.success : Sfx.error)();
+                // 知識點掌握度(#mastery):僅記錄「第一次作答」的對錯,作為乾淨的學習訊號(重答不重複計)
+                if (pick === null) {
+                  dispatch({ type: "RECORD_ANSWER", keys: [`disc:${fault.discipline}`], correct: i === q.correct });
+                  // 錯題本(#mistake-log):第一次就答錯 → 記錄情境/你的選擇/正解/解析,供事後複習
+                  if (i !== q.correct) dispatch({ type: "RECORD_MISTAKE", mk: { topic: `disc:${fault.discipline}`, question: q.question, chosen: q.options[i], correct: q.options[q.correct], lesson: q.ok, day: data.day } });
+                  // 連對里程碑(juice):3 連對與每 5 連對跳慶祝,強化「先思考再作答」的正循環
+                  if (i === q.correct) {
+                    const ns = (data.answerStreak ?? 0) + 1;
+                    if (ns === 3 || (ns >= 5 && ns % 5 === 0)) toast({ zh: `🔥 診斷連對 ${ns} 題!XP 加成中`, en: `🔥 ${ns}-answer streak! XP bonus active` });
+                  }
+                }
+                // 答錯多耗作業窗（可重新作答，但每次扣時段）;累計答錯次數供任務復盤(#debrief)
+                saveRepair({ pick: i, win: Math.max(0, win - (i === q.correct ? 1 : 3)), misses: (rp?.misses ?? 0) + (i === q.correct ? 0 : 1) });
+              };
               return (
                 <div
                   key={i}
-                  onClick={() => {
-                    if (failed || quizCorrect || i === pick) return; // 已答對/已撤離不可再動；點同一選項不重複扣窗
-                    (i === q.correct ? Sfx.success : Sfx.error)();
-                    // 知識點掌握度(#mastery):僅記錄「第一次作答」的對錯,作為乾淨的學習訊號(重答不重複計)
-                    if (pick === null) {
-                      dispatch({ type: "RECORD_ANSWER", keys: [`disc:${fault.discipline}`], correct: i === q.correct });
-                      // 錯題本(#mistake-log):第一次就答錯 → 記錄情境/你的選擇/正解/解析,供事後複習
-                      if (i !== q.correct) dispatch({ type: "RECORD_MISTAKE", mk: { topic: `disc:${fault.discipline}`, question: q.question, chosen: q.options[i], correct: q.options[q.correct], lesson: q.ok, day: data.day } });
-                      // 連對里程碑(juice):3 連對與每 5 連對跳慶祝,強化「先思考再作答」的正循環
-                      if (i === q.correct) {
-                        const ns = (data.answerStreak ?? 0) + 1;
-                        if (ns === 3 || (ns >= 5 && ns % 5 === 0)) toast({ zh: `🔥 診斷連對 ${ns} 題!XP 加成中`, en: `🔥 ${ns}-answer streak! XP bonus active` });
-                      }
-                    }
-                    // 答錯多耗作業窗（可重新作答，但每次扣時段）;累計答錯次數供任務復盤(#debrief)
-                    saveRepair({ pick: i, win: Math.max(0, win - (i === q.correct ? 1 : 3)), misses: (rp?.misses ?? 0) + (i === q.correct ? 0 : 1) });
-                  }}
+                  role="button"
+                  tabIndex={quizCorrect ? -1 : 0}
+                  aria-pressed={i === pick}
+                  onClick={pickOption}
+                  onKeyDown={onKeyActivate(pickOption)}
                   style={s}
                 >
                   {t(opt)}
@@ -398,8 +404,17 @@ export default function RepairScreen({ setScreen, mode = "sim", mobile = false }
               const box = done
                 ? { background: C.green, color: "#0f2630", border: "none" as const, content: "✓" }
                 : { background: "rgba(255,255,255,.08)", color: C.mist, border: "1px solid rgba(255,255,255,.2)", content: String(i + 1) };
+              const interactive = !(fixed || done);
               return (
-                <div key={i} onClick={() => completeStep(i)} style={{ display: "flex", alignItems: "center", gap: 10, padding: "6px 0", cursor: fixed || done ? "default" : "pointer" }}>
+                <div
+                  key={i}
+                  role="button"
+                  tabIndex={interactive ? 0 : -1}
+                  aria-disabled={!interactive}
+                  onClick={() => completeStep(i)}
+                  onKeyDown={interactive ? onKeyActivate(() => completeStep(i)) : undefined}
+                  style={{ display: "flex", alignItems: "center", gap: 10, padding: "6px 0", cursor: fixed || done ? "default" : "pointer" }}
+                >
                   <span style={{ width: 18, height: 18, flex: "none", borderRadius: 4, background: box.background, color: box.color, border: box.border, display: "flex", alignItems: "center", justifyContent: "center", fontSize: done ? 12 : 11, fontWeight: 900 }}>{box.content}</span>
                   <span style={{ fontSize: 13, color: done ? C.mist3 : C.cream, fontWeight: done ? 400 : 700, textDecoration: done ? "line-through" : "none" }}>{t(step)}</span>
                 </div>

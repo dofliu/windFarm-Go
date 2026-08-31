@@ -94,3 +94,11 @@ body.wfg-reduced *::after {
   transition-duration: 0.001ms !important;
   scroll-behavior: auto !important;
 }
+
+/* 無障礙:自訂卡片式互動(div[role="button"])的鍵盤聚焦可見樣式,
+   讓 Tab 走完工單循環(母港/交易所/診斷/SOP)時能看清目前焦點在哪。 */
+[role="button"]:focus-visible {
+  outline: 2px solid #f4d58d;
+  outline-offset: 2px;
+}
+

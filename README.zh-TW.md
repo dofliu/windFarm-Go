@@ -63,7 +63,7 @@ npm install
 npm run dev        # http://localhost:5173
 npm run build      # 型別檢查 + 正式打包
 npm run typecheck  # tsc --noEmit
-npm test           # 免相依的遊戲邏輯測試（test/run.mjs）— 164 項全綠
+npm test           # 免相依的遊戲邏輯測試（test/run.mjs）— 165 項全綠
 npm run sim        # 平衡模擬器：passive / active / full-crew 三策略（test/sim.mjs）
 npm run stress     # 雲端排行榜後端的併發/負載模擬（test/stress.mjs）
 ```

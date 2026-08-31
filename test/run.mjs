@@ -60,6 +60,7 @@ const mastery = await load("src/state/mastery.ts");
 const port = await load("src/state/port.ts");
 const events = await load("src/state/events.ts");
 const exam = await load("src/state/exam.ts");
+const a11y = await load("src/ui/a11y.ts");
 const R = g.reducer, I = g.INITIAL;
 
 // ───────────────────────── INITIAL 不變量 ─────────────────────────
@@ -1889,6 +1890,19 @@ test("mistakes: RECORD_MISTAKE assigns id & appends; REVIEW_MISTAKE updates by i
   const id = s.mistakes[0].id;
   s = R(s, { type: "REVIEW_MISTAKE", id, reflection: "檢討完成" });
   ok(s.mistakes[0].reviewed && s.mistakes[0].reflection === "檢討完成", "reducer marks reviewed + reflection");
+});
+
+test("a11y: onKeyActivate fires on Enter/Space only, preventDefault called (無障礙鍵盤操作)", () => {
+  let calls = 0;
+  const handler = a11y.onKeyActivate(() => { calls++; });
+  const mk = (key) => { let prevented = false; handler({ key, preventDefault: () => { prevented = true; } }); return prevented; };
+  ok(mk("Enter"), "Enter → preventDefault called");
+  eq(calls, 1, "Enter triggers activation");
+  ok(mk(" "), "Space → preventDefault called");
+  eq(calls, 2, "Space triggers activation");
+  const notPrevented = mk("Tab");
+  eq(calls, 2, "Tab does not trigger activation");
+  ok(!notPrevented, "Tab does not call preventDefault (native focus move still works)");
 });
 
 console.log(`\n${pass} passed, ${fail} failed (${pass + fail} total)`);
