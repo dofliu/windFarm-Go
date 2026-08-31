@@ -12,6 +12,7 @@ import { Sfx } from "../../audio/sfx";
 import { toast } from "../toast";
 import { FAULTS } from "../faults";
 import { missionInstance } from "../campaign";
+import { onKeyActivate } from "../a11y";
 
 const TAX = 0.12;
 const SELL_RATE = 0.9; // 賣出 9 折回收
@@ -96,7 +97,11 @@ export default function MarketScreen({ accent, mobile = false }: { accent: strin
               {(["buy", "sell"] as const).map((mo) => (
                 <div
                   key={mo}
+                  role="button"
+                  tabIndex={0}
+                  aria-pressed={mode === mo}
                   onClick={() => switchMode(mo)}
+                  onKeyDown={onKeyActivate(() => switchMode(mo))}
                   style={
                     mode === mo
                       ? { padding: "7px 20px", borderRadius: "4px 4px 0 0", background: "linear-gradient(180deg,#e8c074,#d9a441)", color: C.ink, fontWeight: 700, fontSize: 15, cursor: "pointer" }
@@ -110,7 +115,11 @@ export default function MarketScreen({ accent, mobile = false }: { accent: strin
             <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 12, fontSize: 13, color: C.mist2 }}>
               {mode === "buy" && lockedCount > 0 && (
                 <span
+                  role="button"
+                  tabIndex={0}
+                  aria-pressed={showAll}
                   onClick={() => { Sfx.click(); setShowAll((v) => !v); }}
+                  onKeyDown={onKeyActivate(() => { Sfx.click(); setShowAll((v) => !v); })}
                   style={{ cursor: "pointer", fontSize: 11.5, padding: "4px 9px", borderRadius: 4, border: "1px solid rgba(214,167,84,.4)", background: showAll ? "rgba(214,167,84,.16)" : "rgba(255,255,255,.04)", color: showAll ? C.goldText : C.mist, whiteSpace: "nowrap" }}
                 >
                   {showAll
@@ -135,7 +144,7 @@ export default function MarketScreen({ accent, mobile = false }: { accent: strin
                 const locked = (p.minTier ?? 1) > tier; // 顯示全部時，未解鎖品標示但仍可購（非阻擋）
                 const inCart = cart[p.id] ?? 0;
                 return (
-                  <div key={p.id} onClick={() => add(p.id)} style={{ position: "relative", background: inCart ? "rgba(217,164,65,.14)" : "rgba(225,237,242,.07)", border: `1px solid ${inCart ? accent : "rgba(214,167,84,.35)"}`, borderRadius: 5, padding: "11px 12px", cursor: "pointer" }}>
+                  <div key={p.id} role="button" tabIndex={0} onClick={() => add(p.id)} onKeyDown={onKeyActivate(() => add(p.id))} style={{ position: "relative", background: inCart ? "rgba(217,164,65,.14)" : "rgba(225,237,242,.07)", border: `1px solid ${inCart ? accent : "rgba(214,167,84,.35)"}`, borderRadius: 5, padding: "11px 12px", cursor: "pointer" }}>
                     {inCart > 0 && <div style={{ position: "absolute", top: -8, right: -8, minWidth: 22, height: 22, borderRadius: 11, background: primaryBg(accent), color: C.ink, fontSize: 12, fontWeight: 900, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 6px", border: "1px solid rgba(255,236,196,.7)" }}>{inCart}</div>}
                     <div style={{ color: C.cream, fontSize: 15, fontWeight: 700, fontFamily: FONT_SERIF }}>{t(p.n)}{locked && <span style={{ marginLeft: 6, fontSize: 10, color: C.amber2, fontWeight: 700 }}>🔒 T{p.minTier}</span>}</div>
                     <div style={{ color: "#e2b24a", fontSize: 12, letterSpacing: 1, margin: "3px 0 8px" }}>{stars(p.stars)}</div>
@@ -159,7 +168,7 @@ export default function MarketScreen({ accent, mobile = false }: { accent: strin
             <div style={{ flex: 1, padding: mobile ? 12 : 18, display: "grid", gridTemplateColumns: `repeat(${mobile ? 2 : 3},1fr)`, gridAutoRows: "min-content", gap: mobile ? 10 : 14, overflow: mobile ? "visible" : "auto" }}>
               {owned.length === 0 && <div style={{ gridColumn: "1 / -1", textAlign: "center", color: C.mist, padding: 40 }}>{t({ zh: "貨艙中沒有可賣出的備品。", en: "No parts in cargo to sell." })}</div>}
               {owned.map((p) => (
-                <div key={p.id} onClick={() => sellOne(p.id)} style={{ background: "rgba(225,237,242,.07)", border: "1px solid rgba(214,167,84,.35)", borderRadius: 5, padding: "11px 12px", cursor: "pointer" }}>
+                <div key={p.id} role="button" tabIndex={0} onClick={() => sellOne(p.id)} onKeyDown={onKeyActivate(() => sellOne(p.id))} style={{ background: "rgba(225,237,242,.07)", border: "1px solid rgba(214,167,84,.35)", borderRadius: 5, padding: "11px 12px", cursor: "pointer" }}>
                   <div style={{ color: C.cream, fontSize: 15, fontWeight: 700, fontFamily: FONT_SERIF }}>{t(p.n)}</div>
                   <div style={{ color: "#e2b24a", fontSize: 12, letterSpacing: 1, margin: "3px 0 8px" }}>{stars(p.stars)}</div>
                   <div style={{ display: "flex", alignItems: "center", gap: 10 }}>

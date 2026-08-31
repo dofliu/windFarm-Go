@@ -31,11 +31,12 @@ import { caseAt } from "../../state/caseStudies";
 import { portLevel, PORT_MAX_LEVEL } from "../../state/port";
 import type { I18n } from "../../game/systems/types";
 import type { Screen } from "../../App";
+import { onKeyActivate } from "../a11y";
 
 // 左側設施列
 function FacRow({ icon, label, stat, onClick, targetRef }: { icon: ReactNode; label: I18n; stat?: I18n; onClick: () => void; targetRef?: (el: HTMLElement | null) => void }) {
   return (
-    <div ref={targetRef} onClick={onClick} style={{ display: "flex", alignItems: "center", gap: 11, padding: "6px 10px", borderRadius: 5, background: "rgba(255,255,255,.04)", marginBottom: 5, cursor: "pointer", border: "1px solid rgba(214,167,84,.14)" }}>
+    <div ref={targetRef} role="button" tabIndex={0} onClick={onClick} onKeyDown={onKeyActivate(onClick)} style={{ display: "flex", alignItems: "center", gap: 11, padding: "6px 10px", borderRadius: 5, background: "rgba(255,255,255,.04)", marginBottom: 5, cursor: "pointer", border: "1px solid rgba(214,167,84,.14)" }}>
       <div style={{ width: 32, height: 32, flex: "none", borderRadius: "50%", overflow: "hidden", background: "radial-gradient(circle at 50% 35%, #20586a, #0f3140)", border: "2px solid rgba(214,167,84,.7)", display: "flex", alignItems: "center", justifyContent: "center", color: C.goldText }}>{icon}</div>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ color: C.cream, fontSize: 14, fontWeight: 700 }}>{t(label)}</div>
@@ -60,8 +61,9 @@ const kvRow: CSSProperties = { display: "flex", justifyContent: "space-between",
 
 // 可收合面板標題（設施 / 風場動態 / 我的營運 共用）
 function PanelHead({ title, open, onToggle }: { title: I18n; open: boolean; onToggle: () => void }) {
+  const toggle = () => { Sfx.click(); onToggle(); };
   return (
-    <div style={{ ...panelHeader, justifyContent: "space-between", cursor: "pointer" }} onClick={() => { Sfx.click(); onToggle(); }}>
+    <div role="button" tabIndex={0} aria-expanded={open} style={{ ...panelHeader, justifyContent: "space-between", cursor: "pointer" }} onClick={toggle} onKeyDown={onKeyActivate(toggle)}>
       <span style={panelTitle}>{t(title)}</span>
       <span style={{ color: C.mist2, fontSize: 13 }}>{open ? "▾ " + t({ zh: "收合", en: "Hide" }) : "▸ " + t({ zh: "展開", en: "Show" })}</span>
     </div>
@@ -555,17 +557,17 @@ export default function HubScreen({ setScreen, accent, onDispatch, onFacility, s
 
       {/* 視角 / 海域背景切換（#32）。手機精簡版隱藏(非核心) */}
       <div style={mobile ? { display: "none" } : { position: "absolute", left: "50%", top: 92, transform: "translateX(-50%)", display: "flex", alignItems: "center", gap: 8 }}>
-        <div onClick={() => { Sfx.click(); onToggleView?.(); }} style={{ display: "flex", alignItems: "center", gap: 7, padding: "7px 15px", borderRadius: 20, background: aerial ? "linear-gradient(180deg,#e8c074,#d9a441)" : "rgba(10,28,36,.72)", border: "1px solid rgba(214,167,84,.5)", color: aerial ? C.ink : C.cream, fontSize: 13, fontWeight: 700, cursor: "pointer", backdropFilter: "blur(3px)", whiteSpace: "nowrap" }}>
+        <div role="button" tabIndex={0} onClick={() => { Sfx.click(); onToggleView?.(); }} onKeyDown={onKeyActivate(() => { Sfx.click(); onToggleView?.(); })} style={{ display: "flex", alignItems: "center", gap: 7, padding: "7px 15px", borderRadius: 20, background: aerial ? "linear-gradient(180deg,#e8c074,#d9a441)" : "rgba(10,28,36,.72)", border: "1px solid rgba(214,167,84,.5)", color: aerial ? C.ink : C.cream, fontSize: 13, fontWeight: 700, cursor: "pointer", backdropFilter: "blur(3px)", whiteSpace: "nowrap" }}>
           <span style={{ fontSize: 15 }}>{aerial ? "🏝" : "🛰"}</span>
           {aerial ? t({ zh: "港景視角", en: "Port view" }) : t({ zh: "俯瞰全景", en: "Aerial view" })}
         </div>
         {!aerial && (
           <>
-            <div onClick={() => { Sfx.click(); onCycleMode?.(); }} style={{ display: "flex", alignItems: "center", gap: 7, padding: "7px 15px", borderRadius: 20, background: mode !== "sim" ? "linear-gradient(180deg,#e8c074,#d9a441)" : "rgba(10,28,36,.72)", border: "1px solid rgba(214,167,84,.45)", color: mode !== "sim" ? C.ink : C.cream, fontSize: 13, fontWeight: 700, cursor: "pointer", backdropFilter: "blur(3px)", whiteSpace: "nowrap" }}>
+            <div role="button" tabIndex={0} onClick={() => { Sfx.click(); onCycleMode?.(); }} onKeyDown={onKeyActivate(() => { Sfx.click(); onCycleMode?.(); })} style={{ display: "flex", alignItems: "center", gap: 7, padding: "7px 15px", borderRadius: 20, background: mode !== "sim" ? "linear-gradient(180deg,#e8c074,#d9a441)" : "rgba(10,28,36,.72)", border: "1px solid rgba(214,167,84,.45)", color: mode !== "sim" ? C.ink : C.cream, fontSize: 13, fontWeight: 700, cursor: "pointer", backdropFilter: "blur(3px)", whiteSpace: "nowrap" }}>
               <span style={{ fontSize: 15 }}>{MODE_ICON[mode]}</span>
               {t(MODE_LABEL[mode])}
             </div>
-            <div onClick={() => { Sfx.click(); onCycleScene?.(); }} style={{ display: "flex", alignItems: "center", gap: 7, padding: "7px 15px", borderRadius: 20, background: "rgba(10,28,36,.72)", border: "1px solid rgba(214,167,84,.4)", color: C.cream, fontSize: 13, fontWeight: 700, cursor: "pointer", backdropFilter: "blur(3px)", whiteSpace: "nowrap" }}>
+            <div role="button" tabIndex={0} onClick={() => { Sfx.click(); onCycleScene?.(); }} onKeyDown={onKeyActivate(() => { Sfx.click(); onCycleScene?.(); })} style={{ display: "flex", alignItems: "center", gap: 7, padding: "7px 15px", borderRadius: 20, background: "rgba(10,28,36,.72)", border: "1px solid rgba(214,167,84,.4)", color: C.cream, fontSize: 13, fontWeight: 700, cursor: "pointer", backdropFilter: "blur(3px)", whiteSpace: "nowrap" }}>
               <span style={{ color: C.gold, fontSize: 15 }}>🎨</span>
               {sceneName ? t(sceneName) : "—"}
               <span style={{ color: C.mist2 }}>↻</span>
@@ -579,7 +581,7 @@ export default function HubScreen({ setScreen, accent, onDispatch, onFacility, s
         ? { position: "fixed", left: 0, right: 0, bottom: 0, zIndex: 40, display: "flex", gap: 8, alignItems: "stretch", padding: "10px 12px calc(10px + env(safe-area-inset-bottom))", background: "linear-gradient(0deg, rgba(8,24,31,.98), rgba(8,24,31,.82))", borderTop: "1px solid rgba(214,167,84,.3)" }
         : { position: "absolute", left: "50%", bottom: 36, transform: "translateX(-50%)", display: "flex", gap: 16, alignItems: "center" }}>
         <SecBtn icon="🛰" label={t({ zh: "遠端巡檢", en: "Remote Check" })} mobile={mobile} onClick={() => { Sfx.click(); dispatch({ type: "REMOTE_CHECK" }); say({ speaker: "scada_eng", expr: "neutral", line: { zh: "遠端 SCADA 巡檢完成：早期徵兆已記錄，今天就這樣（+經驗）。", en: "Remote SCADA sweep done — early signs logged. A day well spent (+XP)." } }); }} />
-        <div ref={setSailRef} onClick={() => { Sfx.click(); goSail(); }} style={mobile
+        <div ref={setSailRef} role="button" tabIndex={0} onClick={() => { Sfx.click(); goSail(); }} onKeyDown={onKeyActivate(() => { Sfx.click(); goSail(); })} style={mobile
           ? { flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: "14px 0", borderRadius: 6, background: primaryBg(accent), border: "1px solid rgba(255,236,196,.6)", color: C.ink, fontFamily: FONT_SERIF, fontSize: 18, fontWeight: 900, letterSpacing: ".06em", whiteSpace: "nowrap", cursor: "pointer", boxShadow: "0 6px 16px rgba(217,164,65,.35)" }
           : { padding: "16px 46px", borderRadius: 6, background: primaryBg(accent), border: "1px solid rgba(255,236,196,.6)", color: C.ink, fontFamily: FONT_SERIF, fontSize: 21, fontWeight: 900, letterSpacing: ".1em", whiteSpace: "nowrap", cursor: "pointer", boxShadow: "0 8px 22px rgba(217,164,65,.35), inset 0 1px 0 rgba(255,255,255,.4)" }}>
           {t(S.btn.setSail)}
@@ -595,7 +597,7 @@ export default function HubScreen({ setScreen, accent, onDispatch, onFacility, s
 
 function FacRowMini({ icon, label, onClick }: { icon: ReactNode; label: I18n; onClick: () => void }) {
   return (
-    <div onClick={onClick} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 7, padding: "8px 0", borderRadius: 5, background: "rgba(255,255,255,.04)", cursor: "pointer", border: "1px solid rgba(214,167,84,.14)" }}>
+    <div role="button" tabIndex={0} onClick={onClick} onKeyDown={onKeyActivate(onClick)} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 7, padding: "8px 0", borderRadius: 5, background: "rgba(255,255,255,.04)", cursor: "pointer", border: "1px solid rgba(214,167,84,.14)" }}>
       <span style={{ width: 26, height: 26, borderRadius: "50%", background: "radial-gradient(circle at 50% 35%, #20586a, #0f3140)", border: "1.5px solid rgba(214,167,84,.7)", display: "flex", alignItems: "center", justifyContent: "center", color: C.goldText }}>{icon}</span>
       <span style={{ color: C.cream, fontSize: 13, fontWeight: 700 }}>{t(label)}</span>
     </div>
@@ -604,7 +606,7 @@ function FacRowMini({ icon, label, onClick }: { icon: ReactNode; label: I18n; on
 
 function SecBtn({ icon, label, onClick, mobile = false }: { icon: string; label: string; onClick?: () => void; mobile?: boolean }) {
   return (
-    <div onClick={onClick} style={mobile
+    <div role="button" tabIndex={0} onClick={onClick} onKeyDown={onClick ? onKeyActivate(onClick) : undefined} style={mobile
       ? { flex: "none", padding: "10px 12px", borderRadius: 6, background: "rgba(15,40,50,.9)", border: "1px solid rgba(214,167,84,.45)", color: C.cream, fontSize: 13, fontWeight: 700, cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 2, whiteSpace: "nowrap", minWidth: 64 }
       : { padding: "13px 22px", borderRadius: 5, background: "rgba(15,40,50,.82)", border: "1px solid rgba(214,167,84,.45)", color: C.cream, fontSize: 15, fontWeight: 700, cursor: "pointer", backdropFilter: "blur(3px)", display: "flex", alignItems: "center", gap: 8, whiteSpace: "nowrap" }}>
       <span style={{ color: C.gold, fontSize: 17 }}>{icon}</span> {label}

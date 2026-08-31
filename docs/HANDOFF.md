@@ -1,11 +1,12 @@
 # 交接紀錄 — Session Handoff
 
-> 給下一個開發 session 的快速接手筆記。最後更新:**2026-08-30**(教師端雷達圖例行 session)。
+> 給下一個開發 session 的快速接手筆記。最後更新:**2026-08-31**(工單循環鍵盤操作例行 session)。
 > 完整藍圖見 [ROADMAP.md](ROADMAP.md);設計權威版見 [GAME_DESIGN.md](GAME_DESIGN.md)(§17 出海決策/§18 人力・軸承/§19 測驗・掌握度・母港);專案現況見 `../STATUS.yaml`;文件地圖見 [docs/README.md](README.md)。
-> 測試數以 `npm test` 實跑為準(目前 **164**);判斷任務題數以 `TASKS.length` 為準(**192**)。
+> 測試數以 `npm test` 實跑為準(目前 **165**);判斷任務題數以 `TASKS.length` 為準(**192**)。
 
 ## 目前狀態
-- 本輪(2026-08-30,例行開發 session):**教師端掌握度鑽取改雷達圖**——`TeacherModal` 的 `MasteryDrill` 新增能力雷達圖(重用 `RadarChart.tsx`,與個人檔案頁一致),原長條保留在下方互補顯示精確數字。純前端視覺變更,不需後端重部署;以獨立 Playwright 預覽(假資料掛載 `MasteryDrill`)截圖確認雷達與長條數字一致後移除。`npm test` = **164 全綠**,`typecheck`/`build` 乾淨。詳見 PR(合併後補號)。
+- 本輪(2026-08-31,例行開發 session):**無障礙 · 工單循環鍵盤操作**——新增 `src/ui/a11y.ts`(`onKeyActivate`:Enter/Space 觸發、其餘鍵不動作的共用鍵盤處理器),套用到母港(`FacRow`/`FacRowMini`/`SecBtn`/收合面板/視角切換/出海按鈕)、交易所(買賣分頁、備品卡片)、維修畫面(診斷測驗選項、SOP 步驟清單)、調度中心關閉鈕等原本只能滑鼠點擊的自訂 `<div>`/`<span>` 卡片,補上 `role="button"`/`tabIndex`/`onKeyDown`;`index.css` 新增 `[role="button"]:focus-visible` 聚焦樣式。出航/登船/完工等原生 `<button>` 本就可鍵盤操作,未變動。以無頭瀏覽器(playwright-core + 預裝 Chromium)實測:Tab 依序走完母港設施列(調度中心→自由營運中心→…→案例檔)、在「調度中心」按 Enter 正確開啟工單面板並看到金色聚焦框。`npm test` = **165 全綠**(新增 `onKeyActivate` 鍵盤觸發單元測試)、`typecheck`/`build` 乾淨。**已知限制**(留給下一輪):彈窗(DispatchModal 等)開啟時未做 focus trap,鍵盤使用者開啟後繼續 Tab 會落回背景頁面,需搭配 focus 移入 + Esc 關閉一併處理;本輪只涵蓋核心工單循環,教師/個人檔案/圖鑑等管理類 modal 尚未鍵盤化。
+- 前輪(2026-08-30,例行開發 session):**教師端掌握度鑽取改雷達圖**——`TeacherModal` 的 `MasteryDrill` 新增能力雷達圖(重用 `RadarChart.tsx`,與個人檔案頁一致),原長條保留在下方互補顯示精確數字。純前端視覺變更,不需後端重部署;以獨立 Playwright 預覽(假資料掛載 `MasteryDrill`)截圖確認雷達與長條數字一致後移除。`npm test` = **164 全綠**,`typecheck`/`build` 乾淨。詳見 PR #121。
 - `main` 為最新(本輪之前);**全部 120 個 PR 皆已合併**(最新:#120,squash)。`npm test` = **164 全綠**,`npm run typecheck` / `npm run build` 乾淨。
 - 本輪(2026-08-30,倉庫整理、無程式變動):45 個遠端分支逐一稽核完畢——43 個歷史分支內容皆已在 main,可用 `scripts/cleanup-merged-branches.sh` 一鍵刪除;**唯一未進 main 的內容**是 `claude/cloud-first-accounts` 上擁有者手動提交的部署設定(`CLOUD_FIRST=true`+教師碼,commit `ff9d2f6`),合併與否屬部署決策,見 [ROADMAP.md](ROADMAP.md)「待專案擁有者決策」。另新增 [docs/README.md](README.md) 文件索引、移除 2 個冗餘 zip、校正 ROADMAP 統計(34 備品/27 戰情室故障)。
 - 前輪(issue #119):校正 `docs/TEST_REPORT.md`/`docs/MANUAL.zh-TW.md` 內殘留較早快照的測試數/題數/故障種數/備品種數,對齊 `npm test`(164)/`TASKS.length`(192)/`FAULTS`(25)/`PARTS`(34) 實跑值(`docs/WALKTHROUGH.md` 查核後確認無殘留舊統計,免改動)。純文件變更,不影響程式邏輯。
@@ -35,7 +36,7 @@
 ### 立即可做(免後端)
 - **戰情室停機折抵「現金」收入的設定開關** — 目前停機只折抵淨發電(少賺+扣分);提供設定把戰情室層也接入售電現金流(需與設計者確認經濟平衡)。
 - **每機獨立健康度 / RUL 預測性維護** — 由全場 `fleetHealth` 延伸到每台機組的健康指標與剩餘壽命(Remaining Useful Life)建模,深化 CBM/預測性維護教學。中大型工作,建議先出設計草案再動手。
-- **無障礙延伸** — 鍵盤操作(Tab/Enter 走完工單循環)、更全面的色盲友善配色審查、對話/音效字幕與旁白。
+- **無障礙延伸(後續)** — ✅ 工單循環鍵盤操作(Tab/Enter)已完成(2026-08-31,見上);尚待:彈窗 focus trap(開啟時 focus 移入 + Esc 關閉,見上「已知限制」)、教師/個人檔案/圖鑑等管理類 modal 的鍵盤覆蓋、更全面的色盲友善配色審查、對話/音效字幕與旁白。
 
 ### 需後端(先重新部署 Apps Script `docs/leaderboard-appsscript/Code.gs`)
 - **⚠ 啟用教師端掌握度鑽取(唯一的部署待辦)** — client 與 `Code.gs` v2.2 皆已就緒且向後相容,但要讓教師面板**看到鑽取資料**,需把後端更新到 v2.2 並在「管理部署作業 → 編輯 → 版本:**新版本**」重部署(見 [CLOUD_SETUP.md](CLOUD_SETUP.md) v2.2 段)。未部署時前端一切照舊、教師面板顯示「尚無掌握度資料」提示。
@@ -47,9 +48,9 @@
 ---
 
 ## 開發備忘 — Dev memos
-- **改動 app 程式碼/資產時,把 `public/sw.js` 的 `CACHE = "wfg-cache-vN"` 版本號 +1**(避免更新後舊快取殘留造成空白;目前 **v6**)。純文件變更不需動。
+- **改動 app 程式碼/資產時,把 `public/sw.js` 的 `CACHE = "wfg-cache-vN"` 版本號 +1**(避免更新後舊快取殘留造成空白;目前 **v8**)。純文件變更不需動。
 - 新功能務必在 `test/run.mjs` 補對應測試(以純資料/reducer 為主);新 reducer action 也加進 fuzz 動作池(`randomAction`)。純函式引擎(如 `exam.ts`)最好給可決定性種子測試。
 - **視覺驗證流程**:`npm run build` → 把 `dist/` 以 symlink 掛成 `<serve>/windFarm-Go/`(base 是 `/windFarm-Go/`)→ `python3 -m http.server` 提供(比 `vite preview` 在無頭瀏覽器下穩) → 用 **`playwright-core`** + 預裝 Chromium(`executablePath: /opt/pw-browsers/chromium-1194/chrome-linux/chrome`,`PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers`)截圖;`newContext({ serviceWorkers: "block" })` 避免 SW 干擾。guest 登入點「訪客試玩」;背景模式存於 `localStorage['wfg-mode']`(sim/real/comic)。
-- 指令:`npm test`(單元 164)、`npm run sim`(平衡)、`npm run stress`(併發)、`npm run build`、`npm run typecheck`、`npm run live-check`(線上後端;沙盒代理擋 script.google.com,需本機跑)。
+- 指令:`npm test`(單元 165)、`npm run sim`(平衡)、`npm run stress`(併發)、`npm run build`、`npm run typecheck`、`npm run live-check`(線上後端;沙盒代理擋 script.google.com,需本機跑)。
 - **內容資料交叉驗證**:新增/改故障(`incidents.ts`/`faults.ts`)、備品(`data.ts`)、任務(`tasks.ts`)時務必檢查:`part` 是否存在於 `PARTS`、每個備品是否有消費端(避免孤兒)、`discipline` 是否與 UI 一致、`minTier` 是否形成「故障可見但備品鎖住」的閘門矛盾——`test/run.mjs` 已含這套不變式測試(如 incident.part tier ≤ incident tier)。
 - **模擬器蝴蝶效應(已知、非迴歸)**:`advance()` 的倉儲折舊迴圈依 `inventory` 物件的**插入順序**逐一擲骰;只要備品 id 集合或順序變,固定種子(`mulberry32(20260622)`)重播的隨機序列就整段分岔,`npm run sim` 絕對數字隨之跳動。回測看**相對排序與梯度**即可。
