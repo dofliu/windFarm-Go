@@ -15,6 +15,8 @@ import { CLOUD_FIRST } from "../cloud/sheet";
 import { cloudEnabled } from "../cloud/api";
 import { useReducedMotion, getReducedOverride, setReducedOverride } from "./useReducedMotion";
 import type { I18n } from "../game/systems/types";
+import { onKeyActivate } from "./a11y";
+import { useFocusTrap } from "./useFocusTrap";
 
 // 個人檔案頁（階段 3）：身分、關鍵數據、最佳紀錄與成就牆。資料來源 = 即時遊戲狀態 + 學習紀錄。
 export default function ProfileModal({ open, onClose }: { open: boolean; onClose: () => void }) {
@@ -24,6 +26,7 @@ export default function ProfileModal({ open, onClose }: { open: boolean; onClose
   const reduced = useReducedMotion(); // 設定:減少動態(跟隨系統 or 手動開啟)
   // 開啟時讀一次紀錄（含本回合已累積的最佳值）
   const rec = useMemo(() => loadRecord(profile), [open, profile]);
+  const panelRef = useFocusTrap(onClose);
   if (!open) return null;
 
   const score = computeScore(data);
@@ -44,11 +47,11 @@ export default function ProfileModal({ open, onClose }: { open: boolean; onClose
 
   return (
     <div onClick={onClose} style={{ position: "absolute", inset: 0, zIndex: 60, background: "rgba(6,16,22,.6)", display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(2px)" }}>
-      <div onClick={(e) => e.stopPropagation()} className="wfg-modal-panel" style={{ ...panel, width: 600, maxHeight: 760, overflow: "auto", padding: 0 }}>
+      <div ref={panelRef} tabIndex={-1} role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()} className="wfg-modal-panel" style={{ ...panel, width: 600, maxHeight: 760, overflow: "auto", padding: 0 }}>
         {/* 標題列 */}
         <div style={{ display: "flex", alignItems: "center", padding: "12px 16px", background: "linear-gradient(180deg, rgba(217,164,65,.22), rgba(217,164,65,.05))", borderBottom: "1px solid rgba(214,167,84,.35)" }}>
           <span style={{ fontFamily: FONT_SERIF, fontWeight: 900, fontSize: 16, color: C.cream }}>🪪 {t({ zh: "個人檔案", en: "Profile" })}</span>
-          <span style={{ marginLeft: "auto", cursor: "pointer", color: C.mist, fontSize: 18 }} onClick={onClose}>✕</span>
+          <span role="button" tabIndex={0} aria-label={t({ zh: "關閉", en: "Close" })} style={{ marginLeft: "auto", cursor: "pointer", color: C.mist, fontSize: 18 }} onClick={onClose} onKeyDown={onKeyActivate(onClose)}>✕</span>
         </div>
 
         <div style={{ padding: "16px" }}>

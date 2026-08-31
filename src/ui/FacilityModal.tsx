@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode, type RefObject } from "react";
 import { C, FONT_SERIF, primaryBg, panel } from "./tokens";
 import { t } from "../game/systems/i18n";
 import { useLang } from "./useLang";
@@ -14,6 +14,8 @@ import { DISC } from "./disc";
 import type { I18n } from "../game/systems/types";
 import { getProfile } from "../state/profile";
 import { SHEET_CONFIG, fetchLeaderboard, type Row } from "../cloud/sheet";
+import { onKeyActivate } from "./a11y";
+import { useFocusTrap } from "./useFocusTrap";
 
 export type Facility = "vessel" | "tech" | "tool" | "codex" | "ranking" | "farms";
 
@@ -30,13 +32,13 @@ function genCandidates(): Engineer[] {
 }
 const hireFee = (e: Engineer) => 200_000 + e.level * 200_000; // 一次性招募/GWO訓練費（薪資另計，按日分攤）
 
-function shell(title: string, onClose: () => void, body: ReactNode, width = 540) {
+function shell(title: string, onClose: () => void, body: ReactNode, panelRef: RefObject<HTMLDivElement>, width = 540) {
   return (
     <div onClick={onClose} style={{ position: "absolute", inset: 0, zIndex: 60, background: "rgba(6,16,22,.6)", display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(2px)" }}>
-      <div onClick={(e) => e.stopPropagation()} className="wfg-modal-panel" style={{ ...panel, width, maxHeight: 720, overflow: "auto", padding: 0 }}>
+      <div ref={panelRef} tabIndex={-1} role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()} className="wfg-modal-panel" style={{ ...panel, width, maxHeight: 720, overflow: "auto", padding: 0 }}>
         <div style={{ display: "flex", alignItems: "center", padding: "12px 16px", background: "linear-gradient(180deg, rgba(217,164,65,.22), rgba(217,164,65,.05))", borderBottom: "1px solid rgba(214,167,84,.35)" }}>
           <span style={{ fontFamily: FONT_SERIF, fontWeight: 900, fontSize: 16, color: C.cream }}>{title}</span>
-          <span style={{ marginLeft: "auto", cursor: "pointer", color: C.mist, fontSize: 18 }} onClick={onClose}>✕</span>
+          <span role="button" tabIndex={0} aria-label={t({ zh: "關閉", en: "Close" })} style={{ marginLeft: "auto", cursor: "pointer", color: C.mist, fontSize: 18 }} onClick={onClose} onKeyDown={onKeyActivate(onClose)}>✕</span>
         </div>
         <div style={{ padding: "14px 16px" }}>{body}</div>
       </div>
@@ -57,6 +59,7 @@ export default function FacilityModal({ kind, onClose }: { kind: Facility | null
       fetchLeaderboard().then((r) => { setCloudRows(r); setCloudLoading(false); });
     }
   }, [kind]);
+  const panelRef = useFocusTrap(onClose);
   if (!kind) return null;
 
   // 機具工坊（工具升級）
@@ -72,7 +75,7 @@ export default function FacilityModal({ kind, onClose }: { kind: Facility | null
           <button disabled={!can} onClick={() => { Sfx.cash(); dispatch({ type: "UPGRADE", kind: "tool", cost }); }} style={{ marginLeft: "auto", padding: "9px 22px", borderRadius: 5, border: "1px solid rgba(255,236,196,.6)", background: can ? primaryBg() : "rgba(255,255,255,.08)", color: can ? C.ink : C.mist, fontFamily: FONT_SERIF, fontWeight: 900, fontSize: 14, cursor: can ? "pointer" : "not-allowed" }}>{t({ zh: "升級", en: "Upgrade" })} → Lv.{data.toolLevel + 1}</button>
         </div>
       </>
-    ));
+    ), panelRef);
   }
 
   // 船隊整備廠（多元船隊 #4）
@@ -145,7 +148,7 @@ export default function FacilityModal({ kind, onClose }: { kind: Facility | null
           <button disabled={data.budget < lvCost} onClick={() => { Sfx.cash(); dispatch({ type: "UPGRADE", kind: "vessel", cost: lvCost }); }} style={{ padding: "7px 16px", borderRadius: 5, border: "1px solid rgba(255,236,196,.6)", background: data.budget >= lvCost ? primaryBg() : "rgba(255,255,255,.08)", color: data.budget >= lvCost ? C.ink : C.mist, fontFamily: FONT_SERIF, fontWeight: 900, fontSize: 13, cursor: data.budget >= lvCost ? "pointer" : "not-allowed" }}>◎ {toWan(lvCost)}萬</button>
         </div>
       </>
-    ));
+    ), panelRef);
   }
 
   // 技師公會（招募）
@@ -190,11 +193,11 @@ export default function FacilityModal({ kind, onClose }: { kind: Facility | null
           );
         })}
       </>
-    ));
+    ), panelRef);
   }
 
   if (kind === "codex") {
-    return shell(`📖 ${t({ zh: "故障圖鑑", en: "Fault Codex" })}`, onClose, <CodexBody seen={data.seenFaults} />, 600);
+    return shell(`📖 ${t({ zh: "故障圖鑑", en: "Fault Codex" })}`, onClose, <CodexBody seen={data.seenFaults} />, panelRef, 600);
   }
 
   // 風場拓展（#34）
@@ -229,7 +232,7 @@ export default function FacilityModal({ kind, onClose }: { kind: Facility | null
           );
         })}
       </div>
-    ));
+    ), panelRef);
   }
 
   // ranking
@@ -275,7 +278,7 @@ export default function FacilityModal({ kind, onClose }: { kind: Facility | null
         <div style={{ fontSize: 11, color: C.mist, marginTop: 10 }}>{t({ zh: "（班級雲端排行需教師設定 Google 表單；目前為本機）", en: "(Class cloud leaderboard needs teacher's Google Form; local for now)" })}</div>
       )}
     </div>
-  ));
+  ), panelRef);
 }
 
 // ───────── 故障圖鑑（圖鑑解說擴充 + 多重根因鑑別診斷練習）─────────

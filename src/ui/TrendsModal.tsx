@@ -5,6 +5,8 @@ import { useGame } from "../state/GameContext";
 import { toWan } from "../state/game";
 import { summarizeHistory, type TrendPoint } from "../state/trends";
 import type { I18n } from "../game/systems/types";
+import { onKeyActivate } from "./a11y";
+import { useFocusTrap } from "./useFocusTrap";
 
 // 零相依 SVG 折線圖:多序列、共用 y 軸、0 基線(供帶號序列)。
 function Chart({ pts, series, title, fmtY }: { pts: TrendPoint[]; series: { key: keyof TrendPoint; color: string; label: I18n }[]; title: I18n; fmtY?: (n: number) => string }) {
@@ -47,6 +49,7 @@ const card = (label: I18n, value: string, color: string, lang: () => void) => { 
 export default function TrendsModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   useLang();
   const { data } = useGame();
+  const panelRef = useFocusTrap(onClose);
   if (!open) return null;
   const h = data.history ?? [];
   const sum = summarizeHistory(h);
@@ -54,10 +57,10 @@ export default function TrendsModal({ open, onClose }: { open: boolean; onClose:
 
   return (
     <div onClick={onClose} style={{ position: "absolute", inset: 0, zIndex: 62, background: "rgba(6,16,22,.6)", display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(2px)" }}>
-      <div onClick={(e) => e.stopPropagation()} className="wfg-modal-panel" style={{ ...panel, width: 600, maxHeight: 780, overflow: "auto", padding: 0 }}>
+      <div ref={panelRef} tabIndex={-1} role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()} className="wfg-modal-panel" style={{ ...panel, width: 600, maxHeight: 780, overflow: "auto", padding: 0 }}>
         <div style={{ display: "flex", alignItems: "center", padding: "12px 16px", background: "linear-gradient(180deg, rgba(217,164,65,.22), rgba(217,164,65,.05))", borderBottom: "1px solid rgba(214,167,84,.35)", position: "sticky", top: 0 }}>
           <span style={{ fontFamily: FONT_SERIF, fontWeight: 900, fontSize: 16, color: C.cream }}>📈 {t({ zh: "營運趨勢 · 賽後復盤", en: "Operations Trends · After-Action" })}</span>
-          <span style={{ marginLeft: "auto", cursor: "pointer", color: C.mist, fontSize: 18 }} onClick={onClose}>✕</span>
+          <span role="button" tabIndex={0} aria-label={t({ zh: "關閉", en: "Close" })} style={{ marginLeft: "auto", cursor: "pointer", color: C.mist, fontSize: 18 }} onClick={onClose} onKeyDown={onKeyActivate(onClose)}>✕</span>
         </div>
 
         <div style={{ padding: "14px 16px" }}>

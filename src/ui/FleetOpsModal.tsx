@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useState, type ReactNode, type RefObject } from "react";
 import { C, FONT_SERIF, primaryBg, panel } from "./tokens";
 import { t } from "../game/systems/i18n";
 import { useLang } from "./useLang";
@@ -11,16 +11,18 @@ import { incidentAt } from "../state/incidents";
 import { PARTS } from "./data";
 import { fleetUptime, engineerBusy, fatigueOf, FATIGUE_LIMIT, jobCapOf, effectiveJobCapOf, crewShortfallJobs, onsiteJobCount, INSPECT_DAYS, SEA_INDEX, seaTolOf, activeVesselSpec, SEA_LABEL, dailyPayroll, toWan, sortieCostOf, QUARTER_DAYS, SLA_FLOOR } from "../state/game";
 import { LedgerView } from "./Ledger";
+import { onKeyActivate } from "./a11y";
+import { useFocusTrap } from "./useFocusTrap";
 
 const STATUS_COLOR: Record<string, string> = { ok: "#3f7d52", fault: "#c0463a", repair: "#cf9a35" };
 
-function shell(title: string, onClose: () => void, body: ReactNode) {
+function shell(title: string, onClose: () => void, body: ReactNode, panelRef: RefObject<HTMLDivElement>) {
   return (
     <div onClick={onClose} style={{ position: "absolute", inset: 0, zIndex: 60, background: "rgba(6,16,22,.6)", display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(2px)" }}>
-      <div onClick={(e) => e.stopPropagation()} className="wfg-modal-panel" style={{ ...panel, width: 720, maxHeight: 800, overflow: "auto", padding: 0 }}>
+      <div ref={panelRef} tabIndex={-1} role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()} className="wfg-modal-panel" style={{ ...panel, width: 720, maxHeight: 800, overflow: "auto", padding: 0 }}>
         <div style={{ display: "flex", alignItems: "center", padding: "12px 16px", background: "linear-gradient(180deg, rgba(217,164,65,.22), rgba(217,164,65,.05))", borderBottom: "1px solid rgba(214,167,84,.35)" }}>
           <span style={{ fontFamily: FONT_SERIF, fontWeight: 900, fontSize: 16, color: C.cream }}>{title}</span>
-          <span style={{ marginLeft: "auto", cursor: "pointer", color: C.mist, fontSize: 18 }} onClick={onClose}>✕</span>
+          <span role="button" tabIndex={0} aria-label={t({ zh: "關閉", en: "Close" })} style={{ marginLeft: "auto", cursor: "pointer", color: C.mist, fontSize: 18 }} onClick={onClose} onKeyDown={onKeyActivate(onClose)}>✕</span>
         </div>
         <div style={{ padding: "14px 16px" }}>{body}</div>
       </div>
@@ -42,6 +44,7 @@ export default function FleetOpsModal({ open, onClose }: { open: boolean; onClos
   useLang();
   const { data, dispatch } = useGame();
   const [sel, setSel] = useState<string | null>(null);
+  const panelRef = useFocusTrap(onClose);
   if (!open) return null;
 
   const fleet = data.fleet;
@@ -245,5 +248,5 @@ export default function FleetOpsModal({ open, onClose }: { open: boolean; onClos
         <LedgerView ledger={data.lastLedger} />
       </div>
     </div>
-  ));
+  ), panelRef);
 }

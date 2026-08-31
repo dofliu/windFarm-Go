@@ -1905,6 +1905,27 @@ test("a11y: onKeyActivate fires on Enter/Space only, preventDefault called (無�
   ok(!notPrevented, "Tab does not call preventDefault (native focus move still works)");
 });
 
+test("a11y: nextTrappedIndex cycles Tab/Shift+Tab within bounds (彈窗 focus trap)", () => {
+  eq(a11y.nextTrappedIndex(0, 3, false), 1, "Tab from 0 → 1");
+  eq(a11y.nextTrappedIndex(2, 3, false), 0, "Tab wraps last → first");
+  eq(a11y.nextTrappedIndex(0, 3, true), 2, "Shift+Tab wraps first → last");
+  eq(a11y.nextTrappedIndex(1, 3, true), 0, "Shift+Tab from 1 → 0");
+  eq(a11y.nextTrappedIndex(-1, 3, false), 1, "no current focus (-1) treated as index 0 → Tab → 1");
+  eq(a11y.nextTrappedIndex(-1, 3, true), 2, "no current focus (-1) treated as index 0 → Shift+Tab → last");
+  eq(a11y.nextTrappedIndex(0, 1, false), 0, "single item stays on itself");
+  eq(a11y.nextTrappedIndex(0, 0, false), -1, "no focusable items → -1");
+});
+
+test("a11y: getFocusables queries the container with the shared focusable selector", () => {
+  const found = [{ tag: "button" }, { tag: "input" }];
+  let usedSelector = "";
+  const container = { querySelectorAll: (sel) => { usedSelector = sel; return found; } };
+  const items = a11y.getFocusables(container);
+  eq(items.length, 2, "returns every match as a plain array");
+  ok(items[0] === found[0] && items[1] === found[1], "preserves element identity/order");
+  ok(usedSelector.includes("button") && usedSelector.includes("[tabindex]"), "selector covers native controls + explicit tabindex");
+});
+
 console.log(`\n${pass} passed, ${fail} failed (${pass + fail} total)`);
 if (fail) { console.log("\nFailures:"); for (const f of fails) console.log("  ✗ " + f); process.exit(1); }
 console.log("✓ all green");

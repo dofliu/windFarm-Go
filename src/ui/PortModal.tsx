@@ -7,22 +7,25 @@ import { Sfx } from "../audio/sfx";
 import { toast } from "./toast";
 import PortScene, { type PortBgMode } from "./PortScene";
 import { PORT_FACILITIES, portFacLevel, nextPortCost, portLevel, PORT_MAX_LEVEL } from "../state/port";
+import { onKeyActivate } from "./a11y";
+import { useFocusTrap } from "./useFocusTrap";
 
 // 母港建設(#port):用獲利升級母港設施,即時預覽視覺成長。永遠開放(沙盒)。
 // mode 跟隨全域背景切換(模擬/實境/漫畫):實境/漫畫時建設成果疊在母港實景照片上。
 export default function PortModal({ open, onClose, mode = "sim" }: { open: boolean; onClose: () => void; mode?: PortBgMode }) {
   useLang();
   const { data, dispatch } = useGame();
+  const panelRef = useFocusTrap(onClose);
   if (!open) return null;
   const u = data.portUpgrades ?? {};
   const lv = portLevel(u);
 
   return (
     <div onClick={onClose} style={{ position: "absolute", inset: 0, zIndex: 60, background: "rgba(6,16,22,.6)", display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(2px)" }}>
-      <div onClick={(e) => e.stopPropagation()} className="wfg-modal-panel" style={{ ...panel, width: 560, maxHeight: 760, overflow: "auto", padding: 0 }}>
+      <div ref={panelRef} tabIndex={-1} role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()} className="wfg-modal-panel" style={{ ...panel, width: 560, maxHeight: 760, overflow: "auto", padding: 0 }}>
         <div style={{ display: "flex", alignItems: "center", padding: "12px 16px", background: "linear-gradient(180deg, rgba(217,164,65,.22), rgba(217,164,65,.05))", borderBottom: "1px solid rgba(214,167,84,.35)" }}>
           <span style={{ fontFamily: FONT_SERIF, fontWeight: 900, fontSize: 16, color: C.cream }}>🏗 {t({ zh: "母港建設", en: "Port Development" })}</span>
-          <span style={{ marginLeft: "auto", cursor: "pointer", color: C.mist, fontSize: 18 }} onClick={onClose}>✕</span>
+          <span role="button" tabIndex={0} aria-label={t({ zh: "關閉", en: "Close" })} style={{ marginLeft: "auto", cursor: "pointer", color: C.mist, fontSize: 18 }} onClick={onClose} onKeyDown={onKeyActivate(onClose)}>✕</span>
         </div>
 
         <div style={{ padding: "14px 16px" }}>

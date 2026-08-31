@@ -8,6 +8,8 @@ import { toast } from "./toast";
 import { CAT_LABEL, type TaskTemplate } from "../state/tasks";
 import { buildExam, gradeExam, isCorrect, goodChoiceOf, EXAM_LENGTHS, type ExamResult } from "../state/exam";
 import { loadRecord, persistRecord } from "../state/records";
+import { onKeyActivate } from "./a11y";
+import { useFocusTrap } from "./useFocusTrap";
 
 type Phase = "intro" | "quiz" | "result";
 
@@ -22,6 +24,7 @@ export default function ExamModal({ open, onClose }: { open: boolean; onClose: (
   const [picks, setPicks] = useState<number[]>([]);
   const [result, setResult] = useState<ExamResult | null>(null);
   const [best, setBest] = useState<number>(() => loadRecord().bestExam ?? 0);
+  const panelRef = useFocusTrap(onClose);
   if (!open) return null;
 
   const start = (n: number) => {
@@ -75,10 +78,10 @@ export default function ExamModal({ open, onClose }: { open: boolean; onClose: (
 
   return (
     <div onClick={onClose} style={{ position: "absolute", inset: 0, zIndex: 66, background: "rgba(6,16,22,.62)", display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(2px)" }}>
-      <div onClick={(e) => e.stopPropagation()} className="wfg-modal-panel" style={{ ...panel, width: 560, maxHeight: 780, overflow: "auto", padding: 0 }}>
+      <div ref={panelRef} tabIndex={-1} role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()} className="wfg-modal-panel" style={{ ...panel, width: 560, maxHeight: 780, overflow: "auto", padding: 0 }}>
         <div style={{ display: "flex", alignItems: "center", padding: "12px 16px", background: "linear-gradient(180deg, rgba(217,164,65,.22), rgba(217,164,65,.05))", borderBottom: "1px solid rgba(214,167,84,.35)" }}>
           <span style={{ fontFamily: FONT_SERIF, fontWeight: 900, fontSize: 16, color: C.cream }}>📝 {t({ zh: "獨立測驗模式", en: "Exam Mode" })}</span>
-          <span style={{ marginLeft: "auto", cursor: "pointer", color: C.mist, fontSize: 18 }} onClick={onClose}>✕</span>
+          <span role="button" tabIndex={0} aria-label={t({ zh: "關閉", en: "Close" })} style={{ marginLeft: "auto", cursor: "pointer", color: C.mist, fontSize: 18 }} onClick={onClose} onKeyDown={onKeyActivate(onClose)}>✕</span>
         </div>
 
         <div style={{ padding: "16px" }}>
