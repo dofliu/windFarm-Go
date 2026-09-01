@@ -66,8 +66,9 @@ npm run typecheck  # tsc --noEmit
 npm test           # 免相依的遊戲邏輯測試（test/run.mjs）— 167 項全綠
 npm run sim        # 平衡模擬器：passive / active / full-crew 三策略（test/sim.mjs）
 npm run stress     # 雲端排行榜後端的併發/負載模擬（test/stress.mjs）
+npm run e2e        # 對建置產物做 Playwright 瀏覽器迴歸測試（test/e2e.mjs，需先 npm run build）
 ```
-CI（`.github/workflows/ci.yml`）於每個 PR 對 `main` 跑 `typecheck` + `test` + `build`。
+CI（`.github/workflows/ci.yml`）於每個 PR 對 `main` 跑 `typecheck` + `test` + `build`,並平行跑一個 `e2e`（Playwright）job。
 
 ## 專案結構
 ```

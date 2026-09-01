@@ -2,7 +2,9 @@
 
 > 以 zh-TW 為主、English secondary。本藍圖依現況（[STATUS.yaml](../STATUS.yaml)、[GAME_DESIGN.md](GAME_DESIGN.md)）盤點已完成與待辦，並提出**規劃方向**。
 > ⚠ 標示為**規劃中／推測（speculative）**者尚未實作，請勿當成現況；本文為**規劃**而非承諾。
-> Lead with zh-TW; English summaries follow. Last reviewed: 2026-08-31.
+> Lead with zh-TW; English summaries follow. Last reviewed: 2026-09-01.
+
+**✅ Playwright UI 迴歸測試**(2026-09-01 例行 session)：新增 `test/e2e.mjs`,以 `playwright`(chromium)對 `npm run build` 產物做端到端瀏覽器驗證——登入畫面載入、訪客登入進入母港、新手教學可跳過、開啟「調度中心」彈窗時 focus 移入面板、**連續 14 次 Tab + 1 次 Shift+Tab 皆侷限於彈窗內**、`Esc` 關閉並歸還焦點、整段流程無 console 錯誤,共 7 項斷言,把前兩輪無障礙工作(工單循環鍵盤操作、彈窗 focus trap)先前僅靠手動截圖驗證的行為沉澱為可重複執行的自動化迴歸測試。排行榜等雲端讀取一律攔截中止,測試不打正式後端、不受網路狀況影響。`.github/workflows/ci.yml` 新增獨立 `e2e` job(與既有 typecheck/test/build 並行),兩者皆須全綠才能合併。刻意暫時破壞 focus trap 邏輯重跑,確認測試會如預期抓到迴歸(非空跑)後才提交。詳見 [TEST_REPORT.md](TEST_REPORT.md) 第 7 節。
 
 **✅ 無障礙 · 彈窗 focus trap**（2026-08-31 例行 session）：新增 `src/ui/useFocusTrap.ts`(`useFocusTrap` hook,搭配 `src/ui/a11y.ts` 新增的純函式 `getFocusables`/`nextTrappedIndex`),套用到全部 12 個彈窗(調度中心、自由營運中心、風場戰情室、風場建置番外篇、母港設施(機具工坊/船隊整備廠/技師公會/故障圖鑑/風場拓展/績效排行)、案例檔、營運趨勢、母港建設、個人檔案、教師檢視、獨立測驗)——開啟時 focus 自動移入面板(無可聚焦子項則落在面板本身)、`Tab`/`Shift+Tab` 侷限循環於面板內(不再逃逸到背景頁面)、`Esc` 可隨時關閉並歸還先前焦點。順帶把先前只能滑鼠點擊的「✕」關閉鈕全數補上 `role="button"`/`tabIndex`/`onKeyDown`(沿用既有 `onKeyActivate`),並在 `index.css` 加上 `.wfg-modal-panel:focus-visible` 聚焦樣式。以無頭瀏覽器實測:鍵盤 Enter 開啟調度中心工單面板 → focus 落在關閉鈕 → 連續 10 次 Tab 與 1 次 Shift+Tab 皆未逃逸出面板 → Esc 關閉且焦點還給原本的設施列。此為上一輪「工單循環鍵盤操作」明確留下的已知限制的直接延續。
 
@@ -32,7 +34,7 @@
 2. **P1・課堂試用回饋循環(新學期)**:實際班級投放(學號帳號+班級碼),每週用教師面板 CSV/掌握度鑽取觀察學習成效;回饋開成 GitHub Issues 作為下一輪功能依據。搭配一次 `npm run sim` 完整平衡回測(內容修正後尚未重跑)。
 3. **P2・教學深化(依課堂數據擇一)**:每機獨立健康度/RUL 預測性維護(建議先出設計草案)、Exam 進階版(教師發布+雲端報告)、內容編輯器(教師資料驅動新增故障)。
 4. **P2・無障礙延伸**:✅ 鍵盤操作走完工單循環、✅ 全部彈窗 focus trap(Tab 侷限循環 + Esc 關閉)均已完成(2026-08-31);尚待色盲配色全面審查、對話/音效字幕。
-5. **持續・工程健康**:分支策略改「短命分支、合併即刪」;建議在 GitHub 設定 main 分支保護(要求 CI 綠才可合併);逐步補 Playwright UI 迴歸測試(HANDOFF 已有可重現流程)。
+5. **持續・工程健康**:分支策略改「短命分支、合併即刪」;建議在 GitHub 設定 main 分支保護(要求 CI 綠才可合併);✅ Playwright UI 迴歸測試首批已完成(2026-09-01,見上,`npm run e2e` + CI `e2e` job)——後續可比照擴充到交易所/維修畫面等其他核心互動流程。
 
 ---
 
@@ -70,6 +72,7 @@
 > 依「立即可做 → 需後端 → 願景」排序；交接細節見 [HANDOFF.md](HANDOFF.md)。
 
 **立即可做（免後端）**
+- **Playwright UI 迴歸測試擴充** — ✅ 首批已完成（2026-09-01，見上，`npm run e2e` + CI `e2e` job，覆蓋登入/訪客/教學跳過/調度中心彈窗 focus trap 共 7 項）；後續可比照擴充到交易所、維修畫面等其他核心互動流程。
 - **戰情室停機折抵「現金」收入的設定開關** — 目前停機只折抵淨發電；提供設定把戰情室層接入售電現金流（需確認經濟平衡）。
 - **每機獨立健康度 / RUL 預測性維護** — 由全場 `fleetHealth` 延伸到每台機組健康指標與剩餘壽命建模，深化 CBM／預測性維護教學（中大型，建議先出設計草案）。
 - **無障礙延伸（後續）** — ✅ 工單循環鍵盤操作、✅ 全部彈窗 focus trap（開啟時 focus 移入、Tab/Shift+Tab 侷限循環於面板內、Esc 關閉並歸還焦點）皆已完成（見上）；尚待：更全面色盲配色審查、對話／音效字幕與旁白。
@@ -111,7 +114,7 @@
 - **直升機進場 / 電網限電真實權衡任務**：自由營運沙盒新增 8 題真實運維判斷——直升機吊掛進場(封船海象/遠海急件/作業限值/成本效益)與電網限電(負電價降載/限電補償/低電壓穿越 FRT/順勢維修)。
   *Real-ops tradeoffs: helicopter access & grid-curtailment judgment tasks.*
 - **呈現**：三模式背景（模擬/實境/漫畫）、60° 俯瞰、多場景登塔（機艙/塔架/輪轂/甲板，含實景/漫畫情境圖與出海/大修場景影片）、Web Audio 音效音樂、中英雙語。母港左側「設施／風場動態」面板可各自獨立收合，設施項目皆有專屬圖示（含技師人物立繪）。
-- **工程**：自動化測試 `npm test`（164 項）、平衡模擬器 `npm run sim`、併發壓力測試 `npm run stress`、PR CI（typecheck/test/build）。完整系統測試紀錄見 [TEST_REPORT.md](TEST_REPORT.md)（測試數為本文撰寫時的既有紀錄，隨版本增加，以 `npm test` 實跑結果為準）、壓測細節見 [STRESS_TEST.md](STRESS_TEST.md)。
+- **工程**：自動化測試 `npm test`（167 項）、平衡模擬器 `npm run sim`、併發壓力測試 `npm run stress`、**Playwright UI 迴歸測試 `npm run e2e`**、PR CI（typecheck/test/build + e2e，兩個 job 並行）。完整系統測試紀錄見 [TEST_REPORT.md](TEST_REPORT.md)（測試數為本文撰寫時的既有紀錄，隨版本增加，以 `npm test` 實跑結果為準）、壓測細節見 [STRESS_TEST.md](STRESS_TEST.md)。
 
 ---
 
