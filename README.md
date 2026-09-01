@@ -66,8 +66,9 @@ npm run typecheck  # tsc --noEmit
 npm test           # dependency-free game-logic tests (test/run.mjs) — 167 passing
 npm run sim        # balance simulator: passive / active / full-crew strategies (test/sim.mjs)
 npm run stress     # concurrency/load simulation for the cloud leaderboard backend (test/stress.mjs)
+npm run e2e        # Playwright browser regression against the built app (test/e2e.mjs) — run `npm run build` first
 ```
-CI (`.github/workflows/ci.yml`) runs `typecheck` + `test` + `build` on every PR to `main`.
+CI (`.github/workflows/ci.yml`) runs `typecheck` + `test` + `build` on every PR to `main`, plus a parallel `e2e` job (Playwright).
 
 ## Project structure
 ```
