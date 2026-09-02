@@ -1,7 +1,7 @@
 # 系統測試報告 — Full-System Verification
 
 > 目的:記錄本專案「全功能邏輯/程式 + 壓力測試」的**測試項目、方法、結果**,作為發布前的驗證紀錄與可重現依據。
-> 最近一次完整執行:**2026-09-01**(commit `a954883` 之後的工作樹,新增 Playwright UI 迴歸測試)。
+> 最近一次完整執行:**2026-09-02**(例行 session,Playwright UI 迴歸測試擴充至交易所/出海/維修畫面)。
 > 一鍵重跑:`npm run typecheck && npm test && npm run build && npm run sim && npm run stress`(線上後端另見第 6 節;UI 迴歸見第 7 節)。
 
 ---
@@ -16,7 +16,7 @@
 | 4 | 平衡模擬 | `npm run sim` | 3 策略 × 120 天 | ✅ 進程激勵單調、無崩盤 |
 | 5 | 併發壓力測試 | `npm run stress` | 3 情境 + 競態示範 | ✅ 契約守住、鎖有效 |
 | 6 | 線上後端實打 | `npm run live-check` | 10 項 | ⚙️ 需本機執行(沙盒代理擋 `script.google.com`) |
-| 7 | Playwright UI 迴歸 | `npm run build && npm run e2e` | 7 項 | ✅ 全過(CI 新增 `e2e` job) |
+| 7 | Playwright UI 迴歸 | `npm run build && npm run e2e` | 14 項 | ✅ 全過(CI `e2e` job) |
 
 ---
 
@@ -109,20 +109,30 @@
 - **方法**:`test/live-check.mjs` 直接呼叫線上 Web App;預設唯讀,加 `--write` 才寫測試資料。
 - **狀態**:⚙️ **本沙盒的出站代理會阻擋 `script.google.com`(403),無法於此環境執行**——這是環境網路限制,非程式問題。請於**本機**執行 `node test/live-check.mjs` 驗證(先前本機實跑 10 項全通,含併發鎖證明)。
 
-## 7. Playwright UI 迴歸測試 — `npm run e2e`(7 項全過)
+## 7. Playwright UI 迴歸測試 — `npm run e2e`(14 項全過)
 
-- **緣起**:先前每輪無障礙(鍵盤操作/彈窗 focus trap)改動僅在開發 session 內用 `playwright-core` 手動截圖/操作驗證(見 `docs/HANDOFF.md`「視覺驗證流程」),未沉澱為可重複執行、進 CI 把關的測試,迴歸風險需每次重新手動走一遍。本輪補上第一批**真正落地的自動化 UI 迴歸測試**。
+- **緣起**:先前每輪無障礙(鍵盤操作/彈窗 focus trap)改動僅在開發 session 內用 `playwright-core` 手動截圖/操作驗證(見 `docs/HANDOFF.md`「視覺驗證流程」),未沉澱為可重複執行、進 CI 把關的測試,迴歸風險需每次重新手動走一遍。2026-09-01 補上第一批(7 項,登入/教學/彈窗 focus trap);本輪(2026-09-02)延伸覆蓋到交易所/出海/維修畫面。
 - **方法**:`test/e2e.mjs` 用 Node 內建 `http` 模組把 `npm run build` 產出的 `dist/`(含 `/windFarm-Go/` 子路徑)在本機起一個靜態伺服器,再用 `playwright`(chromium)驅動真實瀏覽器操作、斷言。排行榜等雲端讀取(`script.google.com`)一律以 `context.route` 攔截中止,測試不打正式後端、不受網路狀況影響。
-- **涵蓋範圍**:登入畫面載入 → 訪客登入進入母港 → 新手教學可跳過 → 開啟「調度中心」彈窗時 focus 移入面板 → **連續 14 次 Tab + 1 次 Shift+Tab 皆侷限於彈窗內(不逃逸到背景)** → `Esc` 關閉彈窗並把焦點歸還給觸發元件 → 整段流程無 console 錯誤/未捕捉例外。這组測試直接對應 PR #122/#123 新增的鍵盤操作與 focus trap 邏輯,把手動驗證過的行為轉為可重複執行的迴歸測試。
-- **有效性驗證**:刻意暫時移除 `useFocusTrap.ts` 的 Tab 循環邏輯後重跑,測試如預期在「第 6 次 Tab 後 focus 逃出了彈窗」失敗,證明測試確實會抓到迴歸,而非空跑;還原後 7 項全過。
-- **CI**:`.github/workflows/ci.yml` 新增獨立 `e2e` job(`npm ci` → `npm run build` → `npx playwright install --with-deps chromium` → `npm run e2e`),與既有 `check` job(typecheck/test/build)並行,兩者皆需全綠才能合併。
-- **結果**:`7 passed, 0 failed`。
-- **已知限制/後續**:目前僅覆蓋「調度中心」彈窗一個代表性樣本;其餘 11 個彈窗共用同一個 `useFocusTrap` hook,行為已由單元測試(`getFocusables`/`nextTrappedIndex`)與程式碼共用路徑保證一致,但尚未逐一端到端覆蓋。後續可比照擴充到交易所、維修畫面等其他核心互動流程。
+- **涵蓋範圍(前 7 項,2026-09-01)**:登入畫面載入 → 訪客登入進入母港 → 新手教學可跳過 → 開啟「調度中心」彈窗時 focus 移入面板 → **連續 14 次 Tab + 1 次 Shift+Tab 皆侷限於彈窗內(不逃逸到背景)** → `Esc` 關閉彈窗並把焦點歸還給觸發元件。
+- **新增涵蓋範圍(後 7 項,2026-09-02)**:延續同一個瀏覽器 session,走完首筆工單「齒輪箱搶修 CH-12」全程 ——
+  1. 母港「待處理工單」接單(`ACCEPT_QUEST`)。
+  2. **交易所(MarketScreen)**:鍵盤 `Enter` 觸發備品卡片加入購物車(`onKeyActivate`)、確認採購。
+  3. **出海航行(SailScreen)**:出勤就緒檢查(船/技師/備品/天氣皆綠燈)通過後出航,等待航行動畫抵達機組。
+  4. **維修(RepairScreen)**:海象平穩直接登船登塔;**鍵盤 `Enter` 選擇診斷測驗正解選項**;**鍵盤 `Enter` 依序完成 3 個可互動 SOP 步驟**;完工按鈕轉為可點擊、點擊後回母港、原警報解除。
+  5. 全程再次確認無 console 錯誤/未捕捉例外。
+
+  這批新增把「診斷測驗選項」與「SOP 步驟清單」的鍵盤觸發(PR #122 的 `onKeyActivate` 套用範圍)從單元測試(`getFocusables`/`nextTrappedIndex`/`onKeyActivate` 純函式層級)延伸為端到端驗證:鍵盤操作不僅「聚焦得到」,也真的能**推進遊戲狀態、完成工單**。對話框(`DialogueLayer`,`say()` 觸發的全螢幕 zIndex:50 遮罩)新增 `data-testid="dialogue-layer"` 供測試辨識、以共用的 `dismissDialogue()` 輔助函式逐句點掉。
+- **有效性驗證**:
+  - (沿用,2026-09-01)刻意暫時移除 `useFocusTrap.ts` 的 Tab 循環邏輯後重跑,測試如預期在「第 6 次 Tab 後 focus 逃出了彈窗」失敗,證明測試確實會抓到迴歸,而非空跑。
+  - (新增,2026-09-02)刻意暫時拿掉診斷測驗選項的 `onKeyDown={onKeyActivate(pickOption)}`,重跑後如預期在「維修診斷測驗」步驟逾時失敗(鍵盤 `Enter` 不再能選取選項、完工按鈕永遠停用),證明新增的鍵盤操作斷言確實有效;還原後 14 項全過。
+- **CI**:`.github/workflows/ci.yml` 的 `e2e` job(`npm ci` → `npm run build` → `npx playwright install --with-deps chromium` → `npm run e2e`)不變,與既有 `check` job(typecheck/test/build)並行,兩者皆需全綠才能合併。
+- **結果**:`14 passed, 0 failed`。
+- **已知限制/後續**:彈窗 focus trap 目前仍僅覆蓋「調度中心」一個代表性樣本(其餘 11 個彈窗共用同一 hook,由單元測試保證邏輯一致);交易所/出海/維修的覆蓋目前針對「首筆工單(齒輪箱過熱,mechanical 科別)」單一情境,尚未涵蓋大型組件(重大故障轉多回合大修)、加班搶修(`#rush`)、審慎返港再規劃(`#carry`)等分支路徑。
 
 ---
 
 ## 結論
 
-全功能邏輯(167 測試)、型別、建置、平衡模擬、併發壓力測試、Playwright UI 迴歸(7 測試)**全部通過**;併發鎖證實有效。唯一無法在沙盒內跑的是線上後端實打(代理限制),需於本機執行。**系統目前處於可發布狀態。**
+全功能邏輯(167 測試)、型別、建置、平衡模擬、併發壓力測試、Playwright UI 迴歸(14 測試)**全部通過**;併發鎖證實有效。唯一無法在沙盒內跑的是線上後端實打(代理限制),需於本機執行。**系統目前處於可發布狀態。**
 
 > 維護備註:新增功能時請同步在 `test/run.mjs` 補對應測試(邏輯/reducer)或 `test/e2e.mjs`(UI 流程),並更新本報告的「最近一次執行」日期與對應涵蓋表。
