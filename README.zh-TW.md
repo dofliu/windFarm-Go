@@ -68,7 +68,9 @@ npm run sim        # 平衡模擬器：passive / active / full-crew 三策略（
 npm run stress     # 雲端排行榜後端的併發/負載模擬（test/stress.mjs）
 npm run e2e        # 對建置產物做 Playwright 瀏覽器迴歸測試（test/e2e.mjs，需先 npm run build）
 ```
-CI（`.github/workflows/ci.yml`）於每個 PR 對 `main` 跑 `typecheck` + `test` + `build`,並平行跑一個 `e2e`（Playwright）job。
+CI（`.github/workflows/ci.yml`）於每個 PR 對 `main` 跑 `typecheck` + `test` + `build`，並平行跑一個 `e2e`（Playwright）job；推上 `main` 後自動部署到 GitHub Pages。
+
+**開發慣例**：從最新 `main` 開短命分支 → PR 進 `main` → CI 全綠才合併 → 合併後刪分支。改動 app 程式碼／資產時記得把 `public/sw.js` 的快取版本號 +1；程式變動須同步更新對應文件（見 [CLAUDE.md](CLAUDE.md) 的文件同步義務表）。
 
 ## 專案結構
 ```
@@ -92,7 +94,10 @@ src/
 │  └─ IntroRunner / TopBar / Portrait / Forecast        # 新手教學、HUD、對話、天氣
 ├─ cloud/sheet.ts / cloud/api.ts # Apps Script 排行榜與雲端存檔／教師用戶端
 public/assets/                   # 角色、場景、音訊
-docs/                            # 設計、手冊、藍圖、攻略
+test/                            # 邏輯測試(run.mjs)、平衡模擬、壓力測試
+scripts/                         # 維護腳本(圖示產生、分支清理)
+docs/                            # 設計、手冊、藍圖、攻略 — 索引見 docs/README.md
+CLAUDE.md                        # 專案慣例速查(供 AI 協作 session 自動載入)
 ```
 
 ## 文件

@@ -68,7 +68,9 @@ npm run sim        # balance simulator: passive / active / full-crew strategies 
 npm run stress     # concurrency/load simulation for the cloud leaderboard backend (test/stress.mjs)
 npm run e2e        # Playwright browser regression against the built app (test/e2e.mjs) — run `npm run build` first
 ```
-CI (`.github/workflows/ci.yml`) runs `typecheck` + `test` + `build` on every PR to `main`, plus a parallel `e2e` job (Playwright).
+CI (`.github/workflows/ci.yml`) runs `typecheck` + `test` + `build` on every PR to `main`, plus a parallel `e2e` job (Playwright); pushes to `main` deploy to GitHub Pages.
+
+**Contributing conventions**: branch off the latest `main` (short-lived branches), open a PR, merge only on green CI, then delete the branch. Bump the `public/sw.js` cache version when app code or assets change, and keep the docs in sync with your change — see the doc-sync table in [CLAUDE.md](CLAUDE.md).
 
 ## Project structure
 ```
@@ -92,7 +94,10 @@ src/
 │  └─ IntroRunner / TopBar / Portrait / Forecast        # onboarding, HUD, dialogue, weather
 ├─ cloud/sheet.ts / cloud/api.ts # Apps Script leaderboard & cloud save / teacher client
 public/assets/                   # characters, scenes, audio
-docs/                            # design, manual, roadmap, walkthrough
+test/                            # logic tests (run.mjs), balance sim, stress test
+scripts/                         # maintenance scripts (icon gen, branch cleanup)
+docs/                            # design, manual, roadmap, walkthrough — see docs/README.md
+CLAUDE.md                        # project conventions for AI-assisted sessions
 ```
 
 ## Documentation
