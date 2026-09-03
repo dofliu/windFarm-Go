@@ -175,17 +175,34 @@ async function main() {
       await page.getByText("齒輪箱油溫持續升高", { exact: false }).waitFor({ state: "visible", timeout: 5000 });
     });
 
+    // 作業窗吃緊 →「加班搶修(#rush)」分支：故意連續兩次答錯診斷測驗（各扣 3 時段），
+    // 把作業窗從 10 消耗到 4（< 剩餘估計 7），觸發 Part B 的「維修不利」三選一提示。
+    // 這是先前 e2e 只走過「一路順風」golden path 未覆蓋的分支——ROADMAP 明列的接續工作之一。
+    await test("維修診斷測驗：連續兩次故意答錯，觸發作業窗吃緊提示", async () => {
+      await page.locator('[role="button"]', { hasText: "A. 變槳軸承潤滑脂量" }).first().press("Enter");
+      await page.locator('[role="button"]', { hasText: "C. 塔筒地腳螺栓扭力" }).first().press("Enter");
+      await page.getByText("作業窗吃緊", { exact: false }).waitFor({ state: "visible", timeout: 3000 });
+    });
+
+    await test("加班搶修(#rush)：鍵盤/滑鼠觸發後一次趕完剩餘 SOP、吃緊提示解除", async () => {
+      // rush() 的安全近失是否發生由 UI 端 Math.random() < RUSH_RISK 擲骰（reducer 只收布林值以保持可測）；
+      // 暫時覆寫為必定回傳 0.99（> RUSH_RISK）鎖定「無事件」分支，避免 25% 機率造成測試非決定性，用畢立即還原。
+      await page.evaluate(() => { window.__wfgOrigRandom = Math.random; Math.random = () => 0.99; });
+      // 用 <button> 標籤限定，避免同時比對到吃緊提示文字內同樣含「加班搶修」四字的說明句。
+      await page.locator("button", { hasText: "加班搶修" }).click();
+      await page.evaluate(() => { Math.random = window.__wfgOrigRandom; delete window.__wfgOrigRandom; });
+      await dismissDialogue(page); // rush() 觸發的「加班趕上了!」對話（repair_eng 1 句，無事件分支）
+      ok(await page.getByText("作業窗吃緊", { exact: false }).count() === 0, "加班搶修完成剩餘步驟後，吃緊提示應解除");
+      ok(await page.locator("button", { hasText: "加班搶修" }).count() === 0, "已無剩餘 SOP 步驟，加班搶修按鈕應隱藏");
+    });
+
     await test("維修診斷測驗：鍵盤 Enter 選擇正解", async () => {
       const correctOption = page.locator('[role="button"]', { hasText: "B. 潤滑油油位與油質" }).first();
       await correctOption.press("Enter");
       await page.getByText("✓ 正確", { exact: false }).waitFor({ state: "visible", timeout: 3000 });
     });
 
-    await test("維修 SOP：鍵盤 Enter 依序完成可互動步驟", async () => {
-      const steps = ["檢查潤滑油位與油質", "更換濾芯並補充齒輪油", "復歸測試並回報 SCADA"];
-      for (const label of steps) {
-        await page.locator('[role="button"]', { hasText: label }).first().press("Enter");
-      }
+    await test("維修完工按鈕：加班搶修已趕完 SOP、診斷答對後應可點擊", async () => {
       const finishBtn = page.getByText("回報 SCADA · 完成維修", { exact: true });
       await finishBtn.waitFor({ state: "visible", timeout: 3000 });
       ok(await finishBtn.isEnabled(), "診斷+SOP 皆完成、備品齊全時，完工按鈕應可點擊");
