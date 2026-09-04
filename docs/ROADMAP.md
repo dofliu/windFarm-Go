@@ -2,7 +2,9 @@
 
 > 以 zh-TW 為主、English secondary。本藍圖依現況（[STATUS.yaml](../STATUS.yaml)、[GAME_DESIGN.md](GAME_DESIGN.md)）盤點已完成與待辦，並提出**規劃方向**。
 > ⚠ 標示為**規劃中／推測（speculative）**者尚未實作，請勿當成現況；本文為**規劃**而非承諾。
-> Lead with zh-TW; English summaries follow. Last reviewed: 2026-09-03。
+> Lead with zh-TW; English summaries follow. Last reviewed: 2026-09-04。
+
+**✅ Playwright UI 迴歸測試擴充 · 風場戰情室/母港建設彈窗 focus trap**(2026-09-04 例行 session)：延續「其餘 11 個彈窗中挑 1–2 個代表性樣本補 e2e」的接續建議——先前僅「調度中心」有端到端 focus trap 驗證,其餘皆只靠 `test/run.mjs` 的 `nextTrappedIndex`/`getFocusables` 單元測試涵蓋共用邏輯。挑選「風場戰情室」與「母港建設」:兩者皆可從母港「設施」列一鍵開啟、無需前置遊戲狀態,且面板內可聚焦元素數量在開局狀態下固定(風場戰情室=關閉✕+派員定檢+推進一天=3 個;母港建設=關閉✕+4 個設施升級鈕=5 個),Tab 圈數斷言穩定可預期。新增共用測試輔助函式 `checkModalFocusTrap()`,新增 2 項斷言(合計 **18** 項)。刻意暫時讓 `useFocusTrap.ts` 的 Tab 處理短路成必定 `return` 後重跑,確認新增斷言會如預期連鎖失敗(非空跑)後才提交。純測試新增,無 app 程式碼變動。詳見 [TEST_REPORT.md](TEST_REPORT.md) 第 7 節。
 
 **✅ Playwright UI 迴歸測試擴充 · 加班搶修(#rush)分支**(2026-09-03 例行 session)：延續 2026-09-02 的首筆工單全程測試,新增覆蓋先前 TEST_REPORT 明列的已知缺口——「作業窗吃緊」時的 Part B 三選一分支。在診斷測驗連續故意選錯兩個選項(各扣 3 時段,10 時段的作業窗耗到剩 4、低於估計所需 7),驗證「作業窗吃緊」提示如期出現;點擊 ⚡**加班搶修**,驗證剩餘 3 個 SOP 步驟一次趕完、吃緊提示解除,再答對診斷、完工按鈕轉為可點擊、完成整趟工單,新增 2 項斷言(合計 **16** 項)。`rush()` 的安全近失與否由前端 `Math.random() < RUSH_RISK`(25%)擲骰決定,測試以 `page.evaluate` 暫時覆寫 `Math.random` 鎖定「無事件」分支避免非決定性,用畢即還原。刻意暫時讓 `RUSH_SOP` reducer 不真的完成步驟後重跑,確認新增斷言會如預期連鎖失敗(非空跑)後才提交。純測試新增,無 app 程式碼變動。詳見 [TEST_REPORT.md](TEST_REPORT.md) 第 7 節。
 
@@ -54,7 +56,7 @@
 2. **P1・課堂試用回饋循環(新學期)**:實際班級投放(學號帳號+班級碼),每週用教師面板 CSV/掌握度鑽取觀察學習成效;回饋開成 GitHub Issues 作為下一輪功能依據。搭配一次 `npm run sim` 完整平衡回測(內容修正後尚未重跑)。
 3. **P2・教學深化(依課堂數據擇一)**:每機獨立健康度/RUL 預測性維護(建議先出設計草案)、Exam 進階版(教師發布+雲端報告)、內容編輯器(教師資料驅動新增故障)。
 4. **P2・無障礙延伸**:✅ 鍵盤操作走完工單循環、✅ 全部彈窗 focus trap(Tab 侷限循環 + Esc 關閉)均已完成(2026-08-31);尚待色盲配色全面審查、對話/音效字幕。
-5. **持續・工程健康**:分支策略改「短命分支、合併即刪」;建議在 GitHub 設定 main 分支保護(要求 CI 綠才可合併);✅ Playwright UI 迴歸測試(`npm run e2e` + CI `e2e` job)首批(2026-09-01)+ 交易所/出海/維修畫面擴充(2026-09-02)+ 加班搶修分支(2026-09-03)皆已完成,共 **16** 項——後續可再挑其餘彈窗中 1–2 個代表性樣本,或涵蓋大型組件大修/審慎返港再規劃等分支路徑。
+5. **持續・工程健康**:分支策略改「短命分支、合併即刪」;建議在 GitHub 設定 main 分支保護(要求 CI 綠才可合併);✅ Playwright UI 迴歸測試(`npm run e2e` + CI `e2e` job)首批(2026-09-01)+ 交易所/出海/維修畫面擴充(2026-09-02)+ 加班搶修分支(2026-09-03)+ 風場戰情室/母港建設彈窗 focus trap(2026-09-04)皆已完成,共 **18** 項——後續可再挑其餘 9 個彈窗中 1–2 個代表性樣本,或涵蓋大型組件大修/審慎返港再規劃等分支路徑。
 
 ---
 
@@ -92,7 +94,7 @@
 > 依「立即可做 → 需後端 → 願景」排序；交接細節見 [HANDOFF.md](HANDOFF.md)。
 
 **立即可做（免後端）**
-- **Playwright UI 迴歸測試擴充** — ✅ 首批（2026-09-01，登入/訪客/教學跳過/調度中心彈窗 focus trap）、交易所/出海/維修畫面擴充（2026-09-02，接單→交易所採購→出航→登船→鍵盤完成診斷測驗+SOP→完工）、加班搶修（`#rush`）分支（2026-09-03，作業窗吃緊提示→⚡加班搶修一次趕完 SOP→完工）皆已完成，共 **16** 項（`npm run e2e` + CI `e2e` job）；後續可再挑其餘彈窗中 1–2 個代表性樣本，或涵蓋大型組件大修/審慎返港再規劃（`#carry`，需處理跨日天氣重擲的非決定性）等分支路徑。
+- **Playwright UI 迴歸測試擴充** — ✅ 首批（2026-09-01，登入/訪客/教學跳過/調度中心彈窗 focus trap）、交易所/出海/維修畫面擴充（2026-09-02）、加班搶修（`#rush`）分支（2026-09-03）、風場戰情室/母港建設彈窗 focus trap（2026-09-04）皆已完成，共 **18** 項（`npm run e2e` + CI `e2e` job）；後續可再挑其餘 9 個彈窗（`OpsCenterModal`/`ConstructionModal`/`FacilityModal`/`CaseFileModal`/`TrendsModal`/`ProfileModal`/`TeacherModal`/`ExamModal`/`CourseModal`）中 1–2 個代表性樣本，或涵蓋大型組件大修/審慎返港再規劃（`#carry`，需處理跨日天氣重擲的非決定性）等分支路徑。
 - **戰情室停機折抵「現金」收入的設定開關** — 目前停機只折抵淨發電；提供設定把戰情室層接入售電現金流（需確認經濟平衡）。
 - **每機獨立健康度 / RUL 預測性維護** — 由全場 `fleetHealth` 延伸到每台機組健康指標與剩餘壽命建模，深化 CBM／預測性維護教學（中大型，建議先出設計草案）。
 - **無障礙延伸（後續）** — ✅ 工單循環鍵盤操作、✅ 全部彈窗 focus trap（開啟時 focus 移入、Tab/Shift+Tab 侷限循環於面板內、Esc 關閉並歸還焦點）皆已完成（見上）；尚待：更全面色盲配色審查、對話／音效字幕與旁白。
@@ -134,7 +136,7 @@
 - **直升機進場 / 電網限電真實權衡任務**：自由營運沙盒新增 8 題真實運維判斷——直升機吊掛進場(封船海象/遠海急件/作業限值/成本效益)與電網限電(負電價降載/限電補償/低電壓穿越 FRT/順勢維修)。
   *Real-ops tradeoffs: helicopter access & grid-curtailment judgment tasks.*
 - **呈現**：三模式背景（模擬/實境/漫畫）、60° 俯瞰、多場景登塔（機艙/塔架/輪轂/甲板，含實景/漫畫情境圖與出海/大修場景影片）、Web Audio 音效音樂、中英雙語。母港左側「設施／風場動態」面板可各自獨立收合，設施項目皆有專屬圖示（含技師人物立繪）。
-- **工程**：自動化測試 `npm test`（167 項）、平衡模擬器 `npm run sim`、併發壓力測試 `npm run stress`、**Playwright UI 迴歸測試 `npm run e2e`（16 項）**、PR CI（typecheck/test/build + e2e，兩個 job 並行）。完整系統測試紀錄見 [TEST_REPORT.md](TEST_REPORT.md)（測試數為本文撰寫時的既有紀錄，隨版本增加，以 `npm test` 實跑結果為準）、壓測細節見 [STRESS_TEST.md](STRESS_TEST.md)。
+- **工程**：自動化測試 `npm test`（167 項）、平衡模擬器 `npm run sim`、併發壓力測試 `npm run stress`、**Playwright UI 迴歸測試 `npm run e2e`（18 項）**、PR CI（typecheck/test/build + e2e，兩個 job 並行）。完整系統測試紀錄見 [TEST_REPORT.md](TEST_REPORT.md)（測試數為本文撰寫時的既有紀錄，隨版本增加，以 `npm test` 實跑結果為準）、壓測細節見 [STRESS_TEST.md](STRESS_TEST.md)。
 
 ---
 
