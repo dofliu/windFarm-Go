@@ -1,7 +1,7 @@
 # 系統測試報告 — Full-System Verification
 
 > 目的:記錄本專案「全功能邏輯/程式 + 壓力測試」的**測試項目、方法、結果**,作為發布前的驗證紀錄與可重現依據。
-> 最近一次完整執行:**2026-09-02**(例行 session,Playwright UI 迴歸測試擴充至交易所/出海/維修畫面)。
+> 最近一次完整執行:**2026-09-04**(例行 session,Playwright UI 迴歸測試擴充至風場戰情室/母港建設彈窗 focus trap)。
 > 一鍵重跑:`npm run typecheck && npm test && npm run build && npm run sim && npm run stress`(線上後端另見第 6 節;UI 迴歸見第 7 節)。
 
 ---
@@ -16,7 +16,7 @@
 | 4 | 平衡模擬 | `npm run sim` | 3 策略 × 120 天 | ✅ 進程激勵單調、無崩盤 |
 | 5 | 併發壓力測試 | `npm run stress` | 3 情境 + 競態示範 | ✅ 契約守住、鎖有效 |
 | 6 | 線上後端實打 | `npm run live-check` | 10 項 | ⚙️ 需本機執行(沙盒代理擋 `script.google.com`) |
-| 7 | Playwright UI 迴歸 | `npm run build && npm run e2e` | 16 項 | ✅ 全過(CI `e2e` job) |
+| 7 | Playwright UI 迴歸 | `npm run build && npm run e2e` | 18 項 | ✅ 全過(CI `e2e` job) |
 
 ---
 
@@ -109,9 +109,9 @@
 - **方法**:`test/live-check.mjs` 直接呼叫線上 Web App;預設唯讀,加 `--write` 才寫測試資料。
 - **狀態**:⚙️ **本沙盒的出站代理會阻擋 `script.google.com`(403),無法於此環境執行**——這是環境網路限制,非程式問題。請於**本機**執行 `node test/live-check.mjs` 驗證(先前本機實跑 10 項全通,含併發鎖證明)。
 
-## 7. Playwright UI 迴歸測試 — `npm run e2e`(16 項全過)
+## 7. Playwright UI 迴歸測試 — `npm run e2e`(18 項全過)
 
-- **緣起**:先前每輪無障礙(鍵盤操作/彈窗 focus trap)改動僅在開發 session 內用 `playwright-core` 手動截圖/操作驗證(見 `docs/HANDOFF.md`「視覺驗證流程」),未沉澱為可重複執行、進 CI 把關的測試,迴歸風險需每次重新手動走一遍。2026-09-01 補上第一批(7 項,登入/教學/彈窗 focus trap);2026-09-02 延伸覆蓋到交易所/出海/維修畫面(7 項);本輪(2026-09-03)再延伸覆蓋「作業窗吃緊 → 加班搶修(`#rush`)」分支路徑(2 項)。
+- **緣起**:先前每輪無障礙(鍵盤操作/彈窗 focus trap)改動僅在開發 session 內用 `playwright-core` 手動截圖/操作驗證(見 `docs/HANDOFF.md`「視覺驗證流程」),未沉澱為可重複執行、進 CI 把關的測試,迴歸風險需每次重新手動走一遍。2026-09-01 補上第一批(7 項,登入/教學/彈窗 focus trap);2026-09-02 延伸覆蓋到交易所/出海/維修畫面(7 項);2026-09-03 再延伸覆蓋「作業窗吃緊 → 加班搶修(`#rush`)」分支路徑(2 項);本輪(2026-09-04)再補上「風場戰情室」/「母港建設」兩個彈窗的 focus trap e2e 樣本(2 項)。
 - **方法**:`test/e2e.mjs` 用 Node 內建 `http` 模組把 `npm run build` 產出的 `dist/`(含 `/windFarm-Go/` 子路徑)在本機起一個靜態伺服器,再用 `playwright`(chromium)驅動真實瀏覽器操作、斷言。排行榜等雲端讀取(`script.google.com`)一律以 `context.route` 攔截中止,測試不打正式後端、不受網路狀況影響。
 - **涵蓋範圍(前 7 項,2026-09-01)**:登入畫面載入 → 訪客登入進入母港 → 新手教學可跳過 → 開啟「調度中心」彈窗時 focus 移入面板 → **連續 14 次 Tab + 1 次 Shift+Tab 皆侷限於彈窗內(不逃逸到背景)** → `Esc` 關閉彈窗並把焦點歸還給觸發元件。
 - **涵蓋範圍(中 7 項,2026-09-02)**:延續同一個瀏覽器 session,走完首筆工單「齒輪箱搶修 CH-12」golden path 全程 ——
@@ -125,18 +125,20 @@
 - **新增涵蓋範圍(後 2 項,2026-09-03)**:延續同一次工單(CH-12)的維修流程,但改走「維修不利」的 Part B 分支——原本 golden path 一路答對診斷、從未觸發 `tightWindow` 提示,前輪 TEST_REPORT 已明列此分支為已知缺口:
   1. 在診斷測驗上**連續故意選錯兩個選項**(每次扣 3 時段,10 時段的作業窗耗到剩 4,低於估計所需 7),驗證「作業窗吃緊」提示如預期出現(繼續作業 / ⚡加班搶修 / 回港再規劃 三選一)。
   2. 點擊 **⚡加班搶修(`#rush`)**,驗證剩餘 3 個 SOP 步驟一次完成、吃緊提示解除;再答對診斷、完工按鈕轉為可點擊,完成整趟工單。`rush()` 的安全近失與否由前端 `Math.random() < RUSH_RISK`(25%)擲骰決定(reducer 只收布林值以保持可測),測試以 `page.evaluate` 暫時覆寫 `Math.random` 回傳固定值鎖定「無事件」分支,避免真實機率造成測試非決定性,用畢立即還原,不影響同頁面其他隨機邏輯(如天氣預報)。
+- **新增涵蓋範圍(後 2 項,2026-09-04)**:從其餘 11 個沿用 `useFocusTrap` 的彈窗中,挑「風場戰情室(FleetOpsModal)」與「母港建設(PortModal)」兩個代表性樣本補上端到端 focus trap 驗證——兩者皆可從母港「設施」列一鍵開啟、無需前置遊戲狀態,面板內可聚焦元素數量在開局狀態下固定(風場戰情室:關閉✕+派員定檢+推進一天=3 個;母港建設:關閉✕+4 個設施升級鈕=5 個),各驗證開啟時 focus 移入面板、連續 Tab 侷限循環於面板內、`Esc` 關閉並歸還焦點給觸發的設施列。新增共用測試輔助函式 `checkModalFocusTrap()`。
 - **有效性驗證**:
   - (沿用,2026-09-01)刻意暫時移除 `useFocusTrap.ts` 的 Tab 循環邏輯後重跑,測試如預期在「第 6 次 Tab 後 focus 逃出了彈窗」失敗,證明測試確實會抓到迴歸,而非空跑。
   - (沿用,2026-09-02)刻意暫時拿掉診斷測驗選項的 `onKeyDown={onKeyActivate(pickOption)}`,重跑後如預期在「維修診斷測驗」步驟逾時失敗(鍵盤 `Enter` 不再能選取選項、完工按鈕永遠停用),證明新增的鍵盤操作斷言確實有效。
-  - (新增,2026-09-03)刻意暫時把 `RUSH_SOP` reducer 的 `steps: rp.steps.map(() => true)` 改回 `steps: rp.steps`(模擬「加班搶修沒有真的完成步驟」的迴歸),重跑後如預期連鎖失敗 3 項(吃緊提示未解除 → 完工按鈕逾時未出現 → 無法完工),證明新增斷言確實會抓到迴歸;還原後 16 項全過。
+  - (沿用,2026-09-03)刻意暫時把 `RUSH_SOP` reducer 的 `steps: rp.steps.map(() => true)` 改回 `steps: rp.steps`(模擬「加班搶修沒有真的完成步驟」的迴歸),重跑後如預期連鎖失敗 3 項(吃緊提示未解除 → 完工按鈕逾時未出現 → 無法完工),證明新增斷言確實會抓到迴歸。
+  - (新增,2026-09-04)刻意暫時把 `useFocusTrap.ts` 的 Tab 處理短路成必定 `return`(略過 trap 邏輯)後重跑,測試如預期連鎖失敗 3 項(既有的調度中心 Tab 迴歸 + 新增的風場戰情室/母港建設兩項,母港建設甚至因 focus 逃逸擋住點擊而逾時),證明新增斷言確實會抓到迴歸;還原後 18 項全過。
 - **CI**:`.github/workflows/ci.yml` 的 `e2e` job(`npm ci` → `npm run build` → `npx playwright install --with-deps chromium` → `npm run e2e`)不變,與既有 `check` job(typecheck/test/build)並行,兩者皆需全綠才能合併。
-- **結果**:`16 passed, 0 failed`。
-- **已知限制/後續**:彈窗 focus trap 目前仍僅覆蓋「調度中心」一個代表性樣本(其餘 11 個彈窗共用同一 hook,由單元測試保證邏輯一致);覆蓋情境仍限於「首筆工單(齒輪箱過熱,mechanical 科別)」,尚未涵蓋大型組件(重大故障轉多回合大修)、審慎返港再規劃(`#carry`,含跨日 `REPLAN_RETURN` 後的天氣重擲,較不適合純 UI 端到端斷言,且會與海象隨機性耦合)等分支路徑。
+- **結果**:`18 passed, 0 failed`。
+- **已知限制/後續**:彈窗 focus trap 目前仍有 9 個彈窗(`OpsCenterModal`/`ConstructionModal`/`FacilityModal`/`CaseFileModal`/`TrendsModal`/`ProfileModal`/`TeacherModal`/`ExamModal`/`CourseModal`)未有 e2e 樣本(由單元測試保證邏輯一致);覆蓋情境仍限於「首筆工單(齒輪箱過熱,mechanical 科別)」,尚未涵蓋大型組件(重大故障轉多回合大修)、審慎返港再規劃(`#carry`,含跨日 `REPLAN_RETURN` 後的天氣重擲,較不適合純 UI 端到端斷言,且會與海象隨機性耦合)等分支路徑。
 
 ---
 
 ## 結論
 
-全功能邏輯(167 測試)、型別、建置、平衡模擬、併發壓力測試、Playwright UI 迴歸(16 測試)**全部通過**;併發鎖證實有效。唯一無法在沙盒內跑的是線上後端實打(代理限制),需於本機執行。**系統目前處於可發布狀態。**
+全功能邏輯(167 測試)、型別、建置、平衡模擬、併發壓力測試、Playwright UI 迴歸(18 測試)**全部通過**;併發鎖證實有效。唯一無法在沙盒內跑的是線上後端實打(代理限制),需於本機執行。**系統目前處於可發布狀態。**
 
 > 維護備註:新增功能時請同步在 `test/run.mjs` 補對應測試(邏輯/reducer)或 `test/e2e.mjs`(UI 流程),並更新本報告的「最近一次執行」日期與對應涵蓋表。

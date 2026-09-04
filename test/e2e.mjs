@@ -53,6 +53,32 @@ async function test(name, fn) {
 function ok(cond, msg = "expected truthy") { if (!cond) throw new Error(msg); }
 function eq(a, b, msg) { if (a !== b) throw new Error(msg || `expected ${JSON.stringify(b)}, got ${JSON.stringify(a)}`); }
 
+// 通用彈窗 focus trap 迴歸：全部 12 個彈窗共用同一個 `useFocusTrap` hook 與 `[role="dialog"].wfg-modal-panel`
+// 結構(邏輯已由 test/run.mjs 的 nextTrappedIndex/getFocusables 單元測試涵蓋),此處只再抽驗 1–2 個
+// 尚未有 e2e 樣本的彈窗(調度中心已由前面測試涵蓋),確認鍵盤操作在真實瀏覽器渲染下也成立。
+async function checkModalFocusTrap(page, { triggerText, tabCount }) {
+  await page.getByText(triggerText, { exact: true }).click();
+  const dialog = page.locator('[role="dialog"].wfg-modal-panel');
+  await dialog.waitFor({ state: "visible", timeout: 5000 });
+  const inPanel = () => page.evaluate(() => {
+    const panel = document.querySelector('[role="dialog"].wfg-modal-panel');
+    return !!panel && panel.contains(document.activeElement);
+  });
+  ok(await inPanel(), "彈窗開啟後 focus 應落在面板內");
+  for (let i = 0; i < tabCount; i++) {
+    await page.keyboard.press("Tab");
+    ok(await inPanel(), `第 ${i + 1} 次 Tab 後 focus 逃出了彈窗`);
+  }
+  await page.keyboard.press("Escape");
+  await dialog.waitFor({ state: "hidden", timeout: 5000 }).catch(() => {});
+  eq(await dialog.count(), 0, "Esc 後彈窗應已卸載");
+  const restored = await page.evaluate(
+    (txt) => document.activeElement?.textContent?.includes(txt) ?? false,
+    triggerText,
+  );
+  ok(restored, `焦點應歸還給開啟彈窗前的「${triggerText}」設施列`);
+}
+
 // 逐句點掉底部對話框(DialogueLayer,全螢幕 zIndex:50 遮罩):第一下把逐字動畫補完、第二下換下一句，
 // 直到對話框卸載或達到上限次數(保守抓 10 下,涵蓋目前劇本最長的 intro/outro + 復盤三則)。
 async function dismissDialogue(page, maxClicks = 10) {
@@ -212,6 +238,20 @@ async function main() {
       await page.getByText("回報 SCADA · 完成維修", { exact: true }).click();
       await page.getByText("目前無作用中警報", { exact: false }).waitFor({ state: "visible", timeout: 8000 });
       await dismissDialogue(page); // 完工 outro + 復盤對話
+    });
+
+    // ── 其餘彈窗的 focus trap e2e 樣本擴充（調度中心已由上方涵蓋）──
+    // 兩個選點皆為母港頂層「設施」列(FacRow)直接開啟、無需前置遊戲狀態，且面板內可聚焦元素數量
+    // 在遊戲開局狀態下是固定的(不受隨機故障/成就等資料影響)，Tab 圈數才能穩定預期。
+
+    await test("風場戰情室彈窗：focus trap 迴歸（Tab 循環 + Esc 關閉歸還焦點）", async () => {
+      // 面板內可聚焦元素：關閉✕ + 派員定檢 + 推進一天 = 3 個；開局技師閒置且海象平穩,「派員定檢」按鈕未 disabled。
+      await checkModalFocusTrap(page, { triggerText: "風場戰情室", tabCount: 5 });
+    });
+
+    await test("母港建設彈窗：focus trap 迴歸（Tab 循環 + Esc 關閉歸還焦點）", async () => {
+      // 面板內可聚焦元素：關閉✕ + 4 個設施升級鈕(碼頭/倉儲/起重機/燈塔)= 5 個；開局預算皆負擔得起、無滿級,皆可聚焦。
+      await checkModalFocusTrap(page, { triggerText: "母港建設", tabCount: 7 });
     });
 
     await test("整段流程無 console 錯誤或未捕捉例外", () => {
