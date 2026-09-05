@@ -254,6 +254,14 @@ async function main() {
       await checkModalFocusTrap(page, { triggerText: "母港建設", tabCount: 7 });
     });
 
+    await test("營運趨勢彈窗：focus trap 迴歸（單一可聚焦元素邊界案例）", async () => {
+      // 觸發鈕在左側「風場動態」面板(預設展開)內的「📈 營運趨勢 · 賽後復盤」按鈕，同樣無需前置遊戲狀態。
+      // 面板內可聚焦元素：目前流程只完成 1 筆工單（FINISH_REPAIR 才會 pushHistory 一筆），history 長度未達 2,
+      // 因此仍落在「尚無足夠資料」提示畫面，可聚焦元素只有關閉✕ 這 1 個——用來驗證 trap 在「單一可聚焦元素」
+      // 邊界下 Tab/Shift+Tab 皆應停留原地、不逃逸的情形(先前兩個樣本皆為多元素,尚未覆蓋此邊界)。
+      await checkModalFocusTrap(page, { triggerText: "📈 營運趨勢 · 賽後復盤", tabCount: 4 });
+    });
+
     await test("整段流程無 console 錯誤或未捕捉例外", () => {
       eq(consoleErrors.length, 0, `console errors: ${consoleErrors.join(" | ")}`);
       eq(pageErrors.length, 0, `page errors: ${pageErrors.join(" | ")}`);
