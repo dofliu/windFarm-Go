@@ -262,6 +262,15 @@ async function main() {
       await checkModalFocusTrap(page, { triggerText: "📈 營運趨勢 · 賽後復盤", tabCount: 4 });
     });
 
+    await test("課程模式彈窗：focus trap 迴歸（多元素/大面板情境）", async () => {
+      // 觸發鈕為頂欄「⚙」齒輪鈕，隨處可見、無需前置遊戲狀態。
+      // 面板內可聚焦元素：關閉✕ + 重播教學 + 獨立測驗模式 + 教師檢視 + 開放週次 −/＋ (2) +
+      // COURSE_WEEKS 18 週各 1 個「指派」鈕 + 匯入任務文字框 + 匯入並指派 + 情境包文字框 + 匯入情境包
+      // = 1+1+1+1+2+18+1+1+1+1 = 28 個；本輪測試環境全新 localStorage、無已匯入情境包，故不含「移除」鈕。
+      // 刻意挑一個元素數量遠多於先前樣本(1/3/5 個)的大面板，驗證 trap 在較長 Tab 序列下仍正確循環回頭。
+      await checkModalFocusTrap(page, { triggerText: "⚙", tabCount: 30 });
+    });
+
     await test("整段流程無 console 錯誤或未捕捉例外", () => {
       eq(consoleErrors.length, 0, `console errors: ${consoleErrors.join(" | ")}`);
       eq(pageErrors.length, 0, `page errors: ${pageErrors.join(" | ")}`);
