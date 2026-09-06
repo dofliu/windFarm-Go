@@ -2,7 +2,9 @@
 
 > 以 zh-TW 為主、English secondary。本藍圖依現況（[STATUS.yaml](../STATUS.yaml)、[GAME_DESIGN.md](GAME_DESIGN.md)）盤點已完成與待辦，並提出**規劃方向**。
 > ⚠ 標示為**規劃中／推測（speculative）**者尚未實作，請勿當成現況；本文為**規劃**而非承諾。
-> Lead with zh-TW; English summaries follow. Last reviewed: 2026-09-05。
+> Lead with zh-TW; English summaries follow. Last reviewed: 2026-09-06。
+
+**✅ Playwright UI 迴歸測試擴充 · 課程模式彈窗 focus trap**(2026-09-06 例行 session)：延續「其餘 8 個彈窗中再挑代表性樣本補 e2e」的接續建議。挑選 `CourseModal`(課程模式):觸發鈕是頂欄「⚙」齒輪鈕,隨處可見、無需前置遊戲狀態;面板內可聚焦元素數量在開局狀態下固定(關閉✕+重播教學+獨立測驗模式+教師檢視+開放週次 −/＋(2)+`COURSE_WEEKS` 18 週各 1 個「指派」鈕+匯入任務文字框+匯入並指派+情境包文字框+匯入情境包 = **28** 個;e2e 測試環境全新 `localStorage`、無已匯入情境包,故不含「移除」鈕)。這是先前 3 個樣本(1/3/5 個可聚焦元素)之外刻意挑選的「元素數量遠多、Tab 序列較長」情境,驗證 trap 在 28 個焦點、30 次 Tab 下仍正確循環回頭。沿用既有 `checkModalFocusTrap()`,新增 1 項斷言(合計 **20** 項)。刻意暫時讓 `useFocusTrap.ts` 的 Tab 處理短路成必定 `return` 後重跑,確認新增斷言會如預期連鎖失敗(非空跑,連鎖失敗 5 項)後才提交。純測試新增,無 app 程式碼變動。剩餘 7 個彈窗(`OpsCenterModal`/`ConstructionModal`/`FacilityModal`/`CaseFileModal`/`ProfileModal`/`TeacherModal`/`ExamModal`)中,`OpsCenterModal` 因判斷任務/案例演練隨機抽題、選項數隨模板變動,一併列入需先鎖定 `Math.random()` 才適合納入的清單。詳見 [TEST_REPORT.md](TEST_REPORT.md) 第 7 節。
 
 **✅ Playwright UI 迴歸測試擴充 · 營運趨勢彈窗 focus trap**(2026-09-05 例行 session)：延續「剩餘 9 個彈窗中再挑代表性樣本補 e2e」的接續建議。挑選 `TrendsModal`:由母港左側「風場動態」面板(預設展開)的「📈 營運趨勢 · 賽後復盤」按鈕一鍵開啟、無需前置遊戲狀態;且 e2e 流程走到這裡時只完成過 1 筆工單(`FINISH_REPAIR` 才會 `pushHistory`),`data.history.length` 未達門檻 2,畫面固定停在「尚無足夠資料」提示、面板內僅關閉✕ 1 個可聚焦元素——補上先前兩個樣本(3 個/5 個可聚焦元素)未覆蓋的「單一可聚焦元素」邊界情境。沿用既有 `checkModalFocusTrap()`,新增 1 項斷言(合計 **19** 項)。刻意暫時讓 `useFocusTrap.ts` 的 Tab 處理短路成必定 `return` 後重跑,確認新增斷言會如預期連鎖失敗(非空跑)後才提交。純測試新增,無 app 程式碼變動。`ProfileModal`(錯題本內容隨答題變動)、`CaseFileModal`(案例連結數隨 Tier/隨機抽案例變動)因可聚焦元素數量不穩定,暫緩納入,留待下次評估固定測試時間點。詳見 [TEST_REPORT.md](TEST_REPORT.md) 第 7 節。
 
@@ -58,7 +60,7 @@
 2. **P1・課堂試用回饋循環(新學期)**:實際班級投放(學號帳號+班級碼),每週用教師面板 CSV/掌握度鑽取觀察學習成效;回饋開成 GitHub Issues 作為下一輪功能依據。搭配一次 `npm run sim` 完整平衡回測(內容修正後尚未重跑)。
 3. **P2・教學深化(依課堂數據擇一)**:每機獨立健康度/RUL 預測性維護(建議先出設計草案)、Exam 進階版(教師發布+雲端報告)、內容編輯器(教師資料驅動新增故障)。
 4. **P2・無障礙延伸**:✅ 鍵盤操作走完工單循環、✅ 全部彈窗 focus trap(Tab 侷限循環 + Esc 關閉)均已完成(2026-08-31);尚待色盲配色全面審查、對話/音效字幕。
-5. **持續・工程健康**:分支策略改「短命分支、合併即刪」;建議在 GitHub 設定 main 分支保護(要求 CI 綠才可合併);✅ Playwright UI 迴歸測試(`npm run e2e` + CI `e2e` job)首批(2026-09-01)+ 交易所/出海/維修畫面擴充(2026-09-02)+ 加班搶修分支(2026-09-03)+ 風場戰情室/母港建設彈窗 focus trap(2026-09-04)+ 營運趨勢彈窗 focus trap(2026-09-05)皆已完成,共 **19** 項——後續可再挑其餘 8 個彈窗中的代表性樣本(`ProfileModal`/`CaseFileModal` 需先解決可聚焦元素隨答題/案例內容變動的不穩定問題),或涵蓋大型組件大修/審慎返港再規劃等分支路徑。
+5. **持續・工程健康**:分支策略改「短命分支、合併即刪」;建議在 GitHub 設定 main 分支保護(要求 CI 綠才可合併);✅ Playwright UI 迴歸測試(`npm run e2e` + CI `e2e` job)首批(2026-09-01)+ 交易所/出海/維修畫面擴充(2026-09-02)+ 加班搶修分支(2026-09-03)+ 風場戰情室/母港建設彈窗 focus trap(2026-09-04)+ 營運趨勢彈窗 focus trap(2026-09-05)+ 課程模式彈窗 focus trap(2026-09-06)皆已完成,共 **20** 項——後續可再挑其餘 7 個彈窗中的代表性樣本(`ProfileModal`/`CaseFileModal`/`OpsCenterModal` 需先解決可聚焦元素隨答題/案例/隨機抽題內容變動的不穩定問題),或涵蓋大型組件大修/審慎返港再規劃等分支路徑。
 
 ---
 
@@ -96,7 +98,7 @@
 > 依「立即可做 → 需後端 → 願景」排序；交接細節見 [HANDOFF.md](HANDOFF.md)。
 
 **立即可做（免後端）**
-- **Playwright UI 迴歸測試擴充** — ✅ 首批（2026-09-01，登入/訪客/教學跳過/調度中心彈窗 focus trap）、交易所/出海/維修畫面擴充（2026-09-02）、加班搶修（`#rush`）分支（2026-09-03）、風場戰情室/母港建設彈窗 focus trap（2026-09-04）、營運趨勢彈窗 focus trap（2026-09-05）皆已完成，共 **19** 項（`npm run e2e` + CI `e2e` job）；後續可再挑其餘 8 個彈窗（`OpsCenterModal`/`ConstructionModal`/`FacilityModal`/`CaseFileModal`/`ProfileModal`/`TeacherModal`/`ExamModal`/`CourseModal`）中的代表性樣本（`ProfileModal`/`CaseFileModal` 因面板內容隨答題/隨機案例變動、可聚焦元素數量不穩定，需先固定測試時間點才適合納入），或涵蓋大型組件大修/審慎返港再規劃（`#carry`，需處理跨日天氣重擲的非決定性）等分支路徑。
+- **Playwright UI 迴歸測試擴充** — ✅ 首批（2026-09-01，登入/訪客/教學跳過/調度中心彈窗 focus trap）、交易所/出海/維修畫面擴充（2026-09-02）、加班搶修（`#rush`）分支（2026-09-03）、風場戰情室/母港建設彈窗 focus trap（2026-09-04）、營運趨勢彈窗 focus trap（2026-09-05）、課程模式彈窗 focus trap（2026-09-06）皆已完成，共 **20** 項（`npm run e2e` + CI `e2e` job）；後續可再挑其餘 7 個彈窗（`OpsCenterModal`/`ConstructionModal`/`FacilityModal`/`CaseFileModal`/`ProfileModal`/`TeacherModal`/`ExamModal`）中的代表性樣本（`ProfileModal`/`CaseFileModal`/`OpsCenterModal` 因面板內容隨答題/隨機案例/隨機抽題變動、可聚焦元素數量不穩定，需先固定測試時間點或鎖定 `Math.random()` 才適合納入），或涵蓋大型組件大修/審慎返港再規劃（`#carry`，需處理跨日天氣重擲的非決定性）等分支路徑。
 - **戰情室停機折抵「現金」收入的設定開關** — 目前停機只折抵淨發電；提供設定把戰情室層接入售電現金流（需確認經濟平衡）。
 - **每機獨立健康度 / RUL 預測性維護** — 由全場 `fleetHealth` 延伸到每台機組健康指標與剩餘壽命建模，深化 CBM／預測性維護教學（中大型，建議先出設計草案）。
 - **無障礙延伸（後續）** — ✅ 工單循環鍵盤操作、✅ 全部彈窗 focus trap（開啟時 focus 移入、Tab/Shift+Tab 侷限循環於面板內、Esc 關閉並歸還焦點）皆已完成（見上）；尚待：更全面色盲配色審查、對話／音效字幕與旁白。
@@ -138,7 +140,7 @@
 - **直升機進場 / 電網限電真實權衡任務**：自由營運沙盒新增 8 題真實運維判斷——直升機吊掛進場(封船海象/遠海急件/作業限值/成本效益)與電網限電(負電價降載/限電補償/低電壓穿越 FRT/順勢維修)。
   *Real-ops tradeoffs: helicopter access & grid-curtailment judgment tasks.*
 - **呈現**：三模式背景（模擬/實境/漫畫）、60° 俯瞰、多場景登塔（機艙/塔架/輪轂/甲板，含實景/漫畫情境圖與出海/大修場景影片）、Web Audio 音效音樂、中英雙語。母港左側「設施／風場動態」面板可各自獨立收合，設施項目皆有專屬圖示（含技師人物立繪）。
-- **工程**：自動化測試 `npm test`（167 項）、平衡模擬器 `npm run sim`、併發壓力測試 `npm run stress`、**Playwright UI 迴歸測試 `npm run e2e`（19 項）**、PR CI（typecheck/test/build + e2e，兩個 job 並行）。完整系統測試紀錄見 [TEST_REPORT.md](TEST_REPORT.md)（測試數為本文撰寫時的既有紀錄，隨版本增加，以 `npm test` 實跑結果為準）、壓測細節見 [STRESS_TEST.md](STRESS_TEST.md)。
+- **工程**：自動化測試 `npm test`（167 項）、平衡模擬器 `npm run sim`、併發壓力測試 `npm run stress`、**Playwright UI 迴歸測試 `npm run e2e`（20 項）**、PR CI（typecheck/test/build + e2e，兩個 job 並行）。完整系統測試紀錄見 [TEST_REPORT.md](TEST_REPORT.md)（測試數為本文撰寫時的既有紀錄，隨版本增加，以 `npm test` 實跑結果為準）、壓測細節見 [STRESS_TEST.md](STRESS_TEST.md)。
 
 ---
 
