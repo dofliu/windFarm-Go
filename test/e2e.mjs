@@ -271,6 +271,16 @@ async function main() {
       await checkModalFocusTrap(page, { triggerText: "⚙", tabCount: 30 });
     });
 
+    await test("機具工坊彈窗：focus trap 迴歸（雙元素情境）", async () => {
+      // FacilityModal(kind="tool")：母港「設施」列一鍵開啟、無需前置遊戲狀態。
+      // 面板內可聚焦元素：關閉✕ + 升級鈕 = 2 個；開局預算 8420 萬遠高於首級升級費 100 萬，
+      // 升級鈕未 disabled(disabled 按鈕不進 tab 序，見 a11y.ts 的 FOCUSABLE_SELECTOR)。
+      // 補上先前樣本(1/3/4/5/28 個)之間尚未覆蓋的「雙元素」情境。FacilityModal 另外幾種 kind
+      // (如「技師公會」的候選名單用 Math.random() 產生)可聚焦元素數量不穩定，故選這個開局即
+      // 固定的 kind 納入，其餘 kind 留待之後鎖定 Math.random() 或改採固定資料時再評估。
+      await checkModalFocusTrap(page, { triggerText: "機具工坊", tabCount: 5 });
+    });
+
     await test("整段流程無 console 錯誤或未捕捉例外", () => {
       eq(consoleErrors.length, 0, `console errors: ${consoleErrors.join(" | ")}`);
       eq(pageErrors.length, 0, `page errors: ${pageErrors.join(" | ")}`);
