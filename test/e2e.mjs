@@ -281,6 +281,42 @@ async function main() {
       await checkModalFocusTrap(page, { triggerText: "機具工坊", tabCount: 5 });
     });
 
+    await test("風場建置番外篇彈窗：階段選項卡可鍵盤 Tab 抵達並用 Enter 選取", async () => {
+      // ConstructionModal：母港「設施」列一鍵開啟、無需前置遊戲狀態；開局停在階段 0、尚未選擇。
+      // 本輪順手補上 2 個階段選項卡的 role="button"/tabIndex/onKeyDown(原本只有滑鼠 onClick，
+      // 與工單循環其餘卡片式互動的既有無障礙慣例不一致)。checkModalFocusTrap 只驗證 focus 不逃逸出
+      // 面板、不驗證確實走訪了哪些元素——若選項卡未加上 tabIndex，Tab 只會在唯一的關閉✕上打轉，
+      // 一樣「不逃逸」而空綠通過,測不出迴歸。故這裡改為逐步比對 activeElement,確認 Tab 序列
+      // 真的是「關閉✕ → 選項卡 1 → 選項卡 2 → (循環回)關閉✕」,並用鍵盤 Enter 實際選取一張選項卡
+      // 驗證 onKeyActivate 真的推進了遊戲狀態(不只是聚焦得到)。
+      await page.getByText("風場建置（番外篇）", { exact: true }).click();
+      const dialog = page.locator('[role="dialog"].wfg-modal-panel');
+      await dialog.waitFor({ state: "visible", timeout: 5000 });
+      const activeInfo = () => page.evaluate(() => {
+        const el = document.activeElement;
+        return { role: el?.getAttribute("role") ?? "", ariaLabel: el?.getAttribute("aria-label") ?? "", text: el?.textContent ?? "" };
+      });
+      eq((await activeInfo()).ariaLabel, "關閉", "彈窗開啟後 focus 應落在關閉✕");
+      await page.keyboard.press("Tab");
+      let info = await activeInfo();
+      eq(info.role, "button", "第 1 次 Tab 後應落在第一張階段選項卡（role=button)");
+      ok(info.text.includes("完整地質鑽探"), "第 1 次 Tab 後應落在第一張階段選項卡");
+      await page.keyboard.press("Tab");
+      info = await activeInfo();
+      ok(info.text.includes("只做最低限度抽樣"), "第 2 次 Tab 後應落在第二張階段選項卡");
+      await page.keyboard.press("Tab");
+      eq((await activeInfo()).ariaLabel, "關閉", "第 3 次 Tab 應循環回關閉✕(僅 3 個可聚焦元素)");
+      // 鍵盤 Enter 選取第一張選項卡：驗證 onKeyActivate 真的觸發 setPick、揭曉回饋文字。
+      await page.keyboard.press("Tab"); // 回到第一張選項卡
+      await page.keyboard.press("Enter");
+      await page.getByText("紮實的前期調查降低後續設計與施工風險", { exact: false }).waitFor({ state: "visible", timeout: 3000 });
+      await page.keyboard.press("Escape");
+      await dialog.waitFor({ state: "hidden", timeout: 5000 }).catch(() => {});
+      eq(await dialog.count(), 0, "Esc 後彈窗應已卸載");
+      const restored = await page.evaluate(() => document.activeElement?.textContent?.includes("風場建置（番外篇）") ?? false);
+      ok(restored, "焦點應歸還給開啟彈窗前的「風場建置（番外篇）」設施列");
+    });
+
     await test("整段流程無 console 錯誤或未捕捉例外", () => {
       eq(consoleErrors.length, 0, `console errors: ${consoleErrors.join(" | ")}`);
       eq(pageErrors.length, 0, `page errors: ${pageErrors.join(" | ")}`);

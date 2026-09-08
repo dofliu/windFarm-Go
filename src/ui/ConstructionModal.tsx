@@ -105,8 +105,9 @@ export default function ConstructionModal({ open, onClose }: { open: boolean; on
               if (c.good) { bd = C.green; bg = "rgba(127,206,142,.14)"; }
               else if (isPick) { bd = C.red; bg = "rgba(220,100,80,.14)"; }
             }
+            const choose = () => { if (pick !== null) return; (c.good ? Sfx.success : Sfx.error)(); setPick(i); };
             return (
-              <div key={i} onClick={() => { if (pick !== null) return; (c.good ? Sfx.success : Sfx.error)(); setPick(i); }} style={{ padding: "10px 12px", marginBottom: 8, borderRadius: 5, border: `1px solid ${bd}`, background: bg, cursor: pick === null ? "pointer" : "default" }}>
+              <div key={i} role="button" tabIndex={pick === null ? 0 : -1} onClick={choose} onKeyDown={onKeyActivate(choose)} style={{ padding: "10px 12px", marginBottom: 8, borderRadius: 5, border: `1px solid ${bd}`, background: bg, cursor: pick === null ? "pointer" : "default" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   <span style={{ color: C.cream, fontSize: 13.5, fontWeight: 600, flex: 1 }}>{t(c.label)}</span>
                   <span style={{ fontSize: 11, color: C.mist2, whiteSpace: "nowrap" }}>⏱{c.days}d · ◎{toWan(c.cost)}{t({ zh: "萬", en: "M" })}</span>
