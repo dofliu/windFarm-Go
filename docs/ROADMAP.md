@@ -2,7 +2,9 @@
 
 > 以 zh-TW 為主、English secondary。本藍圖依現況（[STATUS.yaml](../STATUS.yaml)、[GAME_DESIGN.md](GAME_DESIGN.md)）盤點已完成與待辦，並提出**規劃方向**。
 > ⚠ 標示為**規劃中／推測（speculative）**者尚未實作，請勿當成現況；本文為**規劃**而非承諾。
-> Lead with zh-TW; English summaries follow. Last reviewed: 2026-09-08。
+> Lead with zh-TW; English summaries follow. Last reviewed: 2026-09-09。
+
+**✅ 無障礙補完 · 登入畫面鍵盤操作 + TeacherModal Playwright UI 迴歸測試新增**(2026-09-09 例行 session)：延續「其餘彈窗中再挑代表性樣本補 e2e」的接續建議,盤點剩餘未有 e2e 樣本的彈窗(`OpsCenterModal`/`CaseFileModal`/`ProfileModal`/`TeacherModal`/`ExamModal`)時,發現一處比「挑哪個彈窗」更根本的缺口:2026-08-31 的兩輪無障礙工作(工單循環鍵盤操作、全部彈窗 focus trap)皆聚焦於**登入後**的母港/工單循環畫面,完全未觸及**登入畫面本身**(`LoginScreen.tsx`)。逐一檢視後發現 7 處自訂卡片式互動——帳號清單列(選擇既有帳號)、4 處模式切換連結(「我在別台登入過」「← 返回」×3)、「訪客試玩」、「教師檢視入口」——全都只有滑鼠 `onClick`,未比照工單循環其餘卡片式互動補上 `role="button"`/`tabIndex`/`onKeyDown`(`onKeyActivate`),鍵盤玩家完全無法從登入畫面選擇帳號、切換登入模式、以訪客身分進場,或(尤其)不必先登入即可用的「教師檢視入口」。本輪在 `LoginScreen.tsx` 一次補齊全部 7 處。新增 e2e 樣本挑「教師檢視入口」→ `TeacherModal`:此路徑不需任何前置遊戲狀態(登入畫面載入後即可觸發),且面板在「表單」狀態下可聚焦元素固定(關閉✕ + 班級碼輸入框 + 教師碼輸入框 + 查詢按鈕 = 4 個,不受雲端連線狀態或帳號資料影響)——同時補上 `TeacherModal` 先前完全缺乏的 e2e 覆蓋。刻意用鍵盤 `Enter`(而非滑鼠 `.click()`)觸發開啟,驗證新補的 `onKeyActivate` 確實可運作;開啟後驗證 focus 移入面板、連續 6 次 Tab 侷限循環於面板內、`Esc` 關閉並歸還焦點,新增 1 項斷言(合計 **23** 項)。**已驗證測試有效性**:刻意暫時把「教師檢視入口」改回還沒補 `role`/`tabIndex`/`onKeyDown` 的樣子重跑,確認新增斷言如預期逾時失敗(`locator.press` 逾時,因元素不再符合 `[role="button"]` 選擇器而找不到,其餘 22 項不受影響),還原後 23 項全過。`npm test` = 167 全綠(純 UI 元件無障礙屬性變動,無新增 reducer/純函式邏輯,故無新增單元測試)、`typecheck`/`build` 乾淨。`public/sw.js` 快取版本 v11→v12(隨 `LoginScreen.tsx` 改動遞增)。詳見 [TEST_REPORT.md](TEST_REPORT.md) 第 7 節。
 
 **✅ 無障礙補完 · 風場建置番外篇彈窗鍵盤操作 + Playwright UI 迴歸測試擴充**(2026-09-08 例行 session)：延續「其餘彈窗中再挑代表性樣本補 e2e」的接續建議,盤點剩餘無 e2e 樣本的彈窗時發現一處真實的無障礙缺口——「風場建置 · 番外篇」(`ConstructionModal`,每階段 2 選 1、共 8 階段)的階段選項卡只有滑鼠 `onClick`,未比照工單循環其餘卡片式互動(母港設施列/交易所備品卡/診斷測驗選項/SOP 步驟)補上 `role="button"`/`tabIndex`/`onKeyDown`(`onKeyActivate`),是 2026-08-31 那輪無障礙工作遺漏的一處,鍵盤玩家完全無法操作此番外篇短戰役。本輪先補上該缺口,再新增 e2e 樣本:由母港「設施」列開啟,開局停在階段 0、面板內可聚焦元素為關閉✕ + 2 個選項卡 = 3 個。刻意**不沿用**既有共用測試輔助函式 `checkModalFocusTrap()`——該輔助函式只驗證 focus 不逃逸出面板,若選項卡未加上 `tabIndex`,Tab 只會在唯一的關閉✕上打轉,一樣「不逃逸」而空綠通過、測不出這處迴歸;改為逐步比對 `document.activeElement`,確認 Tab 序列確實是「關閉✕→選項卡 1→選項卡 2→循環回關閉✕」,並用鍵盤 Enter 實際選取一張、確認回饋文字揭曉,新增 1 項斷言(合計 **22** 項)。**已驗證測試有效性**:刻意暫時把選項卡的 `role`/`tabIndex`/`onKeyDown` 改回還沒補的樣子重跑,確認新增斷言如預期失敗(非空跑,失敗於「第 1 次 Tab 後應落在第一張階段選項卡」)後才提交,還原後 22 項全過。`npm test` = 167 全綠(純 UI 元件無障礙屬性變動,無新增 reducer/純函式邏輯,故無新增單元測試)、`typecheck`/`build` 乾淨。`public/sw.js` 快取版本 v10→v11(隨 `ConstructionModal.tsx` 改動遞增)。詳見 [TEST_REPORT.md](TEST_REPORT.md) 第 7 節。
 
@@ -64,7 +66,7 @@
 2. **P1・課堂試用回饋循環(新學期)**:實際班級投放(學號帳號+班級碼),每週用教師面板 CSV/掌握度鑽取觀察學習成效;回饋開成 GitHub Issues 作為下一輪功能依據。搭配一次 `npm run sim` 完整平衡回測(內容修正後尚未重跑)。
 3. **P2・教學深化(依課堂數據擇一)**:每機獨立健康度/RUL 預測性維護(建議先出設計草案)、Exam 進階版(教師發布+雲端報告)、內容編輯器(教師資料驅動新增故障)。
 4. **P2・無障礙延伸**:✅ 鍵盤操作走完工單循環、✅ 全部彈窗 focus trap(Tab 侷限循環 + Esc 關閉)均已完成(2026-08-31);尚待色盲配色全面審查、對話/音效字幕。
-5. **持續・工程健康**:分支策略改「短命分支、合併即刪」;建議在 GitHub 設定 main 分支保護(要求 CI 綠才可合併);✅ Playwright UI 迴歸測試(`npm run e2e` + CI `e2e` job)首批(2026-09-01)+ 交易所/出海/維修畫面擴充(2026-09-02)+ 加班搶修分支(2026-09-03)+ 風場戰情室/母港建設彈窗 focus trap(2026-09-04)+ 營運趨勢彈窗 focus trap(2026-09-05)+ 課程模式彈窗 focus trap(2026-09-06)+ 機具工坊彈窗 focus trap(2026-09-07)+ 風場建置番外篇彈窗鍵盤操作補完(2026-09-08)皆已完成,共 **22** 項——後續可再挑其餘 5 個彈窗(`OpsCenterModal`/`CaseFileModal`/`ProfileModal`/`TeacherModal`/`ExamModal`)或 `FacilityModal` 剩餘 5 種 kind 中的代表性樣本(`ProfileModal`/`CaseFileModal`/`OpsCenterModal`/`FacilityModal(kind="tech")` 需先解決可聚焦元素隨答題/案例/隨機抽題內容變動的不穩定問題),或涵蓋大型組件大修/審慎返港再規劃等分支路徑。
+5. **持續・工程健康**:分支策略改「短命分支、合併即刪」;建議在 GitHub 設定 main 分支保護(要求 CI 綠才可合併);✅ Playwright UI 迴歸測試(`npm run e2e` + CI `e2e` job)首批(2026-09-01)+ 交易所/出海/維修畫面擴充(2026-09-02)+ 加班搶修分支(2026-09-03)+ 風場戰情室/母港建設彈窗 focus trap(2026-09-04)+ 營運趨勢彈窗 focus trap(2026-09-05)+ 課程模式彈窗 focus trap(2026-09-06)+ 機具工坊彈窗 focus trap(2026-09-07)+ 風場建置番外篇彈窗鍵盤操作補完(2026-09-08)+ 登入畫面鍵盤操作補完/`TeacherModal` 樣本新增(2026-09-09)皆已完成,共 **23** 項——後續可再挑其餘 4 個彈窗(`OpsCenterModal`/`CaseFileModal`/`ProfileModal`/`ExamModal`)、`TeacherModal` 的「查詢結果」狀態、或 `FacilityModal` 剩餘 5 種 kind 中的代表性樣本(皆需先解決可聚焦元素隨答題/案例/隨機抽題內容變動的不穩定問題),或涵蓋大型組件大修/審慎返港再規劃等分支路徑。
 
 ---
 
@@ -102,7 +104,7 @@
 > 依「立即可做 → 需後端 → 願景」排序；交接細節見 [HANDOFF.md](HANDOFF.md)。
 
 **立即可做（免後端）**
-- **Playwright UI 迴歸測試擴充** — ✅ 首批（2026-09-01，登入/訪客/教學跳過/調度中心彈窗 focus trap）、交易所/出海/維修畫面擴充（2026-09-02）、加班搶修（`#rush`）分支（2026-09-03）、風場戰情室/母港建設彈窗 focus trap（2026-09-04）、營運趨勢彈窗 focus trap（2026-09-05）、課程模式彈窗 focus trap（2026-09-06）、機具工坊彈窗 focus trap（2026-09-07）、風場建置番外篇彈窗鍵盤操作補完（2026-09-08）皆已完成，共 **22** 項（`npm run e2e` + CI `e2e` job）；後續可再挑其餘 5 個彈窗（`OpsCenterModal`/`CaseFileModal`/`ProfileModal`/`TeacherModal`/`ExamModal`）或 `FacilityModal` 剩餘 5 種 kind 中的代表性樣本（`ProfileModal`/`CaseFileModal`/`OpsCenterModal`/`FacilityModal(kind="tech")` 因面板內容隨答題/隨機案例/隨機抽題變動、可聚焦元素數量不穩定，需先固定測試時間點或鎖定 `Math.random()` 才適合納入），或涵蓋大型組件大修/審慎返港再規劃（`#carry`，需處理跨日天氣重擲的非決定性）等分支路徑。
+- **Playwright UI 迴歸測試擴充** — ✅ 首批（2026-09-01，登入/訪客/教學跳過/調度中心彈窗 focus trap）、交易所/出海/維修畫面擴充（2026-09-02）、加班搶修（`#rush`）分支（2026-09-03）、風場戰情室/母港建設彈窗 focus trap（2026-09-04）、營運趨勢彈窗 focus trap（2026-09-05）、課程模式彈窗 focus trap（2026-09-06）、機具工坊彈窗 focus trap（2026-09-07）、風場建置番外篇彈窗鍵盤操作補完（2026-09-08）、登入畫面鍵盤操作補完 + `TeacherModal` 樣本新增（2026-09-09）皆已完成，共 **23** 項（`npm run e2e` + CI `e2e` job）；後續可再挑其餘 4 個彈窗（`OpsCenterModal`/`CaseFileModal`/`ProfileModal`/`ExamModal`）、`TeacherModal` 的「查詢結果」狀態，或 `FacilityModal` 剩餘 5 種 kind 中的代表性樣本（皆因面板內容隨答題/隨機案例/隨機抽題變動、可聚焦元素數量不穩定，需先固定測試時間點或鎖定 `Math.random()` 才適合納入），或涵蓋大型組件大修/審慎返港再規劃（`#carry`，需處理跨日天氣重擲的非決定性）等分支路徑。
 - **戰情室停機折抵「現金」收入的設定開關** — 目前停機只折抵淨發電；提供設定把戰情室層接入售電現金流（需確認經濟平衡）。
 - **每機獨立健康度 / RUL 預測性維護** — 由全場 `fleetHealth` 延伸到每台機組健康指標與剩餘壽命建模，深化 CBM／預測性維護教學（中大型，建議先出設計草案）。
 - **無障礙延伸（後續）** — ✅ 工單循環鍵盤操作、✅ 全部彈窗 focus trap（開啟時 focus 移入、Tab/Shift+Tab 侷限循環於面板內、Esc 關閉並歸還焦點）皆已完成（見上）；尚待：更全面色盲配色審查、對話／音效字幕與旁白。
@@ -144,7 +146,7 @@
 - **直升機進場 / 電網限電真實權衡任務**：自由營運沙盒新增 8 題真實運維判斷——直升機吊掛進場(封船海象/遠海急件/作業限值/成本效益)與電網限電(負電價降載/限電補償/低電壓穿越 FRT/順勢維修)。
   *Real-ops tradeoffs: helicopter access & grid-curtailment judgment tasks.*
 - **呈現**：三模式背景（模擬/實境/漫畫）、60° 俯瞰、多場景登塔（機艙/塔架/輪轂/甲板，含實景/漫畫情境圖與出海/大修場景影片）、Web Audio 音效音樂、中英雙語。母港左側「設施／風場動態」面板可各自獨立收合，設施項目皆有專屬圖示（含技師人物立繪）。
-- **工程**：自動化測試 `npm test`（167 項）、平衡模擬器 `npm run sim`、併發壓力測試 `npm run stress`、**Playwright UI 迴歸測試 `npm run e2e`（22 項）**、PR CI（typecheck/test/build + e2e，兩個 job 並行）。完整系統測試紀錄見 [TEST_REPORT.md](TEST_REPORT.md)（測試數為本文撰寫時的既有紀錄，隨版本增加，以 `npm test` 實跑結果為準）、壓測細節見 [STRESS_TEST.md](STRESS_TEST.md)。
+- **工程**：自動化測試 `npm test`（167 項）、平衡模擬器 `npm run sim`、併發壓力測試 `npm run stress`、**Playwright UI 迴歸測試 `npm run e2e`（23 項）**、PR CI（typecheck/test/build + e2e，兩個 job 並行）。完整系統測試紀錄見 [TEST_REPORT.md](TEST_REPORT.md)（測試數為本文撰寫時的既有紀錄，隨版本增加，以 `npm test` 實跑結果為準）、壓測細節見 [STRESS_TEST.md](STRESS_TEST.md)。
 
 ---
 

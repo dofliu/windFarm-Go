@@ -6,6 +6,7 @@ import { setProfile, listAccounts, upsertAccount, removeAccount, touchAccount, f
 import { Sfx } from "../audio/sfx";
 import { CLOUD_FIRST } from "../cloud/sheet";
 import { cloudEnabled, isOnline, registerAccount, loginAccount } from "../cloud/api";
+import { onKeyActivate } from "./a11y";
 
 type Mode = "picker" | "pin" | "create" | "remote";
 const useCloud = (): boolean => CLOUD_FIRST && cloudEnabled();
@@ -144,7 +145,7 @@ export default function LoginScreen({ onDone }: { onDone: () => void }) {
               </div>
               <div style={{ maxHeight: 280, overflowY: "auto", marginBottom: 10 }}>
                 {accounts.map((a) => (
-                  <div key={idOf(a)} onClick={() => startPin(a)} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 6, background: "rgba(255,255,255,.04)", border: "1px solid rgba(214,167,84,.25)", marginBottom: 8, cursor: "pointer" }}>
+                  <div key={idOf(a)} role="button" tabIndex={0} onClick={() => startPin(a)} onKeyDown={onKeyActivate(() => startPin(a))} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 6, background: "rgba(255,255,255,.04)", border: "1px solid rgba(214,167,84,.25)", marginBottom: 8, cursor: "pointer" }}>
                     <div style={{ width: 34, height: 34, flex: "none", borderRadius: "50%", background: "radial-gradient(circle at 50% 35%, #20586a, #0f3140)", border: "2px solid rgba(214,167,84,.7)", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: FONT_SERIF, fontWeight: 900, color: C.goldText }}>{displayName(a).slice(0, 1)}</div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ color: C.cream, fontSize: 14.5, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{displayName(a)}</div>
@@ -158,7 +159,7 @@ export default function LoginScreen({ onDone }: { onDone: () => void }) {
                 ＋ {t({ zh: "新建帳號", en: "New account" })}
               </button>
               {useCloud() && (
-                <div onClick={() => { Sfx.click(); setStudentId(""); setClassCode(""); setPin(""); setErr(""); setMode("remote"); }} style={{ textAlign: "center", marginTop: 12, fontSize: 12, color: C.mist, cursor: "pointer", textDecoration: "underline" }}>{t({ zh: "我在別台登入過 / 新裝置登入", en: "Logged in elsewhere / new device" })}</div>
+                <div role="button" tabIndex={0} onClick={() => { Sfx.click(); setStudentId(""); setClassCode(""); setPin(""); setErr(""); setMode("remote"); }} onKeyDown={onKeyActivate(() => { Sfx.click(); setStudentId(""); setClassCode(""); setPin(""); setErr(""); setMode("remote"); })} style={{ textAlign: "center", marginTop: 12, fontSize: 12, color: C.mist, cursor: "pointer", textDecoration: "underline" }}>{t({ zh: "我在別台登入過 / 新裝置登入", en: "Logged in elsewhere / new device" })}</div>
               )}
             </>
           )}
@@ -177,7 +178,7 @@ export default function LoginScreen({ onDone }: { onDone: () => void }) {
               <input style={field} type="password" inputMode="numeric" value={pin} maxLength={6} onChange={(e) => { setPin(e.target.value.replace(/\D/g, "")); setErr(""); }} onKeyDown={(e) => { if (e.key === "Enter") submitRemote(); }} placeholder="••••" />
               {err && <div style={{ color: C.redText, fontSize: 12.5, marginTop: 8 }}>{err}</div>}
               <button disabled={busy} onClick={submitRemote} style={{ width: "100%", marginTop: 18, padding: "13px 0", borderRadius: 6, border: "1px solid rgba(255,236,196,.6)", background: primaryBg(C.gold), color: C.ink, fontFamily: FONT_SERIF, fontWeight: 900, fontSize: 17, cursor: busy ? "wait" : "pointer", opacity: busy ? 0.7 : 1 }}>{busy ? t({ zh: "登入中…", en: "Logging in…" }) : t({ zh: "雲端登入", en: "CLOUD LOG IN" })}</button>
-              <div onClick={() => { Sfx.click(); setErr(""); setMode(listAccounts().length ? "picker" : "create"); }} style={{ textAlign: "center", marginTop: 12, fontSize: 12, color: C.mist, cursor: "pointer", textDecoration: "underline" }}>{t({ zh: "← 返回", en: "← Back" })}</div>
+              <div role="button" tabIndex={0} onClick={() => { Sfx.click(); setErr(""); setMode(listAccounts().length ? "picker" : "create"); }} onKeyDown={onKeyActivate(() => { Sfx.click(); setErr(""); setMode(listAccounts().length ? "picker" : "create"); })} style={{ textAlign: "center", marginTop: 12, fontSize: 12, color: C.mist, cursor: "pointer", textDecoration: "underline" }}>{t({ zh: "← 返回", en: "← Back" })}</div>
             </>
           )}
 
@@ -190,7 +191,7 @@ export default function LoginScreen({ onDone }: { onDone: () => void }) {
               <input style={field} type="password" inputMode="numeric" value={pin} autoFocus maxLength={6} onChange={(e) => { setPin(e.target.value.replace(/\D/g, "")); setErr(""); }} onKeyDown={(e) => { if (e.key === "Enter") submitPin(); }} placeholder="••••" />
               {err && <div style={{ color: C.redText, fontSize: 12.5, marginTop: 8 }}>{err}</div>}
               <button disabled={busy} onClick={submitPin} style={{ width: "100%", marginTop: 18, padding: "13px 0", borderRadius: 6, border: "1px solid rgba(255,236,196,.6)", background: primaryBg(C.gold), color: C.ink, fontFamily: FONT_SERIF, fontWeight: 900, fontSize: 17, cursor: busy ? "wait" : "pointer", opacity: busy ? 0.7 : 1 }}>{busy ? t({ zh: "登入中…", en: "Logging in…" }) : t({ zh: "登 入", en: "LOG IN" })}</button>
-              <div onClick={() => { Sfx.click(); setErr(""); setMode("picker"); }} style={{ textAlign: "center", marginTop: 12, fontSize: 12, color: C.mist, cursor: "pointer", textDecoration: "underline" }}>{t({ zh: "← 返回帳號清單", en: "← Back to accounts" })}</div>
+              <div role="button" tabIndex={0} onClick={() => { Sfx.click(); setErr(""); setMode("picker"); }} onKeyDown={onKeyActivate(() => { Sfx.click(); setErr(""); setMode("picker"); })} style={{ textAlign: "center", marginTop: 12, fontSize: 12, color: C.mist, cursor: "pointer", textDecoration: "underline" }}>{t({ zh: "← 返回帳號清單", en: "← Back to accounts" })}</div>
             </>
           )}
 
@@ -213,17 +214,17 @@ export default function LoginScreen({ onDone }: { onDone: () => void }) {
               {err && <div style={{ color: C.redText, fontSize: 12.5, marginTop: 8 }}>{err}</div>}
               <button disabled={busy} onClick={submitCreate} style={{ width: "100%", marginTop: 18, padding: "13px 0", borderRadius: 6, border: "1px solid rgba(255,236,196,.6)", background: primaryBg(C.gold), color: C.ink, fontFamily: FONT_SERIF, fontWeight: 900, fontSize: 17, cursor: busy ? "wait" : "pointer", opacity: busy ? 0.7 : 1 }}>{busy ? t({ zh: "處理中…", en: "Working…" }) : t({ zh: "建立並開始", en: "CREATE & START" })}</button>
               {listAccounts().length > 0 && (
-                <div onClick={() => { Sfx.click(); setErr(""); setMode("picker"); }} style={{ textAlign: "center", marginTop: 12, fontSize: 12, color: C.mist, cursor: "pointer", textDecoration: "underline" }}>{t({ zh: "← 返回帳號清單", en: "← Back to accounts" })}</div>
+                <div role="button" tabIndex={0} onClick={() => { Sfx.click(); setErr(""); setMode("picker"); }} onKeyDown={onKeyActivate(() => { Sfx.click(); setErr(""); setMode("picker"); })} style={{ textAlign: "center", marginTop: 12, fontSize: 12, color: C.mist, cursor: "pointer", textDecoration: "underline" }}>{t({ zh: "← 返回帳號清單", en: "← Back to accounts" })}</div>
               )}
             </>
           )}
 
           {/* 訪客 */}
-          <div onClick={enterGuest} style={{ textAlign: "center", marginTop: 16, paddingTop: 12, borderTop: "1px solid rgba(255,255,255,.08)", fontSize: 12, color: C.mist2, cursor: "pointer" }}>
+          <div role="button" tabIndex={0} onClick={enterGuest} onKeyDown={onKeyActivate(enterGuest)} style={{ textAlign: "center", marginTop: 16, paddingTop: 12, borderTop: "1px solid rgba(255,255,255,.08)", fontSize: 12, color: C.mist2, cursor: "pointer" }}>
             {t({ zh: "訪客試玩（單機，不計排行與紀錄）", en: "Play as guest (local, no leaderboard/records)" })}
           </div>
           {/* 教師入口:不必先登入即可開教師檢視(班級碼 + 教師碼) */}
-          <div onClick={() => { Sfx.click(); setShowTeacher(true); }} style={{ textAlign: "center", marginTop: 10, fontSize: 12, color: C.mist2, cursor: "pointer", textDecoration: "underline" }}>
+          <div role="button" tabIndex={0} onClick={() => { Sfx.click(); setShowTeacher(true); }} onKeyDown={onKeyActivate(() => { Sfx.click(); setShowTeacher(true); })} style={{ textAlign: "center", marginTop: 10, fontSize: 12, color: C.mist2, cursor: "pointer", textDecoration: "underline" }}>
             👩‍🏫 {t({ zh: "教師檢視入口", en: "Instructor view" })}
           </div>
         </div>

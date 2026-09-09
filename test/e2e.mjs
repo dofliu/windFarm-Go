@@ -118,6 +118,35 @@ async function main() {
       await page.getByText("離岸風場・運維傳說").waitFor({ state: "visible", timeout: 10_000 });
     });
 
+    await test("登入畫面：教師檢視入口鍵盤 Enter 開啟、TeacherModal focus trap 正常", async () => {
+      // 「教師檢視入口」(LoginScreen)原本是只有滑鼠 onClick 的 <div>，未比照工單循環其餘卡片式
+      // 互動補上 role="button"/tabIndex/onKeyDown，鍵盤玩家完全無法從登入畫面開啟教師檢視——
+      // 這是 2026-08-31「無障礙 · 工單循環鍵盤操作」與 2026-08-31「全部彈窗 focus trap」兩輪皆聚焦
+      // 於登入後母港畫面、遺漏登入畫面本身的一處缺口。本輪一併補上登入畫面全部 7 個同類自訂
+      // 卡片式互動(帳號清單列/切換模式連結/訪客試玩/教師檢視入口)。這裡用鍵盤 Enter 觸發(而非
+      // 滑鼠點擊)驗證 onKeyActivate 真的可運作，並順帶補上 TeacherModal 先前完全未覆蓋的 e2e 樣本
+      // (面板內可聚焦元素在「表單」狀態下固定：關閉✕+班級碼輸入框+教師碼輸入框+查詢按鈕=4 個，
+      // 不受雲端連線狀態影響，是穩定可預期的情境)。
+      const entry = page.locator('[role="button"]', { hasText: "教師檢視入口" }).first();
+      await entry.press("Enter");
+      const dialog = page.locator('[role="dialog"].wfg-modal-panel');
+      await dialog.waitFor({ state: "visible", timeout: 5000 });
+      const inPanel = () => page.evaluate(() => {
+        const panel = document.querySelector('[role="dialog"].wfg-modal-panel');
+        return !!panel && panel.contains(document.activeElement);
+      });
+      ok(await inPanel(), "教師檢視彈窗開啟後 focus 應落在面板內");
+      for (let i = 0; i < 6; i++) {
+        await page.keyboard.press("Tab");
+        ok(await inPanel(), `第 ${i + 1} 次 Tab 後 focus 逃出了教師檢視彈窗`);
+      }
+      await page.keyboard.press("Escape");
+      await dialog.waitFor({ state: "hidden", timeout: 5000 }).catch(() => {});
+      eq(await dialog.count(), 0, "Esc 後教師檢視彈窗應已卸載");
+      const restored = await page.evaluate(() => document.activeElement?.textContent?.includes("教師檢視入口") ?? false);
+      ok(restored, "焦點應歸還給開啟彈窗前的「教師檢視入口」連結");
+    });
+
     await test("訪客登入進入母港畫面", async () => {
       await page.getByText("訪客試玩", { exact: false }).click();
       await page.getByText("調度中心", { exact: true }).waitFor({ state: "visible", timeout: 10_000 });
