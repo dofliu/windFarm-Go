@@ -4,6 +4,7 @@ import { Sfx } from "../audio/sfx";
 import { Bgm } from "../audio/bgm";
 import { t, getLang, toggleLang } from "../game/systems/i18n";
 import { useLang } from "./useLang";
+import { onKeyActivate } from "./a11y";
 import { useGame } from "../state/GameContext";
 import { toWan, type SeaState } from "../state/game";
 import { getProfile } from "../state/profile";
@@ -37,10 +38,10 @@ export default function MobileBar({ screen, setScreen, onGear, onProfile, onLogo
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
         <div style={{ width: 34, height: 34, flex: "none", borderRadius: "50%", background: "radial-gradient(circle at 50% 35%, #1d4d5d, #0c2731)", border: `2px solid ${C.gold}`, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: FONT_SERIF, fontSize: 18, fontWeight: 900, color: C.goldText }}>風</div>
         <div style={{ flex: 1, minWidth: 0, fontFamily: FONT_SERIF, fontWeight: 900, fontSize: 17, color: C.cream, letterSpacing: ".04em", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t(S.nav.title)}</div>
-        <div style={iconBtn} onClick={() => toggleLang()}>{getLang() === "zh" ? "中" : "EN"}</div>
-        <div style={iconBtn} onClick={() => { const nm = !muted; setMuted(nm); Sfx.setMuted(nm); Bgm.setMuted(nm); }}>{muted ? "🔇" : "🔊"}</div>
-        <div style={iconBtn} onClick={() => { Sfx.click(); onGear?.(); }}>⚙</div>
-        <div style={iconBtn} onClick={() => { Sfx.click(); onLogout?.(); }}>⎋</div>
+        <div role="button" tabIndex={0} style={iconBtn} onClick={() => toggleLang()} onKeyDown={onKeyActivate(() => toggleLang())}>{getLang() === "zh" ? "中" : "EN"}</div>
+        <div role="button" tabIndex={0} style={iconBtn} onClick={() => { const nm = !muted; setMuted(nm); Sfx.setMuted(nm); Bgm.setMuted(nm); }} onKeyDown={onKeyActivate(() => { const nm = !muted; setMuted(nm); Sfx.setMuted(nm); Bgm.setMuted(nm); })}>{muted ? "🔇" : "🔊"}</div>
+        <div role="button" tabIndex={0} style={iconBtn} onClick={() => { Sfx.click(); onGear?.(); }} onKeyDown={onKeyActivate(() => { Sfx.click(); onGear?.(); })}>⚙</div>
+        <div role="button" tabIndex={0} style={iconBtn} onClick={() => { Sfx.click(); onLogout?.(); }} onKeyDown={onKeyActivate(() => { Sfx.click(); onLogout?.(); })}>⎋</div>
       </div>
       {/* 第二列:狀態晶片(可換行) */}
       <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
@@ -55,7 +56,13 @@ export default function MobileBar({ screen, setScreen, onGear, onProfile, onLogo
           <span style={{ color: C.goldText, fontWeight: 900 }}>{toWan(data.budget)} {t(S.hud.wan)}</span>
         </div>
         {profile && (
-          <div onClick={() => { Sfx.click(); onProfile?.(); }} style={{ ...chip("rgba(10,28,36,.7)", "rgba(214,167,84,.3)"), cursor: "pointer" }}>
+          <div
+            role="button"
+            tabIndex={0}
+            onClick={() => { Sfx.click(); onProfile?.(); }}
+            onKeyDown={onKeyActivate(() => { Sfx.click(); onProfile?.(); })}
+            style={{ ...chip("rgba(10,28,36,.7)", "rgba(214,167,84,.3)"), cursor: "pointer" }}
+          >
             <span style={{ width: 22, height: 22, borderRadius: "50%", background: "radial-gradient(circle at 50% 35%, #2a6275, #103039)", border: `1px solid ${C.gold}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, color: C.goldText, fontWeight: 900 }}>{(profile.nickname || profile.studentId || "?").slice(0, 1)}</span>
             <span style={{ maxWidth: 90, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{profile.nickname || profile.studentId}</span>
           </div>
@@ -67,7 +74,14 @@ export default function MobileBar({ screen, setScreen, onGear, onProfile, onLogo
           {NAV.map((tab) => {
             const on = screen === tab.key;
             return (
-              <div key={tab.key} onClick={() => { Sfx.click(); setScreen(tab.key); }} style={{ flex: 1, textAlign: "center", padding: "8px 0", borderRadius: 5, fontFamily: FONT_SERIF, fontSize: 14, fontWeight: 700, cursor: "pointer", color: on ? C.ink : C.cream, background: on ? "linear-gradient(180deg,#e8c074,#d9a441)" : "transparent" }}>
+              <div
+                key={tab.key}
+                role="button"
+                tabIndex={0}
+                onClick={() => { Sfx.click(); setScreen(tab.key); }}
+                onKeyDown={onKeyActivate(() => { Sfx.click(); setScreen(tab.key); })}
+                style={{ flex: 1, textAlign: "center", padding: "8px 0", borderRadius: 5, fontFamily: FONT_SERIF, fontSize: 14, fontWeight: 700, cursor: "pointer", color: on ? C.ink : C.cream, background: on ? "linear-gradient(180deg,#e8c074,#d9a441)" : "transparent" }}
+              >
                 {t(tab.label)}
               </div>
             );
