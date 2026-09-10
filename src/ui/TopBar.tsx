@@ -5,6 +5,7 @@ import { Bgm } from "../audio/bgm";
 import { t } from "../game/systems/i18n";
 import { getLang, toggleLang } from "../game/systems/i18n";
 import { useLang } from "./useLang";
+import { onKeyActivate } from "./a11y";
 import { useGame } from "../state/GameContext";
 import { toWan, SEA_ICON, type SeaState } from "../state/game";
 import { getProfile } from "../state/profile";
@@ -138,10 +139,16 @@ export default function TopBar({
         {TABS.map((tab) => (
           <div
             key={tab.key}
+            role="button"
+            tabIndex={0}
             onClick={() => {
               Sfx.click();
               setScreen(tab.key);
             }}
+            onKeyDown={onKeyActivate(() => {
+              Sfx.click();
+              setScreen(tab.key);
+            })}
             style={{
               position: "relative",
               padding: "8px 18px",
@@ -191,7 +198,14 @@ export default function TopBar({
           </span>
         </div>
         {profile && (
-          <div onClick={() => { Sfx.click(); onProfile?.(); }} style={{ ...chip, gap: 8, cursor: "pointer" }} title={t({ zh: "查看個人檔案與成就", en: "View profile & achievements" })}>
+          <div
+            role="button"
+            tabIndex={0}
+            onClick={() => { Sfx.click(); onProfile?.(); }}
+            onKeyDown={onKeyActivate(() => { Sfx.click(); onProfile?.(); })}
+            style={{ ...chip, gap: 8, cursor: "pointer" }}
+            title={t({ zh: "查看個人檔案與成就", en: "View profile & achievements" })}
+          >
             <span style={{ width: 24, height: 24, borderRadius: "50%", background: "radial-gradient(circle at 50% 35%, #2a6275, #103039)", border: `1px solid ${C.gold}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, color: C.goldText, fontWeight: 900 }}>
               {(profile.nickname || profile.studentId || "?").slice(0, 1)}
             </span>
@@ -242,7 +256,7 @@ function Btn({ children, onClick }: { children: ReactNode; onClick?: () => void 
     fontWeight: 700,
   };
   return (
-    <div style={s} onClick={onClick}>
+    <div role="button" tabIndex={0} style={s} onClick={onClick} onKeyDown={onKeyActivate(() => onClick?.())}>
       {children}
     </div>
   );

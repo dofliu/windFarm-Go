@@ -346,6 +346,56 @@ async function main() {
       ok(restored, "焦點應歸還給開啟彈窗前的「風場建置（番外篇）」設施列");
     });
 
+    await test("頂欄（TopBar）：⚙ 齒輪鈕改為可鍵盤操作（原只有滑鼠 onClick 的 <div>）", async () => {
+      // 盤點剩餘無 e2e 樣本的彈窗(OpsCenterModal/CaseFileModal/ProfileModal/ExamModal)時，
+      // 發現一處比「挑哪個彈窗」更根本的缺口：TopBar.tsx 的共用 Btn 元件(語言切換/靜音/⚙/登出)、
+      // 導覽分頁(母港/交易所/出海/維修)、個人檔案晶片，全都只是滑鼠 onClick 的 <div>，未比照
+      // 工單循環其餘卡片式互動補上 role="button"/tabIndex/onKeyDown——是先前兩輪無障礙工作
+      // (2026-08-31 工單循環鍵盤操作、全部彈窗 focus trap)遺漏的另一處系統性缺口，鍵盤玩家完全
+      // 無法從頂欄開啟課程模式、切換分頁、開個人檔案(MobileBar.tsx 手機版同類元件亦同)。
+      // 本輪在兩個檔案一次補齊。這裡用鍵盤 Enter(而非滑鼠 .click())觸發 ⚙ 開啟課程模式，
+      // 驗證新補的 onKeyActivate 確實可運作，而非只是加了屬性。
+      const gearBtn = page.locator('[role="button"]', { hasText: "⚙" }).first();
+      await gearBtn.press("Enter");
+      const dialog = page.locator('[role="dialog"].wfg-modal-panel');
+      await dialog.waitFor({ state: "visible", timeout: 5000 });
+      ok((await dialog.textContent())?.includes("課程模式") ?? false, "鍵盤 Enter 觸發 ⚙ 應開啟課程模式彈窗");
+    });
+
+    await test("獨立測驗模式彈窗（由課程模式串接開啟）：focus trap 正常，Esc 後焦點正確歸還至 ⚙（而非遺失到 body）", async () => {
+      // ExamModal 由 CourseModal 內「獨立測驗模式」鈕觸發，App.tsx 在同一個事件處理常式內
+      // `setShowCourse(false); setShowExam(true)`——CourseModal 卸載、ExamModal 掛載發生在同一次
+      // React commit。這是先前盤點(2026-09-07)留下「觸發流程與 checkModalFocusTrap() 假設不同，
+      // 需先評估焦點歸還斷言如何調整」的懸案，本輪追查後發現它牽出上面 TopBar 的真實缺口：
+      // 在補上 ⚙ 的 role/tabIndex 之前，滑鼠點擊 ⚙ 根本不會讓它成為 document.activeElement
+      // (純 <div>、無 tabindex 的元素滑鼠點擊不會取得焦點)，於是 CourseModal 的 useFocusTrap
+      // 記下的「開啟前焦點」其實是 <body>；串接開啟 ExamModal、Esc 關閉後，焦點就遺失回 <body>
+      // (而非回到玩家實際點的 ⚙)——鍵盤玩家會徹底迷失游標位置。用 outerHTML/role 精確比對
+      // document.activeElement(而非上面沿用的 textContent.includes 寬鬆比對——body.textContent
+      // 幾乎必然包含任何觸發文字，會讓這處迴歸被寬鬆比對誤判為通過)驗證修復後兩者一致。
+      await page.getByText("獨立測驗模式", { exact: true }).click();
+      const dialog = page.locator('[role="dialog"].wfg-modal-panel');
+      await dialog.waitFor({ state: "visible", timeout: 5000 });
+      ok((await dialog.textContent())?.includes("獨立測驗模式") ?? false, "應已切換為獨立測驗模式彈窗");
+      const activeInfo = () => page.evaluate(() => {
+        const el = document.activeElement;
+        return { tag: el?.tagName ?? "", role: el?.getAttribute("role") ?? "", text: (el?.textContent ?? "").trim() };
+      });
+      eq((await activeInfo()).text, "✕", "ExamModal 開啟後 focus 應落在關閉✕（開始頁：關閉✕+10題+20題=3 個可聚焦元素）");
+      await page.keyboard.press("Tab");
+      eq((await activeInfo()).text, "10 題", "第 1 次 Tab 後應落在「10 題」按鈕");
+      await page.keyboard.press("Tab");
+      eq((await activeInfo()).text, "20 題", "第 2 次 Tab 後應落在「20 題」按鈕");
+      await page.keyboard.press("Tab");
+      eq((await activeInfo()).text, "✕", "第 3 次 Tab 應循環回關閉✕（僅 3 個可聚焦元素）");
+      await page.keyboard.press("Escape");
+      await dialog.waitFor({ state: "hidden", timeout: 5000 }).catch(() => {});
+      eq(await dialog.count(), 0, "Esc 後 ExamModal 應已卸載");
+      const restored = await activeInfo();
+      eq(restored.role, "button", "焦點應歸還給一個 role=button 元素（而非遺失到 <body>）");
+      eq(restored.text, "⚙", "焦點應精確歸還給串接開啟前唯一的真實觸發元件「⚙」，而非 CourseModal 內已卸載的「獨立測驗模式」鈕");
+    });
+
     await test("整段流程無 console 錯誤或未捕捉例外", () => {
       eq(consoleErrors.length, 0, `console errors: ${consoleErrors.join(" | ")}`);
       eq(pageErrors.length, 0, `page errors: ${pageErrors.join(" | ")}`);
