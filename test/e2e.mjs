@@ -198,6 +198,36 @@ async function main() {
       ok(restored, "焦點應歸還給開啟彈窗前的「調度中心」設施列");
     });
 
+    await test("個人檔案彈窗（ProfileModal，由頂欄晶片開啟）：focus trap 迴歸（雙元素邊界情境）", async () => {
+      // 盤點剩餘尚無 e2e 樣本的彈窗(OpsCenterModal/CaseFileModal/ProfileModal)之一。ProfileModal 內容
+      // 大部分隨作答資料變動（知識點掌握度 chips/雷達圖只在 totalAnswered(m)>0 時出現、MistakeLog
+      // 只在 data.mistakes 非空時出現互動元素）；但成就牆卡片（ACHIEVEMENTS.map）本身是純 <div>，
+      // 未補 role="button"/tabIndex，不進 tab 序，數據格同理——故實際可聚焦元素數只取決於「是否已
+      // 作答/答錯過」，而非成就解鎖進度。在此測試流程只驗證過「調度中心」彈窗、尚未接下工單前插入，
+      // 此時 data.mastery/data.mistakes 皆為空（後面「連續故意答錯」等測試才會產生作答紀錄），
+      // 面板內可聚焦元素固定為：關閉✕ + 減少動態切換鈕 = 2 個——補上先前樣本(1/2/3/5/28 個)之外
+      // 的另一個「雙元素」情境，且觸發元件（頂欄個人檔案晶片）先前完全未被納入 e2e。
+      const chip = page.locator('[role="button"]', { hasText: "訪客" }).first(); // TopBar 先掛載於 MobileBar
+      await chip.press("Enter"); // 鍵盤觸發，驗證頂欄鍵盤操作補完（2026-09-10）確實可開啟此彈窗
+      const dialog = page.locator('[role="dialog"].wfg-modal-panel');
+      await dialog.waitFor({ state: "visible", timeout: 5000 });
+      ok((await dialog.textContent())?.includes("個人檔案") ?? false, "鍵盤 Enter 觸發個人檔案晶片應開啟 ProfileModal");
+      const activeInfo = () => page.evaluate(() => {
+        const el = document.activeElement;
+        return { ariaLabel: el?.getAttribute("aria-label") ?? "", text: (el?.textContent ?? "").trim() };
+      });
+      eq((await activeInfo()).ariaLabel, "關閉", "彈窗開啟後 focus 應落在關閉✕");
+      await page.keyboard.press("Tab");
+      eq((await activeInfo()).text, "關閉", "第 1 次 Tab 後應落在「減少動態」切換鈕（預設 OFF，未開啟時文字為「關閉」）");
+      await page.keyboard.press("Tab");
+      eq((await activeInfo()).ariaLabel, "關閉", "第 2 次 Tab 應循環回關閉✕（僅 2 個可聚焦元素）");
+      await page.keyboard.press("Escape");
+      await dialog.waitFor({ state: "hidden", timeout: 5000 }).catch(() => {});
+      eq(await dialog.count(), 0, "Esc 後 ProfileModal 應已卸載");
+      const restored = await page.evaluate(() => document.activeElement?.textContent?.includes("訪客") ?? false);
+      ok(restored, "焦點應歸還給開啟彈窗前的個人檔案晶片");
+    });
+
     // ── 交易所（MarketScreen）/ 出海（SailScreen）/ 維修（RepairScreen）核心互動流程 ──
     // 走完首筆工單「齒輪箱搶修 CH-12」全程：接單 → 交易所買齊必備備品 → 出海 → 登船 → 鍵盤作答診斷測驗 → 鍵盤完成 SOP → 完工。
     // 這把先前只有 reducer 單元測試覆蓋的邏輯，串成一次端到端的鍵盤操作迴歸。
