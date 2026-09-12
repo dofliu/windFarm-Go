@@ -340,6 +340,17 @@ async function main() {
       await checkModalFocusTrap(page, { triggerText: "機具工坊", tabCount: 5 });
     });
 
+    await test("案例檔彈窗：focus trap 迴歸（單一可聚焦元素邊界案例）", async () => {
+      // CaseFileModal：母港「設施」列的 FacRowMini「📁 案例檔」一鍵開啟、無需前置遊戲狀態。
+      // 內容 casesForTier(tier) 是純函式(依 tierOf 過濾 CASE_STUDIES，非隨機抽取)，先前盤點誤以為
+      // 「案例卡片數量隨 Tier/隨機抽案例變動」而暫緩納入——查核 src/state/caseStudies.ts 後發現
+      // 全部 20 則案例的 minTier 最低為 2，此測試流程全程 tier 皆為 1(gen<1500、missionsDone<6、
+      // farmsOwned=1、campaignIndex<2，見 tierOf)，故 casesForTier(1) 恆為空陣列，面板固定停在
+      // 「目前層級尚無解鎖案例」提示，可聚焦元素只有關閉✕ 這 1 個——與營運趨勢彈窗同屬「單一可聚焦
+      // 元素」邊界情境，但觸發元件(FacRowMini)與內容來源(tier 過濾而非資料是否已產生)不同。
+      await checkModalFocusTrap(page, { triggerText: "案例檔", tabCount: 4 });
+    });
+
     await test("風場建置番外篇彈窗：階段選項卡可鍵盤 Tab 抵達並用 Enter 選取", async () => {
       // ConstructionModal：母港「設施」列一鍵開啟、無需前置遊戲狀態；開局停在階段 0、尚未選擇。
       // 本輪順手補上 2 個階段選項卡的 role="button"/tabIndex/onKeyDown(原本只有滑鼠 onClick，
