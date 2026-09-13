@@ -250,7 +250,15 @@ export default function OpsCenterModal({ open, onClose }: { open: boolean; onClo
               else if (isPick) { bd = C.red; bg = "rgba(220,100,80,.14)"; }
             }
             return (
-              <div key={i} onClick={() => resolve(i, c)} style={{ padding: "10px 12px", marginBottom: 8, borderRadius: 5, border: `1px solid ${bd}`, background: bg, cursor: picked === null ? "pointer" : "default" }}>
+              <div
+                key={i}
+                role="button"
+                tabIndex={picked === null ? 0 : -1}
+                aria-pressed={isPick}
+                onClick={() => resolve(i, c)}
+                onKeyDown={picked === null ? onKeyActivate(() => resolve(i, c)) : undefined}
+                style={{ padding: "10px 12px", marginBottom: 8, borderRadius: 5, border: `1px solid ${bd}`, background: bg, cursor: picked === null ? "pointer" : "default" }}
+              >
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   <span style={{ color: C.cream, fontSize: 13.5, fontWeight: 600, flex: 1 }}>{t(c.label)}</span>
                   {picked !== null && <span style={{ fontSize: 11, color: C.mist, whiteSpace: "nowrap" }}>{effLabel(c)}</span>}
