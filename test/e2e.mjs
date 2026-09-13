@@ -437,6 +437,60 @@ async function main() {
       eq(restored.text, "⚙", "焦點應精確歸還給串接開啟前唯一的真實觸發元件「⚙」，而非 CourseModal 內已卸載的「獨立測驗模式」鈕");
     });
 
+    await test("自由營運中心彈窗：判斷任務選項卡改為可鍵盤操作（原只有滑鼠 onClick 的 <div>）", async () => {
+      // OpsCenterModal 的判斷任務/案例演練選項卡（resolve 對應的 <div>）先前只有滑鼠 onClick，
+      // 未比照工單循環其餘卡片式互動補上 role="button"/tabIndex/onKeyDown——先前多輪盤點
+      // (2026-09-05〜09-12)都只以「案例演練/判斷任務隨機抽題，選項數不穩定」為由暫緩補 e2e 樣本，
+      // 完全沒發現這處真正的鍵盤操作缺口，是 2026-08-31 兩輪無障礙工作（工單循環鍵盤操作、
+      // 全部彈窗 focus trap）遺漏的又一處系統性缺口。本輪一併補上並新增樣本。
+      // 抽題(makeDraw)以 Math.random() < 0.24 決定任務/案例，generateTask() 的模板索引/機組編號
+      // 亦吃 Math.random()；暫時覆寫為固定回傳 0.999999（> 0.24 恆落入「判斷任務」分支，且
+      // floor(0.999999 * TASKS.length) 對任何合理的 TASKS.length 恆為最後一個索引 length-1，
+      // 即 TASKS 最後一筆模板)鎖定內容，開啟後立即還原，避免抽題非決定性（手法與 rush() 測試一致；
+      // 刻意不沿用 rush() 用的 0.99——TASKS.length 已破百，floor(0.99 * length) 未必等於 length-1）。
+      // OpsCenterModal 是 lazy(() => import(...)) 的第一次開啟，實際掛載/呼叫 makeDraw() 要等動態
+      // import 的 chunk 載完才發生（晚於 click 這個 tick），故覆寫要撐到面板真的出現才還原
+      // （不能像 rush() 測試那樣在 click 後立刻還原，component 早已掛載、reducer 同步觸發）。
+      await page.evaluate(() => { window.__wfgOrigRandom = Math.random; Math.random = () => 0.999999; });
+      await page.getByText("自由營運中心", { exact: true }).click();
+      const dialog = page.locator('[role="dialog"].wfg-modal-panel');
+      await dialog.waitFor({ state: "visible", timeout: 5000 });
+      await page.evaluate(() => { Math.random = window.__wfgOrigRandom; delete window.__wfgOrigRandom; });
+      ok((await dialog.textContent())?.includes("順勢限電維修") ?? false, "固定種子下應抽到 TASKS 最後一筆模板「順勢限電維修」(cat D，2 個選項)");
+      const activeInfo = () => page.evaluate(() => {
+        const el = document.activeElement;
+        return { tag: el?.tagName ?? "", role: el?.getAttribute("role") ?? "", ariaLabel: el?.getAttribute("aria-label") ?? "", text: (el?.textContent ?? "").trim() };
+      });
+      // 面板內可聚焦元素（尚未作答）：關閉✕ + 🔬進階檢測「解鎖」原生 <button>（開局預算遠高於
+      // DIAG_COST，未 disabled）+ 2 個選項 = 4 個。
+      eq((await activeInfo()).ariaLabel, "關閉", "彈窗開啟後 focus 應落在關閉✕");
+      await page.keyboard.press("Tab");
+      let info = await activeInfo();
+      eq(info.tag, "BUTTON", "第 1 次 Tab 後應落在🔬進階檢測的「解鎖」原生 <button>");
+      ok(info.text.includes("解鎖"), "第 1 次 Tab 後應落在「解鎖」按鈕");
+      await page.keyboard.press("Tab");
+      info = await activeInfo();
+      eq(info.role, "button", "第 2 次 Tab 後應落在第一個判斷選項（role=button，本輪新補）");
+      ok(info.text.includes("把停機維修排進限電時段執行"), "第 2 次 Tab 後應落在第一個選項");
+      await page.keyboard.press("Tab");
+      info = await activeInfo();
+      eq(info.role, "button", "第 3 次 Tab 後應落在第二個判斷選項（role=button，本輪新補）");
+      ok(info.text.includes("限電時段照常發電、維修另找時段"), "第 3 次 Tab 後應落在第二個選項");
+      await page.keyboard.press("Tab");
+      eq((await activeInfo()).ariaLabel, "關閉", "第 4 次 Tab 應循環回關閉✕（僅 4 個可聚焦元素）");
+      // 鍵盤 Enter 選取第一個選項（正解）：驗證 onKeyActivate 真的觸發 resolve、推進遊戲狀態、揭曉回饋。
+      await page.keyboard.press("Tab"); // 回到「解鎖」
+      await page.keyboard.press("Tab"); // 回到第一個選項
+      await page.keyboard.press("Enter");
+      await page.getByText("順勢維修幾乎零額外發電損失", { exact: false }).waitFor({ state: "visible", timeout: 3000 });
+      ok(await page.getByText("下一個狀況", { exact: false }).count() > 0, "答題後應出現「下一個狀況」按鈕");
+      await page.keyboard.press("Escape");
+      await dialog.waitFor({ state: "hidden", timeout: 5000 }).catch(() => {});
+      eq(await dialog.count(), 0, "Esc 後彈窗應已卸載");
+      const restored = await page.evaluate(() => document.activeElement?.textContent?.includes("自由營運中心") ?? false);
+      ok(restored, "焦點應歸還給開啟彈窗前的「自由營運中心」設施列");
+    });
+
     await test("整段流程無 console 錯誤或未捕捉例外", () => {
       eq(consoleErrors.length, 0, `console errors: ${consoleErrors.join(" | ")}`);
       eq(pageErrors.length, 0, `page errors: ${pageErrors.join(" | ")}`);
