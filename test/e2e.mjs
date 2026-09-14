@@ -437,6 +437,66 @@ async function main() {
       eq(restored.text, "⚙", "焦點應精確歸還給串接開啟前唯一的真實觸發元件「⚙」，而非 CourseModal 內已卸載的「獨立測驗模式」鈕");
     });
 
+    await test("獨立測驗模式：作答頁與結果頁——鎖定 Date.now() 種子跑完整份測驗，驗證計分/各類別覆盤/錯題覆盤渲染正確", async () => {
+      // 前一項測試只驗證了「開始頁」的 focus trap，「作答頁」/「結果頁」先前多輪盤點(2026-09-07 起)
+      // 都以「buildExam(Date.now(), n) 用真實時間戳記為種子，題目/選項內容不可預期」為由暫緩補樣本。
+      // 查核 state/exam.ts 後發現 buildExam 對「同一個種子」是完全決定性的純函式(已由 test/run.mjs
+      // 的單元測試證實)——只要在點擊「10 題」之前把 window.Date.now 暫時鎖定為固定時間戳，選出的
+      // 10 題內容就完全可預期：離線用同一份 esbuild bundle 先跑一次 buildExam(固定種子, 10) 算出全部
+      // 題目與選項(見開發備忘)，事先決定每題要點選哪個索引(第 1、6 題故意選錯，其餘皆選正解)，讓
+      // 最終成績(8/10=80%「良好 B」、各類別對錯、2 題錯題覆盤)全部可預期，不必臆測抽到的內容。
+      await page.locator('[role="button"]', { hasText: "⚙" }).first().click();
+      const courseDialog = page.locator('[role="dialog"].wfg-modal-panel');
+      await courseDialog.waitFor({ state: "visible", timeout: 5000 });
+      await page.getByText("獨立測驗模式", { exact: true }).click();
+      const dialog = page.locator('[role="dialog"].wfg-modal-panel');
+      await dialog.waitFor({ state: "visible", timeout: 5000 });
+      ok((await dialog.textContent())?.includes("獨立測驗模式") ?? false, "應已切換為獨立測驗模式彈窗");
+
+      const FIXED_NOW = 1700000000000; // 固定種子：離線算得抽出題序見下方 EXPECTED_TITLES
+      await page.evaluate((ts) => { window.__wfgOrigDateNow = Date.now; Date.now = () => ts; }, FIXED_NOW);
+      await dialog.getByRole("button", { name: "10 題" }).click();
+      const EXPECTED_TITLES = [
+        "葉片污染趨勢", "環境通報義務", "技師證照到期", "無人機風速上限", "加裝儲能評估",
+        "葉片清潔巡檢", "風速計故障", "葉片異音趨勢", "海底纜線勾掛", "碼頭吊掛資源",
+      ];
+      await dialog.getByText(EXPECTED_TITLES[0], { exact: true }).waitFor({ state: "visible", timeout: 5000 });
+      await page.evaluate(() => { Date.now = window.__wfgOrigDateNow; delete window.__wfgOrigDateNow; });
+
+      // 固定種子下，第 1 題（cat B，索引 0）與第 6 題（cat C，索引 5）故意選第 2 個選項（錯），
+      // 其餘 8 題皆選第 1 個選項（正解）→ 8/10 正確。
+      const wrongAt = new Set([0, 5]);
+      for (let i = 0; i < EXPECTED_TITLES.length; i++) {
+        await dialog.getByText(EXPECTED_TITLES[i], { exact: true }).waitFor({ state: "visible", timeout: 5000 });
+        const infoText = await dialog.textContent();
+        ok(infoText?.includes(`${i + 1} / ${EXPECTED_TITLES.length}`) ?? false, `第 ${i + 1} 題應顯示題號 ${i + 1} / ${EXPECTED_TITLES.length}`);
+        await dialog.locator("button").nth(wrongAt.has(i) ? 1 : 0).click();
+      }
+
+      // 結果頁：驗證計分、等第、各類別對錯（標籤與 correct/n 緊鄰無間隔，見 ExamModal.tsx byCat 列渲染）、錯題覆盤。
+      await dialog.getByText("80%", { exact: true }).waitFor({ state: "visible", timeout: 5000 });
+      const resultText = await dialog.textContent();
+      ok(resultText?.includes("良好 B"), "80% 應對應「良好 B」等第");
+      ok(resultText?.includes("答對 8 / 10"), "應顯示「答對 8 / 10」");
+      ok(resultText?.includes("監控判讀1/2"), "監控判讀（cat B，2 題對 1）各類別列應顯示 1/2");
+      ok(resultText?.includes("突發事件2/2"), "突發事件（cat G，2 題對 2）各類別列應顯示 2/2");
+      ok(resultText?.includes("供應鏈/人力2/2"), "供應鏈/人力（cat F，2 題對 2）各類別列應顯示 2/2");
+      ok(resultText?.includes("天候處置1/1"), "天候處置（cat E，1 題對 1）各類別列應顯示 1/1");
+      ok(resultText?.includes("營運決策1/1"), "營運決策（cat D，1 題對 1）各類別列應顯示 1/1");
+      ok(resultText?.includes("預防保養0/1"), "預防保養（cat C，1 題對 0）各類別列應顯示 0/1");
+      ok(resultText?.includes("故障搶修1/1"), "故障搶修（cat A，1 題對 1）各類別列應顯示 1/1");
+      ok(resultText?.includes("錯題覆盤 (2)"), "錯題覆盤區塊應顯示 2 題");
+      ok(resultText?.includes("葉片污染趨勢") && resultText?.includes("✓ 正解: 排程清潔回復效率"), "第 1 題錯題覆盤應揭示正解「排程清潔回復效率」");
+      ok(resultText?.includes("葉片清潔巡檢") && resultText?.includes("✓ 正解: 安排繩索清潔與前緣保護"), "第 6 題錯題覆盤應揭示正解「安排繩索清潔與前緣保護」");
+
+      // 「再測一次」應重置回開始頁（phase→intro），確認未卡在結果頁。
+      await dialog.getByRole("button", { name: "再測一次" }).click();
+      await dialog.getByText("選擇題數", { exact: true }).waitFor({ state: "visible", timeout: 3000 });
+      await page.keyboard.press("Escape");
+      await dialog.waitFor({ state: "hidden", timeout: 5000 }).catch(() => {});
+      eq(await dialog.count(), 0, "Esc 後 ExamModal 應已卸載");
+    });
+
     await test("自由營運中心彈窗：判斷任務選項卡改為可鍵盤操作（原只有滑鼠 onClick 的 <div>）", async () => {
       // OpsCenterModal 的判斷任務/案例演練選項卡（resolve 對應的 <div>）先前只有滑鼠 onClick，
       // 未比照工單循環其餘卡片式互動補上 role="button"/tabIndex/onKeyDown——先前多輪盤點

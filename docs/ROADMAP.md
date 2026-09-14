@@ -2,7 +2,9 @@
 
 > 以 zh-TW 為主、English secondary。本藍圖依現況（[STATUS.yaml](../STATUS.yaml)、[GAME_DESIGN.md](GAME_DESIGN.md)）盤點已完成與待辦，並提出**規劃方向**。
 > ⚠ 標示為**規劃中／推測（speculative）**者尚未實作，請勿當成現況；本文為**規劃**而非承諾。
-> Lead with zh-TW; English summaries follow. Last reviewed: 2026-09-13。
+> Lead with zh-TW; English summaries follow. Last reviewed: 2026-09-14。
+
+**✅ 平衡回測校正 + Playwright UI 迴歸測試擴充 · 獨立測驗模式(ExamModal)作答頁/結果頁**(2026-09-14 例行 session):依本文件「2026-08-30 專案盤點」P1 項下註記「`npm run sim` 完整平衡回測(內容修正後尚未重跑)」,先重跑 `npm run sim`(120 天 × 3 策略):passive(放任)8070 分 ≪ active(管理)13460 分 < full-crew(全配技師)14794 分,相對排序與梯度皆健康,**免校正**(絕對數字隨備品資料異動整段跳動,屬已知「模擬器蝴蝶效應」,非迴歸;結果已寫回 [TEST_REPORT.md](TEST_REPORT.md) 第 4 節)。確認回測健康後,挑選「獨立測驗模式(`ExamModal`)作答頁/結果頁」補上 e2e 樣本:先前兩輪(2026-09-07/09-10)都以「`buildExam(Date.now(), n)` 用真實時間戳記為種子,題目/選項內容不可預期」為由只補了「開始頁」。查核 `src/state/exam.ts` 後發現 `buildExam` 對「同一個種子」是完全決定性的純函式(已有單元測試佐證),故只要在點擊「10 題」前暫時鎖定 `window.Date.now` 為固定時間戳,離線用同一份 esbuild bundle 先算出抽到的 10 題與各選項對錯,即可預先決定每題要點哪個索引(第 1、6 題故意選錯、其餘 8 題選正解),讓最終成績(8/10=80%「良好 B」)、各類別對錯(7 類)、錯題覆盤(2 題,各自揭示正解文字)全部可預期並逐一斷言,新增 1 項斷言(合計 **29** 項全過)。答案按鈕本就是原生 `<button>`,鍵盤操作向來成立,故本輪純屬 e2e 覆蓋擴充,不涉及無障礙修正。**已驗證測試有效性**:刻意暫時把 `gradeExam` 的計分公式改成 `Math.round((correct/total)*100) + 5`(模擬計分算錯)後重跑,新增斷言如預期逾時失敗(等不到「80%」),並連鎖拖累下一項測試,證明非空跑,還原後 29 項全過。`npm test` = 167 全綠、`typecheck`/`build` 乾淨。純測試新增(`test/e2e.mjs`),無 app 程式碼變動,`public/sw.js` 快取版本免動。**已知限制**:僅覆蓋「10 題」長度、單一固定種子下的一組題目組合,「20 題」與其他種子排列尚未覆蓋。詳見 [TEST_REPORT.md](TEST_REPORT.md) 第 4/7 節。
 
 **✅ 無障礙補完 · 自由營運中心(OpsCenterModal)判斷任務/案例演練選項卡鍵盤操作 + Playwright e2e 樣本新增**(2026-09-13 例行 session)：原計畫依「其餘尚無 e2e 樣本的彈窗中再挑代表性樣本」的接續建議在 `OpsCenterModal` 補樣本,先前多輪盤點(2026-09-05〜09-12)都以「判斷任務/案例演練隨機抽題,選項數隨模板變動,需先鎖定 `Math.random()`」為由暫緩。查核 `src/ui/OpsCenterModal.tsx` 原始碼時,發現一處比「鎖定 `Math.random()`」更根本的缺口:判斷任務/案例演練的選項卡(`resolve(i, c)` 對應的 `<div>`)全都只有滑鼠 `onClick`,未比照工單循環其餘卡片式互動補上 `role="button"`/`tabIndex`/`onKeyDown`——是 2026-08-31 兩輪無障礙工作(工單循環鍵盤操作、全部彈窗 focus trap)遺漏的又一處系統性缺口,鍵盤玩家完全無法在此彈窗作答(此彈窗永遠開放、無 Tier 限制,是最容易被學生使用的判斷練習入口之一)。本輪在該段選項卡一次補齊,手法與 `RepairScreen.tsx` 診斷測驗選項一致(`role="button"`、`tabIndex={picked === null ? 0 : -1}`、`aria-pressed`、`onKeyDown` 於未作答時才掛)。同時補上 e2e 樣本:`makeDraw()` 以 `Math.random() < CASE_DRILL_PROB(0.24)` 決定任務/案例,`generateTask()` 的模板索引/機組編號亦吃 `Math.random()`;暫時覆寫固定回傳 `0.999999`(恆落入判斷任務分支,且 `floor(0.999999 * TASKS.length)` 對任何合理長度恆為最後一個索引)鎖定抽到 TASKS 最後一筆模板「順勢限電維修」(cat D、2 個選項)。除錯過程中發現 `OpsCenterModal` 是 `lazy()` 元件,測試流程第一次開啟時要等動態 import 完成才真正掛載、呼叫 `makeDraw()`,比照既有 `rush()` 測試在 `click()` 後立刻還原 `Math.random` 會太早,改為撐到面板 `visible` 後才還原即穩定重現。驗證鍵盤 Tab 序列(關閉✕→🔬進階檢測解鎖鈕(原生 `<button>`,開局預算遠高於 `DIAG_COST` 未 disabled)→2 個選項→循環回關閉✕,共 4 個可聚焦元素)、鍵盤 `Enter` 選取正解、`Esc` 關閉歸還焦點,新增 1 項斷言(合計 **28** 項全過)。**已驗證測試有效性**:刻意暫時還原 `OpsCenterModal.tsx` 本輪新補的 `role`/`tabIndex`/`onKeyDown` 後重跑,新增斷言如預期失敗(Tab 序列變短、卡在第一個選項前一步),其餘 27 項不受影響,還原修正後 28 項全過。`npm test` = 167 全綠、`typecheck`/`build` 乾淨。`public/sw.js` 快取版本 v13→v14(隨 `OpsCenterModal.tsx` 改動遞增)。**已知限制**:目前僅覆蓋「判斷任務、尚未作答」狀態,案例演練(`kind:"case"`)分支與已作答後再抽題狀態未覆蓋。詳見 [TEST_REPORT.md](TEST_REPORT.md) 第 7 節。
 
@@ -71,10 +73,10 @@
 功能面已達可授課完成度(120 PR、164 測試全綠),建議把重心從「加功能」轉為「**部署上線 → 課堂實測 → 依數據迭代**」:
 
 1. **P0・部署整備(開學前,一次做完)**:重新部署 `Code.gs` v2.2(新版本部署)→ 決策並處理 `CLOUD_FIRST`/教師碼(上方決策事項 1)→ `npm run live-check` 驗證線上後端 → 跑一次 `scripts/cleanup-merged-branches.sh` 完成分支清理。
-2. **P1・課堂試用回饋循環(新學期)**:實際班級投放(學號帳號+班級碼),每週用教師面板 CSV/掌握度鑽取觀察學習成效;回饋開成 GitHub Issues 作為下一輪功能依據。搭配一次 `npm run sim` 完整平衡回測(內容修正後尚未重跑)。
+2. **P1・課堂試用回饋循環(新學期)**:實際班級投放(學號帳號+班級碼),每週用教師面板 CSV/掌握度鑽取觀察學習成效;回饋開成 GitHub Issues 作為下一輪功能依據。~~搭配一次 `npm run sim` 完整平衡回測(內容修正後尚未重跑)~~ —— ✅ 已完成(2026-09-14,見上;相對排序/梯度健康,免校正)。
 3. **P2・教學深化(依課堂數據擇一)**:每機獨立健康度/RUL 預測性維護(建議先出設計草案)、Exam 進階版(教師發布+雲端報告)、內容編輯器(教師資料驅動新增故障)。
 4. **P2・無障礙延伸**:✅ 鍵盤操作走完工單循環、✅ 全部彈窗 focus trap(Tab 侷限循環 + Esc 關閉)均已完成(2026-08-31);尚待色盲配色全面審查、對話/音效字幕。
-5. **持續・工程健康**:分支策略改「短命分支、合併即刪」;建議在 GitHub 設定 main 分支保護(要求 CI 綠才可合併);✅ Playwright UI 迴歸測試(`npm run e2e` + CI `e2e` job)首批(2026-09-01)+ 交易所/出海/維修畫面擴充(2026-09-02)+ 加班搶修分支(2026-09-03)+ 風場戰情室/母港建設彈窗 focus trap(2026-09-04)+ 營運趨勢彈窗 focus trap(2026-09-05)+ 課程模式彈窗 focus trap(2026-09-06)+ 機具工坊彈窗 focus trap(2026-09-07)+ 風場建置番外篇彈窗鍵盤操作補完(2026-09-08)+ 登入畫面鍵盤操作補完/`TeacherModal` 樣本新增(2026-09-09)+ 頂欄(TopBar/MobileBar)鍵盤操作補完/修正串接開啟彈窗焦點遺失迴歸(2026-09-10)+ 個人檔案(ProfileModal)彈窗 focus trap(2026-09-11)+ 案例檔(CaseFileModal)彈窗 focus trap(2026-09-12)+ 自由營運中心(OpsCenterModal)判斷任務選項卡鍵盤操作補完(2026-09-13)皆已完成,共 **28** 項——後續可再挑剩餘的 `OpsCenterModal` 案例演練(`kind:"case"`)分支、`TeacherModal` 的「查詢結果」狀態、`ProfileModal` 的「已作答/有錯題」狀態、`ExamModal` 的作答頁/結果頁、或 `FacilityModal` 剩餘 5 種 kind 中的代表性樣本,或涵蓋大型組件大修/審慎返港再規劃等分支路徑。
+5. **持續・工程健康**:分支策略改「短命分支、合併即刪」;建議在 GitHub 設定 main 分支保護(要求 CI 綠才可合併);✅ Playwright UI 迴歸測試(`npm run e2e` + CI `e2e` job)首批(2026-09-01)+ 交易所/出海/維修畫面擴充(2026-09-02)+ 加班搶修分支(2026-09-03)+ 風場戰情室/母港建設彈窗 focus trap(2026-09-04)+ 營運趨勢彈窗 focus trap(2026-09-05)+ 課程模式彈窗 focus trap(2026-09-06)+ 機具工坊彈窗 focus trap(2026-09-07)+ 風場建置番外篇彈窗鍵盤操作補完(2026-09-08)+ 登入畫面鍵盤操作補完/`TeacherModal` 樣本新增(2026-09-09)+ 頂欄(TopBar/MobileBar)鍵盤操作補完/修正串接開啟彈窗焦點遺失迴歸(2026-09-10)+ 個人檔案(ProfileModal)彈窗 focus trap(2026-09-11)+ 案例檔(CaseFileModal)彈窗 focus trap(2026-09-12)+ 自由營運中心(OpsCenterModal)判斷任務選項卡鍵盤操作補完(2026-09-13)+ 獨立測驗模式(ExamModal)作答頁/結果頁(2026-09-14)皆已完成,共 **29** 項——後續可再挑剩餘的 `OpsCenterModal` 案例演練(`kind:"case"`)分支、`TeacherModal` 的「查詢結果」狀態、`ProfileModal` 的「已作答/有錯題」狀態、`ExamModal` 的「20 題」長度/其他種子排列、或 `FacilityModal` 剩餘 5 種 kind 中的代表性樣本,或涵蓋大型組件大修/審慎返港再規劃等分支路徑。
 
 ---
 
@@ -112,7 +114,7 @@
 > 依「立即可做 → 需後端 → 願景」排序；交接細節見 [HANDOFF.md](HANDOFF.md)。
 
 **立即可做（免後端）**
-- **Playwright UI 迴歸測試擴充** — ✅ 首批（2026-09-01，登入/訪客/教學跳過/調度中心彈窗 focus trap）、交易所/出海/維修畫面擴充（2026-09-02）、加班搶修（`#rush`）分支（2026-09-03）、風場戰情室/母港建設彈窗 focus trap（2026-09-04）、營運趨勢彈窗 focus trap（2026-09-05）、課程模式彈窗 focus trap（2026-09-06）、機具工坊彈窗 focus trap（2026-09-07）、風場建置番外篇彈窗鍵盤操作補完（2026-09-08）、登入畫面鍵盤操作補完 + `TeacherModal` 樣本新增（2026-09-09）、頂欄（TopBar/MobileBar）鍵盤操作補完 + 修正串接開啟彈窗焦點遺失迴歸（2026-09-10）、個人檔案（ProfileModal）彈窗 focus trap（2026-09-11）、案例檔（CaseFileModal）彈窗 focus trap（2026-09-12）、自由營運中心（OpsCenterModal）判斷任務選項卡鍵盤操作補完（2026-09-13）皆已完成，共 **28** 項（`npm run e2e` + CI `e2e` job）；後續可再挑剩餘的 `OpsCenterModal` 案例演練（`kind:"case"`）分支、`TeacherModal` 的「查詢結果」狀態、`ProfileModal` 的「已作答/有錯題」狀態、`ExamModal` 的作答頁/結果頁，或 `FacilityModal` 剩餘 5 種 kind 中的代表性樣本，或涵蓋大型組件大修/審慎返港再規劃（`#carry`，需處理跨日天氣重擲的非決定性）等分支路徑。
+- **Playwright UI 迴歸測試擴充** — ✅ 首批（2026-09-01，登入/訪客/教學跳過/調度中心彈窗 focus trap）、交易所/出海/維修畫面擴充（2026-09-02）、加班搶修（`#rush`）分支（2026-09-03）、風場戰情室/母港建設彈窗 focus trap（2026-09-04）、營運趨勢彈窗 focus trap（2026-09-05）、課程模式彈窗 focus trap（2026-09-06）、機具工坊彈窗 focus trap（2026-09-07）、風場建置番外篇彈窗鍵盤操作補完（2026-09-08）、登入畫面鍵盤操作補完 + `TeacherModal` 樣本新增（2026-09-09）、頂欄（TopBar/MobileBar）鍵盤操作補完 + 修正串接開啟彈窗焦點遺失迴歸（2026-09-10）、個人檔案（ProfileModal）彈窗 focus trap（2026-09-11）、案例檔（CaseFileModal）彈窗 focus trap（2026-09-12）、自由營運中心（OpsCenterModal）判斷任務選項卡鍵盤操作補完（2026-09-13）、獨立測驗模式（ExamModal）作答頁/結果頁（2026-09-14）皆已完成，共 **29** 項（`npm run e2e` + CI `e2e` job）；後續可再挑剩餘的 `OpsCenterModal` 案例演練（`kind:"case"`）分支、`TeacherModal` 的「查詢結果」狀態、`ProfileModal` 的「已作答/有錯題」狀態、`ExamModal` 的「20 題」長度/其他種子排列，或 `FacilityModal` 剩餘 5 種 kind 中的代表性樣本，或涵蓋大型組件大修/審慎返港再規劃（`#carry`，需處理跨日天氣重擲的非決定性）等分支路徑。
 - **戰情室停機折抵「現金」收入的設定開關** — 目前停機只折抵淨發電；提供設定把戰情室層接入售電現金流（需確認經濟平衡）。
 - **每機獨立健康度 / RUL 預測性維護** — 由全場 `fleetHealth` 延伸到每台機組健康指標與剩餘壽命建模，深化 CBM／預測性維護教學（中大型，建議先出設計草案）。
 - **無障礙延伸（後續）** — ✅ 工單循環鍵盤操作、✅ 全部彈窗 focus trap（開啟時 focus 移入、Tab/Shift+Tab 侷限循環於面板內、Esc 關閉並歸還焦點）皆已完成（見上）；尚待：更全面色盲配色審查、對話／音效字幕與旁白。
@@ -154,7 +156,7 @@
 - **直升機進場 / 電網限電真實權衡任務**：自由營運沙盒新增 8 題真實運維判斷——直升機吊掛進場(封船海象/遠海急件/作業限值/成本效益)與電網限電(負電價降載/限電補償/低電壓穿越 FRT/順勢維修)。
   *Real-ops tradeoffs: helicopter access & grid-curtailment judgment tasks.*
 - **呈現**：三模式背景（模擬/實境/漫畫）、60° 俯瞰、多場景登塔（機艙/塔架/輪轂/甲板，含實景/漫畫情境圖與出海/大修場景影片）、Web Audio 音效音樂、中英雙語。母港左側「設施／風場動態」面板可各自獨立收合，設施項目皆有專屬圖示（含技師人物立繪）。
-- **工程**：自動化測試 `npm test`（167 項）、平衡模擬器 `npm run sim`、併發壓力測試 `npm run stress`、**Playwright UI 迴歸測試 `npm run e2e`（23 項）**、PR CI（typecheck/test/build + e2e，兩個 job 並行）。完整系統測試紀錄見 [TEST_REPORT.md](TEST_REPORT.md)（測試數為本文撰寫時的既有紀錄，隨版本增加，以 `npm test` 實跑結果為準）、壓測細節見 [STRESS_TEST.md](STRESS_TEST.md)。
+- **工程**：自動化測試 `npm test`（167 項）、平衡模擬器 `npm run sim`、併發壓力測試 `npm run stress`、**Playwright UI 迴歸測試 `npm run e2e`（29 項）**、PR CI（typecheck/test/build + e2e，兩個 job 並行）。完整系統測試紀錄見 [TEST_REPORT.md](TEST_REPORT.md)（測試數為本文撰寫時的既有紀錄，隨版本增加，以 `npm test` 實跑結果為準）、壓測細節見 [STRESS_TEST.md](STRESS_TEST.md)。
 
 ---
 
