@@ -551,6 +551,64 @@ async function main() {
       ok(restored, "焦點應歸還給開啟彈窗前的「自由營運中心」設施列");
     });
 
+    await test("自由營運中心彈窗：案例演練（kind:\"case\"）分支選項卡改為可鍵盤操作", async () => {
+      // 延續上一則測試補的「判斷任務(kind:"task")」樣本，這則補上先前多輪盤點(2026-09-05〜09-13)
+      // 都列為已知限制、始終未覆蓋的另一分支：makeDraw() 以 Math.random() < CASE_DRILL_PROB(0.24)
+      // 抽中「案例演練」時的 UI。resolve() 對應的選項卡與判斷任務共用同一段 render 邏輯，本輪已一併
+      // 補上 role="button"/tabIndex/onKeyDown，鍵盤操作缺口已在上一則測試修正，此處純屬 e2e 覆蓋擴充。
+      //
+      // 抽題內容仍是非決定性的（randomCaseDrill 依 data.seenCases 過濾「本局未演練過」的案例後加權抽樣，
+      // seenCases 會隨局中「戰情室推進一天」等 advance() 呼叫以 CASE_ROLL_PROB=0.05 的真實 Math.random()
+      // 偶發累積，非本測試可控）——因此刻意**不**比照上一則鎖定成單一已知案例逐字斷言劇本內容，改為只驗證
+      // 「案例演練」分支與一般判斷任務共用的結構性事實，任何一則案例都成立：
+      //   1. 徽章文字含「案例演練」(isCase 分支才會顯示，區別於判斷任務)
+      //   2. Tab 序列與判斷任務結構相同：關閉✕ → 🔬進階檢測「解鎖」原生 <button> → 選項1 → 選項2 → 循環回關閉✕
+      //      （全部 20 則案例皆恰有 2 個選項，見 src/state/caseStudies.ts）
+      //   3. 答題後才會出現的案例專屬區塊：「📘 復盤教訓 O&M Lesson」與「已收錄進母港「案例檔」圖鑑」
+      //      （這兩段只在 isCase && picked !== null 時渲染，判斷任務不會有，用以確認真的走了案例分支）
+      // 覆寫 Math.random 為極小固定值(1e-6)：CASE_DRILL_PROB 分支恆為真；randomCaseDrill 的加權抽樣
+      // 對任何「本局未演練過的案例池」與其權重和，r = 1e-6 * total 恆落在池中第一筆(fresh[0])的
+      // 權重區間內，故不受 seenCases 的非決定性影響，只有那一筆恰好被較早的 advance() 隨機標記為
+      // 已演練這種機率極低的邊界情況(每次 advance() 觸發機率 0.05 × 命中該筆的加權機率，遠低於一般
+      // 可接受的 CI 非決定性容忍度)才會改抽下一筆——兩者皆是恰有 2 個選項的案例，仍不影響本測試斷言。
+      await page.evaluate(() => { window.__wfgOrigRandom = Math.random; Math.random = () => 1e-6; });
+      await page.getByText("自由營運中心", { exact: true }).click();
+      const dialog = page.locator('[role="dialog"].wfg-modal-panel');
+      await dialog.waitFor({ state: "visible", timeout: 5000 });
+      await page.evaluate(() => { Math.random = window.__wfgOrigRandom; delete window.__wfgOrigRandom; });
+      ok((await dialog.textContent())?.includes("案例演練") ?? false, "固定種子(Math.random 恆 < CASE_DRILL_PROB)下應抽到「案例演練」分支，而非判斷任務");
+      const activeInfo = () => page.evaluate(() => {
+        const el = document.activeElement;
+        return { tag: el?.tagName ?? "", role: el?.getAttribute("role") ?? "", ariaLabel: el?.getAttribute("aria-label") ?? "", text: (el?.textContent ?? "").trim() };
+      });
+      eq((await activeInfo()).ariaLabel, "關閉", "彈窗開啟後 focus 應落在關閉✕");
+      await page.keyboard.press("Tab");
+      let info = await activeInfo();
+      eq(info.tag, "BUTTON", "第 1 次 Tab 後應落在🔬進階檢測的「解鎖」原生 <button>");
+      ok(info.text.includes("解鎖"), "第 1 次 Tab 後應落在「解鎖」按鈕");
+      await page.keyboard.press("Tab");
+      info = await activeInfo();
+      eq(info.role, "button", "第 2 次 Tab 後應落在案例演練第一個選項（role=button，與判斷任務共用同一段 render）");
+      await page.keyboard.press("Tab");
+      info = await activeInfo();
+      eq(info.role, "button", "第 3 次 Tab 後應落在案例演練第二個選項");
+      await page.keyboard.press("Tab");
+      eq((await activeInfo()).ariaLabel, "關閉", "第 4 次 Tab 應循環回關閉✕（案例演練恰有 2 個選項，與判斷任務同為 4 個可聚焦元素）");
+      // 鍵盤 Enter 選取第一個選項：驗證 onKeyActivate 真的觸發 resolve、推進案例演練專屬流程
+      // （RESOLVE_TASK + RECORD_ANSWER(disc:...) + MARK_CASE_SEEN，選錯再加 RECORD_MISTAKE）。
+      await page.keyboard.press("Tab"); // 回到「解鎖」
+      await page.keyboard.press("Tab"); // 回到第一個選項
+      await page.keyboard.press("Enter");
+      await page.getByText("復盤教訓", { exact: false }).waitFor({ state: "visible", timeout: 3000 });
+      ok((await dialog.textContent())?.includes("已收錄進母港「案例檔」圖鑑") ?? false, "案例演練答題後應顯示「已收錄進母港「案例檔」圖鑑」（判斷任務不會有此區塊）");
+      ok(await page.getByText("下一個狀況", { exact: false }).count() > 0, "答題後應出現「下一個狀況」按鈕");
+      await page.keyboard.press("Escape");
+      await dialog.waitFor({ state: "hidden", timeout: 5000 }).catch(() => {});
+      eq(await dialog.count(), 0, "Esc 後彈窗應已卸載");
+      const restored = await page.evaluate(() => document.activeElement?.textContent?.includes("自由營運中心") ?? false);
+      ok(restored, "焦點應歸還給開啟彈窗前的「自由營運中心」設施列");
+    });
+
     await test("整段流程無 console 錯誤或未捕捉例外", () => {
       eq(consoleErrors.length, 0, `console errors: ${consoleErrors.join(" | ")}`);
       eq(pageErrors.length, 0, `page errors: ${pageErrors.join(" | ")}`);
