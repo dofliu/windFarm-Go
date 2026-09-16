@@ -609,6 +609,59 @@ async function main() {
       ok(restored, "焦點應歸還給開啟彈窗前的「自由營運中心」設施列");
     });
 
+    await test("個人檔案彈窗（ProfileModal）：已作答/有錯題狀態——掌握度圖表出現、錯題本自我測驗→揭曉→標記已複習全流程", async () => {
+      // 先前(2026-09-11)的 ProfileModal 樣本刻意插在「尚未接下工單前」，只覆蓋 totalAnswered(m)===0 的
+      // 空狀態（面板固定 2 個可聚焦元素）。此時測試流程已走完首筆工單的診斷測驗（故意選錯 "A. 變槳軸承
+      // 潤滑脂量" → RECORD_MISTAKE + RECORD_ANSWER(disc:mechanical, false)，見 RepairScreen.tsx 的
+      // `if (pick === null)` 僅記第一次作答；隨後再選 "C." 因 pick 已非 null 不會重複記錄）與自由營運中心
+      // 的判斷任務（選中 good:true 選項 → RECORD_ANSWER(cat:D, true)，見 tasks.ts 的 d_curtail_maint），
+      // 故 data.mastery/data.mistakes 皆非空——這是先前多輪盤點列為已知限制、始終未覆蓋的「已作答/有
+      // 錯題」狀態。重新用頂欄個人檔案晶片開啟，驗證：
+      //   1. 知識點掌握度改顯示能力雷達圖 + 科別/類型正確率 chips（不再是「尚無作答資料」提示）。
+      //   2. 錯題本不再是空狀態，且診斷測驗那筆錯題（topic disc:mechanical）確實被收錄。
+      //   3. 錯題本的「主動回想」自我測驗→揭曉正解→寫檢討→標記已複習，完整互動鏈路皆可正常運作
+      //     （先前樣本只驗證過 UI 靜態渲染，這是本專案錯題本功能首次端到端走過完整互動）。
+      // 為了精準鎖定特定錯題卡片（避免其餘可能同時存在的自由營運中心錯題卡片文字混淆），MistakeLog.tsx
+      // 本輪新增 data-testid="mistake-card" 供測試以 hasText 精準定位。
+      const chip = page.locator('[role="button"]', { hasText: "訪客" }).first();
+      await chip.press("Enter");
+      const dialog = page.locator('[role="dialog"].wfg-modal-panel');
+      await dialog.waitFor({ state: "visible", timeout: 5000 });
+      ok((await dialog.textContent())?.includes("個人檔案") ?? false, "應開啟 ProfileModal");
+
+      ok(!(await dialog.textContent())?.includes("尚無作答資料"), "已有作答紀錄，掌握度區塊不應再顯示空狀態提示");
+      ok((await dialog.textContent())?.includes("能力雷達"), "totalAnswered(m) > 0 時應顯示能力雷達圖區塊");
+      ok((await dialog.textContent())?.includes("機械"), "診斷測驗的科別掌握度應包含「機械」（disc:mechanical）");
+      ok((await dialog.textContent())?.includes("營運決策"), "自由營運中心判斷任務的類型掌握度應包含「營運決策」（cat:D）");
+
+      ok(!(await dialog.textContent())?.includes("目前沒有錯題"), "已有錯題紀錄，錯題本不應再顯示空狀態提示");
+      const card = dialog.locator('[data-testid="mistake-card"]', { hasText: "齒輪箱油溫持續升高" });
+      await card.waitFor({ state: "visible", timeout: 3000 });
+      ok((await card.textContent())?.includes("先自我測驗"), "尚未複習且尚未自我測驗的錯題應處於主動回想(quiz)階段");
+      ok((await card.textContent())?.includes("機械"), "此錯題卡片的科別徽章應顯示「機械」");
+
+      // 主動回想：兩個原生 <button> 選項之一是正解「B. 潤滑油油位與油質」，點下去驗證揭曉與回饋。
+      await card.getByRole("button", { name: "B. 潤滑油油位與油質" }).click();
+      ok((await card.textContent())?.includes("✓ 答對了"), "選中正解後應顯示「✓ 答對了」回饋");
+      ok((await card.textContent())?.includes("你當時的選擇"), "揭曉階段應顯示「你當時的選擇」");
+      ok((await card.textContent())?.includes("A. 變槳軸承潤滑脂量"), "應顯示錯題本記錄的原始錯誤選擇「A. 變槳軸承潤滑脂量」");
+      ok((await card.textContent())?.includes("B. 潤滑油油位與油質"), "應揭曉正解「B. 潤滑油油位與油質」");
+
+      // 寫檢討反思（至少 4 字）並標記已複習。
+      await card.locator("textarea").fill("下次先查潤滑油油位");
+      const markBtn = card.getByRole("button", { name: "標記已複習" });
+      ok(await markBtn.isEnabled(), "反思已達最低 4 字，標記已複習按鈕應可點擊");
+      await markBtn.click();
+      ok((await card.textContent())?.includes("已複習"), "點擊後此錯題卡片應顯示「已複習」");
+      ok((await card.textContent())?.includes("下次先查潤滑油油位"), "已複習後應顯示先前寫下的檢討內容");
+
+      await page.keyboard.press("Escape");
+      await dialog.waitFor({ state: "hidden", timeout: 5000 }).catch(() => {});
+      eq(await dialog.count(), 0, "Esc 後 ProfileModal 應已卸載");
+      const restored = await page.evaluate(() => document.activeElement?.textContent?.includes("訪客") ?? false);
+      ok(restored, "焦點應歸還給開啟彈窗前的個人檔案晶片");
+    });
+
     await test("整段流程無 console 錯誤或未捕捉例外", () => {
       eq(consoleErrors.length, 0, `console errors: ${consoleErrors.join(" | ")}`);
       eq(pageErrors.length, 0, `page errors: ${pageErrors.join(" | ")}`);
