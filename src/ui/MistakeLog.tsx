@@ -46,7 +46,7 @@ export default function MistakeLog() {
             const quizPhase = !mk.reviewed && pick === undefined;
             const order = hashStr(mk.id) % 2 === 0 ? (["correct", "chosen"] as const) : (["chosen", "correct"] as const);
             return (
-              <div key={mk.id} style={{ padding: "9px 11px", borderRadius: 6, background: "rgba(255,255,255,.04)", border: `1px solid ${mk.reviewed ? "rgba(127,206,142,.4)" : "rgba(220,100,80,.32)"}`, opacity: mk.reviewed ? 0.92 : 1 }}>
+              <div key={mk.id} data-testid="mistake-card" style={{ padding: "9px 11px", borderRadius: 6, background: "rgba(255,255,255,.04)", border: `1px solid ${mk.reviewed ? "rgba(127,206,142,.4)" : "rgba(220,100,80,.32)"}`, opacity: mk.reviewed ? 0.92 : 1 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4, flexWrap: "wrap" }}>
                   <span style={{ fontSize: 10.5, padding: "2px 7px", borderRadius: 999, background: "rgba(214,167,84,.14)", border: "1px solid rgba(214,167,84,.4)", color: C.goldText }}>{t(topicLabel(mk.topic))}</span>
                   {mk.reviewed && <span style={{ fontSize: 10.5, color: C.green }}>✓ {t({ zh: "已複習", en: "Reviewed" })}</span>}
