@@ -147,6 +147,70 @@ async function main() {
       ok(restored, "焦點應歸還給開啟彈窗前的「教師檢視入口」連結");
     });
 
+    await test("TeacherModal「查詢結果」狀態 + 個別學生掌握度鑽取鍵盤操作(#mastery-cloud)", async () => {
+      // 上一則測試只覆蓋「表單」狀態(2026-09-09)；`fetchClassProgress` 實際會打雲端 `do=teacher`
+      // 端點，而測試環境全域用 context.route 把 script.google.com 一律 abort(維持離線隔離)，
+      // 導致「查詢結果」狀態自此一直未被走過。這裡改用 page.route(優先權高於既有的全域
+      // context.route 攔截)只針對 `do=teacher` 這支請求回傳一份固定假資料，讓查詢結果表格與
+      // 個別學生掌握度鑽取可決定性地被驗證，免鎖定 Math.random()、也不需真的重新部署後端。
+      // 查核 TeacherModal.tsx 原始碼時，順帶發現一處系統性缺口的又一實例：掌握度鑽取列
+      // (`<tr onClick=...>`)只有滑鼠 onClick，未比照工單循環其餘卡片式互動補上
+      // role="button"/tabIndex/onKeyDown，鍵盤玩家無法展開/收合個別學生鑽取——本輪一併補上。
+      const isTeacherQuery = (url) => url.hostname === "script.google.com" && url.searchParams.get("do") === "teacher";
+      const FAKE_ROWS = [
+        {
+          studentId: "S001", nickname: "阿明", score: 12345, day: 45, availability: 92, generation: 5200,
+          updatedAt: Date.UTC(2026, 8, 15, 3, 0, 0),
+          mastery: JSON.stringify({ "disc:mechanical": [10, 7], "disc:electrical": [4, 1], "cat:D": [6, 5] }),
+        },
+        { studentId: "S002", nickname: "小華", score: 8000, day: 30, availability: 80, generation: 3000, updatedAt: Date.UTC(2026, 8, 10, 1, 0, 0) },
+      ];
+      await page.route(isTeacherQuery, (route) => route.fulfill({ contentType: "application/json", body: JSON.stringify({ ok: true, rows: FAKE_ROWS }) }));
+      const dialog = page.locator('[role="dialog"].wfg-modal-panel');
+      try {
+        const entry = page.locator('[role="button"]', { hasText: "教師檢視入口" }).first();
+        await entry.click();
+        await dialog.waitFor({ state: "visible", timeout: 5000 });
+        await dialog.locator("input").first().fill("T1");
+        await dialog.locator('input[type="password"]').fill("dummy");
+        await dialog.getByText("查詢班級進度", { exact: true }).click();
+        await dialog.locator("table").waitFor({ state: "visible", timeout: 5000 });
+        const rows = dialog.locator("tbody tr");
+        eq(await rows.count(), 2, "查詢結果應顯示 2 列學生資料(尚未展開任何鑽取)");
+        const row0Text = await rows.nth(0).textContent();
+        ok(row0Text?.includes("S001"), "第 1 列應顯示學號 S001");
+        ok(row0Text?.includes("阿明"), "第 1 列應顯示暱稱阿明");
+        ok(row0Text?.includes("12,345"), "第 1 列應顯示績效分 12,345");
+        ok(row0Text?.includes("24"), "第 1 列應顯示營運天數 24(day 45 − 21)");
+        const firstRow = rows.nth(0);
+        eq(await firstRow.getAttribute("tabindex"), "0", "掌握度鑽取列應可鍵盤聚焦(tabIndex=0)");
+        await firstRow.press("Enter");
+        eq(await dialog.locator("tbody tr").count(), 3, "鍵盤 Enter 展開後應多一列掌握度鑽取內容");
+        const drillText = await dialog.locator("tbody tr").nth(1).textContent();
+        ok(drillText?.includes("機械"), "鑽取內容應顯示「機械」科別掌握度");
+        ok(drillText?.includes("70%"), "「機械」科別正確率應為 70%(7/10)");
+        ok(drillText?.includes("最弱項") && drillText?.includes("電氣"), "最弱項應標示為正確率較低的「電氣」(1/4=25%)");
+        const radar = dialog.locator("tbody tr").nth(1).locator("svg");
+        ok((await radar.count()) > 0, "應渲染能力雷達圖(svg)");
+        await firstRow.press("Enter"); // 再次 Enter 應收合
+        eq(await dialog.locator("tbody tr").count(), 2, "再次鍵盤 Enter 應收合鑽取內容,tbody tr 應變回 2");
+        await rows.nth(1).press("Enter"); // 第 2 位學生尚無作答資料
+        const noDataText = await dialog.locator("tbody tr").nth(2).textContent();
+        ok(noDataText?.includes("尚無作答資料"), "尚無掌握度資料的學生展開後應顯示「此學生尚無作答資料」提示");
+        await page.keyboard.press("Escape");
+        await dialog.waitFor({ state: "hidden", timeout: 5000 }).catch(() => {});
+        eq(await dialog.count(), 0, "Esc 後彈窗應已卸載");
+      } finally {
+        await page.unroute(isTeacherQuery);
+        // 保底清場：任何前面斷言失敗都不該讓彈窗殘留擋住後續測試的點擊(遮罩會讓後面每個測試
+        // 的 click 都卡在 actionability 重試直到逾時，拖垮整個 suite)。
+        if (await dialog.count() > 0) {
+          await page.keyboard.press("Escape").catch(() => {});
+          await dialog.waitFor({ state: "hidden", timeout: 3000 }).catch(() => {});
+        }
+      }
+    });
+
     await test("訪客登入進入母港畫面", async () => {
       await page.getByText("訪客試玩", { exact: false }).click();
       await page.getByText("調度中心", { exact: true }).waitFor({ state: "visible", timeout: 10_000 });
