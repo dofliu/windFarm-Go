@@ -133,9 +133,10 @@ export default function TeacherModal({ open, onClose }: { open: boolean; onClose
                     {rows.map((r, i) => {
                       const isOpen = openId === r.studentId;
                       const hasM = totalAnswered(parseMasterySummary(r.mastery)) > 0;
+                      const toggle = () => { Sfx.click(); setOpenId(isOpen ? null : r.studentId); };
                       return (
                         <Fragment key={r.studentId + i}>
-                          <tr onClick={() => { Sfx.click(); setOpenId(isOpen ? null : r.studentId); }} style={{ cursor: "pointer", background: isOpen ? "rgba(217,164,65,.08)" : undefined }}>
+                          <tr role="button" tabIndex={0} aria-expanded={isOpen} onClick={toggle} onKeyDown={onKeyActivate(toggle)} style={{ cursor: "pointer", background: isOpen ? "rgba(217,164,65,.08)" : undefined }}>
                             <td style={{ ...td, color: C.mist }}>{hasM ? (isOpen ? "▾" : "▸") : ""} {i + 1}</td>
                             <td style={td}>{r.studentId}</td>
                             <td style={td}>{r.nickname || "—"}</td>
