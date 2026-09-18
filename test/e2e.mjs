@@ -726,6 +726,67 @@ async function main() {
       ok(restored, "焦點應歸還給開啟彈窗前的個人檔案晶片");
     });
 
+    await test("設施「圖鑑」彈窗（FacilityModal kind=\"codex\"）：只有已解鎖故障卡片可鍵盤展開/收合，locked 卡片不進 tab 序", async () => {
+      // 「圖鑑」由母港設施列的 FacRowMini 一鍵開啟、無需前置遊戲狀態，是 FacilityModal 剩餘 5 種 kind
+      // （tech/vessel/codex/farms/ranking，tool 已於 2026-09-07 覆蓋）中率先補上的一個：CodexBody 依
+      // data.seenFaults 決定哪些故障卡片可展開，可聚焦元素數量看似不穩定，但查核 FacilityModal.tsx 後
+      // 發現這其實是一處真實的無障礙缺口，而非單純「內容隨機」——CodexCard 的展開/收合列（<div
+      // onClick={() => { if (seen) setOpen(...) }}>）只有滑鼠事件，未比照工單循環其餘卡片式互動補上
+      // role="button"/tabIndex/onKeyDown（僅在 seen===true 才該進 tab 序，locked 卡片本就不可互動）；
+      // DiffQuiz（鑑別診斷練習分頁）的選項卡（choose(id)）亦是同樣缺口，一併修正。目前測試流程只完成過
+      // 1 筆工單（FINISH_REPAIR 記入 seenFaults=["gearbox_overheat"]，後續 OpsCenter 判斷任務/案例演練
+      // 不寫入 seenFaults），COMPONENTS 第一組「齒輪箱 / 傳動鏈」恰有 2 個根因故障（gearbox_overheat 已
+      // 解鎖、gearbox_bearing_wear 未解鎖），故整份圖鑑（COMPONENTS 全部元件）中唯一可聚焦的故障卡片就是
+      // 這一張——可聚焦元素數固定：關閉✕ + 2 個分頁鈕（原生 <button>，恆可聚焦）+ 1 張已解鎖卡片 = 4 個。
+      // DiffQuiz 分頁因僅解鎖 1 個根因（< pools 門檻的 2）恆顯示「🔒 需先解鎖≥2 種根因」提示，選項卡鍵盤
+      // 修正暫時只能靠程式碼查核，無法端到端覆蓋，留待後續測試流程走到第 2 筆齒輪箱工單時再補。
+      await page.getByText("圖鑑", { exact: true }).click();
+      const dialog = page.locator('[role="dialog"].wfg-modal-panel');
+      await dialog.waitFor({ state: "visible", timeout: 5000 });
+      ok((await dialog.textContent())?.includes("故障圖鑑"), "應開啟故障圖鑑彈窗");
+      ok(/已解鎖\s*1\//.test((await dialog.textContent()) ?? ""), "只完成過 1 筆工單，已解鎖故障數應為 1");
+
+      const activeInfo = () => page.evaluate(() => {
+        const el = document.activeElement;
+        return { tag: el?.tagName, role: el?.getAttribute("role"), text: el?.textContent?.trim().slice(0, 24) };
+      });
+      let a = await activeInfo();
+      eq(a.role, "button", "開啟後 focus 應落在關閉鈕(role=button)");
+      eq(a.text, "✕", "開啟後 focus 應落在關閉✕");
+
+      await page.keyboard.press("Tab");
+      a = await activeInfo();
+      eq(a.tag, "BUTTON", "第 1 次 Tab 後應落在原生 <button>「📖 圖鑑解說」分頁鈕");
+      ok(a.text?.includes("圖鑑解說") ?? false, "第 1 次 Tab 後文字應含「圖鑑解說」");
+
+      await page.keyboard.press("Tab");
+      a = await activeInfo();
+      eq(a.tag, "BUTTON", "第 2 次 Tab 後應落在原生 <button>「🔍 鑑別診斷練習」分頁鈕");
+      ok(a.text?.includes("鑑別診斷練習") ?? false, "第 2 次 Tab 後文字應含「鑑別診斷練習」");
+
+      await page.keyboard.press("Tab");
+      a = await activeInfo();
+      eq(a.role, "button", "第 3 次 Tab 後應落在唯一已解鎖的故障卡片(role=button)");
+      ok(a.text?.includes("齒輪箱油溫") ?? false, "第 3 次 Tab 後應落在已解鎖的「齒輪箱油溫過高」卡片");
+
+      // 鍵盤 Enter 展開，確認深度排查知識渲染，再 Enter 收合。
+      await page.keyboard.press("Enter");
+      ok((await dialog.textContent())?.includes("成因機制"), "Enter 展開後應顯示「成因機制」深度知識");
+      ok((await dialog.textContent())?.includes("必備備品"), "Enter 展開後應顯示「必備備品」");
+      await page.keyboard.press("Enter");
+      ok(!(await dialog.textContent())?.includes("成因機制"), "再次 Enter 應收合，「成因機制」不再顯示");
+
+      await page.keyboard.press("Tab"); // locked 的 gearbox_bearing_wear 卡片不進 tab 序，應循環回關閉✕
+      a = await activeInfo();
+      eq(a.text, "✕", "第 4 次 Tab 後應循環回關閉✕(locked 卡片不進 tab 序)");
+
+      await page.keyboard.press("Escape");
+      await dialog.waitFor({ state: "hidden", timeout: 5000 }).catch(() => {});
+      eq(await dialog.count(), 0, "Esc 後圖鑑彈窗應已卸載");
+      const restored = await page.evaluate(() => document.activeElement?.textContent?.includes("圖鑑") ?? false);
+      ok(restored, "焦點應歸還給開啟彈窗前的「圖鑑」設施列");
+    });
+
     await test("整段流程無 console 錯誤或未捕捉例外", () => {
       eq(consoleErrors.length, 0, `console errors: ${consoleErrors.join(" | ")}`);
       eq(pageErrors.length, 0, `page errors: ${pageErrors.join(" | ")}`);
