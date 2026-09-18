@@ -334,9 +334,17 @@ function CodexCard({ faultId, seen }: { faultId: string; seen: boolean }) {
   const cx = CODEX[faultId];
   if (!f) return null;
   const major = isMajorFault(faultId);
+  const toggle = () => { if (seen) { Sfx.click(); setOpen((v) => !v); } };
   return (
     <div style={{ borderRadius: 5, background: "rgba(255,255,255,.04)", border: `1px solid ${seen ? "rgba(127,206,142,.4)" : "rgba(214,167,84,.2)"}`, marginBottom: 7, overflow: "hidden" }}>
-      <div onClick={() => { if (seen) { Sfx.click(); setOpen((v) => !v); } }} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", cursor: seen ? "pointer" : "default" }}>
+      <div
+        onClick={toggle}
+        role={seen ? "button" : undefined}
+        tabIndex={seen ? 0 : -1}
+        aria-expanded={seen ? open : undefined}
+        onKeyDown={seen ? onKeyActivate(toggle) : undefined}
+        style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", cursor: seen ? "pointer" : "default" }}
+      >
         <span style={{ color: seen ? C.green : C.mist }}>{seen ? "✓" : "🔒"}</span>
         <span style={{ color: seen ? C.cream : C.mist2, fontSize: 13.5, fontWeight: 700, fontFamily: FONT_SERIF }}>{t(f.name)}</span>
         {major && <span style={{ fontSize: 9.5, color: C.redText, padding: "1px 5px", borderRadius: 9, border: "1px solid rgba(220,100,80,.4)", background: "rgba(220,100,80,.12)" }}>{t({ zh: "重大", en: "Major" })}</span>}
@@ -431,8 +439,17 @@ function DiffQuiz({ seen }: { seen: string[] }) {
         let bd = "rgba(214,167,84,.3)", bg = "rgba(255,255,255,.04)", col = "#e4eef0";
         if (answered && id === q.answer) { bd = C.green; bg = "rgba(127,206,142,.16)"; col = "#cdeccf"; }
         else if (answered && id === pick) { bd = C.red; bg = "rgba(220,100,80,.16)"; col = C.redText; }
+        const activate = () => choose(id);
         return (
-          <div key={id} onClick={() => choose(id)} style={{ padding: "10px 12px", marginBottom: 8, borderRadius: 4, border: `1px solid ${bd}`, background: bg, color: col, fontSize: 13.5, fontWeight: 600, cursor: answered ? "default" : "pointer" }}>
+          <div
+            key={id}
+            onClick={activate}
+            role={answered ? undefined : "button"}
+            tabIndex={answered ? -1 : 0}
+            aria-pressed={answered ? id === pick : undefined}
+            onKeyDown={answered ? undefined : onKeyActivate(activate)}
+            style={{ padding: "10px 12px", marginBottom: 8, borderRadius: 4, border: `1px solid ${bd}`, background: bg, color: col, fontSize: 13.5, fontWeight: 600, cursor: answered ? "default" : "pointer" }}
+          >
             {t(FAULTS[id].name)}
           </div>
         );
