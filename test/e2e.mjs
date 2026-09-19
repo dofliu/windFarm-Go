@@ -787,6 +787,42 @@ async function main() {
       ok(restored, "焦點應歸還給開啟彈窗前的「圖鑑」設施列");
     });
 
+    await test("風場拓展彈窗（FacilityModal kind=\"farms\"）：focus trap 迴歸（單一可聚焦元素邊界情境）+ 拓展門檻文字正確", async () => {
+      // 「風場拓展」由母港設施列一鍵開啟、無需前置遊戲狀態,是 FacilityModal 剩餘 4 種 kind
+      // （技師公會/船隊整備廠/風場拓展/排行,tool 已於 2026-09-07、codex 已於 2026-09-18 覆蓋）中
+      // 這次挑選的一個。查核 FacilityModal.tsx 後確認此分支全部互動元素本就是原生 <button>,
+      // 不像 codex/OpsCenterModal 有缺鍵盤操作的自訂卡片,純屬先前盤點誤判「內容隨機」而暫緩的
+      // e2e 覆蓋擴充。開局 farmsOwned=1、day=21(見 state/game.ts 初始狀態),FARMS 為靜態資料
+      // (4 座風場):第 2 座(雲林)unlockDay=30 > 21,「拓展」鈕 disabled={!can}(disabled 按鈕
+      // 不進 tab 序,見 a11y.ts 的 FOCUSABLE_SELECTOR),第 3/4 座(苗栗/澎湖)顯示「需先拓展前一座」
+      // 純文字(非按鈕)——面板內可聚焦元素固定只有關閉✕ 這 1 個,且門檻是 day 而非 budget,不受本
+      // 測試流程中途累積的購買/花費影響,與案例檔/營運趨勢同屬「單一可聚焦元素」邊界情境,但成因
+      // 是 unlockDay 門檻而非 tier 過濾或資料量門檻。
+      await page.getByText("風場拓展", { exact: true }).click();
+      const dialog = page.locator('[role="dialog"].wfg-modal-panel');
+      await dialog.waitFor({ state: "visible", timeout: 5000 });
+      const text = await dialog.textContent();
+      ok(text?.includes("彰化外海風場") && text?.includes("營運中"), "第 1 座(彰化)應顯示已擁有/營運中");
+      ok(text?.includes("雲林外海風場") && text?.includes("需第 30 天"), "第 2 座(雲林,unlockDay=30 > 目前 day 21)應顯示鎖定天數提示");
+      ok(text?.includes("苗栗外海風場") && text?.includes("需先拓展前一座"), "第 3 座(苗栗)未輪到,應顯示「需先拓展前一座」");
+      ok(text?.includes("澎湖深海風場"), "第 4 座(澎湖)亦應列出");
+
+      const inPanel = () => page.evaluate(() => {
+        const panel = document.querySelector('[role="dialog"].wfg-modal-panel');
+        return !!panel && panel.contains(document.activeElement);
+      });
+      ok(await inPanel(), "彈窗開啟後 focus 應落在面板內");
+      for (let i = 0; i < 4; i++) {
+        await page.keyboard.press("Tab");
+        ok(await inPanel(), `第 ${i + 1} 次 Tab 後 focus 逃出了彈窗（僅關閉✕ 1 個可聚焦元素，其餘拓展鈕皆 disabled）`);
+      }
+      await page.keyboard.press("Escape");
+      await dialog.waitFor({ state: "hidden", timeout: 5000 }).catch(() => {});
+      eq(await dialog.count(), 0, "Esc 後彈窗應已卸載");
+      const restored = await page.evaluate(() => document.activeElement?.textContent?.includes("風場拓展") ?? false);
+      ok(restored, "焦點應歸還給開啟彈窗前的「風場拓展」設施列");
+    });
+
     await test("整段流程無 console 錯誤或未捕捉例外", () => {
       eq(consoleErrors.length, 0, `console errors: ${consoleErrors.join(" | ")}`);
       eq(pageErrors.length, 0, `page errors: ${pageErrors.join(" | ")}`);
