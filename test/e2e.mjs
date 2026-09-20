@@ -823,6 +823,50 @@ async function main() {
       ok(restored, "焦點應歸還給開啟彈窗前的「風場拓展」設施列");
     });
 
+    await test("船隊整備廠彈窗（FacilityModal kind=\"vessel\"）：focus trap 迴歸（依即時可聚焦元素數動態驗算，不假設固定預算）", async () => {
+      // FacilityModal 剩餘 3 種 kind（技師公會/船隊整備廠/排行）中，這次挑選 kind="vessel"。查核
+      // FacilityModal.tsx 後確認此分支的購置/切換使用/進廠保養/整備升級鈕全是原生 <button>，同樣不像
+      // codex/OpsCenterModal 有缺鍵盤操作的自訂卡片，純屬 e2e 覆蓋缺口。先前盤點暫緩的顧慮是：可聚焦
+      // 元素數量取決於「當下預算」(每艘船購置成本 canBuy)、「磨耗」(進廠保養 can) 與「整備等級」(升級
+      // lvCost)——這些會被本測試流程中途累積的購買/花費影響，若插入點不同、固定寫死的 tabCount 就可能
+      // 因某艘船從買得起變買不起（或反之）而失真。解法：不預先假設任一按鈕的 disabled 狀態，改為開啟當
+      // 下直接讀取面板內實際渲染的可聚焦元素數(與 a11y.ts 的 FOCUSABLE_SELECTOR 同一份選擇器)，據此決定
+      // Tab 次數，因此不論插入在流程中哪個時間點、不論當下預算/磨耗/整備等級為何都能正確驗證循環不逃逸。
+      await page.getByText("船隊整備廠", { exact: true }).click();
+      const dialog = page.locator('[role="dialog"].wfg-modal-panel');
+      await dialog.waitFor({ state: "visible", timeout: 5000 });
+
+      const text = await dialog.textContent();
+      for (const label of ["快艇", "CTV", "SOV", "安裝船", "母船"]) {
+        ok(text?.includes(label), `船型型錄應列出「${label}」`);
+      }
+      ok(text?.includes("進廠保養"), "應顯示「進廠保養」區塊");
+      ok(text?.includes("整備升級"), "應顯示「整備升級」區塊");
+
+      const FOCUSABLE_SELECTOR = 'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
+      const focusableCount = await page.evaluate((sel) => {
+        const panel = document.querySelector('[role="dialog"].wfg-modal-panel');
+        return panel ? panel.querySelectorAll(sel).length : 0;
+      }, FOCUSABLE_SELECTOR);
+      ok(focusableCount >= 1, "面板內至少應有 1 個可聚焦元素（關閉✕）");
+
+      const inPanel = () => page.evaluate(() => {
+        const panel = document.querySelector('[role="dialog"].wfg-modal-panel');
+        return !!panel && panel.contains(document.activeElement);
+      });
+      ok(await inPanel(), "彈窗開啟後 focus 應落在面板內");
+      const tabCount = focusableCount + 2; // 多繞一輪以涵蓋循環 wrap-around
+      for (let i = 0; i < tabCount; i++) {
+        await page.keyboard.press("Tab");
+        ok(await inPanel(), `第 ${i + 1} 次 Tab 後 focus 逃出了彈窗`);
+      }
+      await page.keyboard.press("Escape");
+      await dialog.waitFor({ state: "hidden", timeout: 5000 }).catch(() => {});
+      eq(await dialog.count(), 0, "Esc 後彈窗應已卸載");
+      const restored = await page.evaluate(() => document.activeElement?.textContent?.includes("船隊整備廠") ?? false);
+      ok(restored, "焦點應歸還給開啟彈窗前的「船隊整備廠」設施列");
+    });
+
     await test("整段流程無 console 錯誤或未捕捉例外", () => {
       eq(consoleErrors.length, 0, `console errors: ${consoleErrors.join(" | ")}`);
       eq(pageErrors.length, 0, `page errors: ${pageErrors.join(" | ")}`);
