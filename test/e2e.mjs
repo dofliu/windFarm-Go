@@ -867,6 +867,46 @@ async function main() {
       ok(restored, "焦點應歸還給開啟彈窗前的「船隊整備廠」設施列");
     });
 
+    await test("績效排行彈窗（FacilityModal kind=\"ranking\"）：focus trap 迴歸（單一可聚焦元素邊界情境）+ 六項績效數據 + 雲端排行區塊", async () => {
+      // FacilityModal 剩餘 2 種 kind（技師公會/排行）中，這次挑選 kind="ranking"（績效排行）。查核
+      // FacilityModal.tsx 後確認此分支的六項績效數據列(綜合績效分/機組可用率/累積發電量/完成任務/
+      // 預算/天數)與雲端排行榜每列皆是純 <div> 展示，全無自訂互動卡片，不像 codex/OpsCenterModal 有
+      // 缺鍵盤操作的自訂卡片問題，純屬 e2e 覆蓋缺口。src/cloud/sheet.ts 的 SHEET_CONFIG.enabled=true，
+      // kind==="ranking" 開啟時會呼叫 fetchLeaderboard()（GET webAppUrl，與 TeacherModal 的 do=teacher
+      // 端點不同）；測試環境全域用 context.route 把 script.google.com 一律 abort(維持離線隔離)，
+      // fetchLeaderboard() 對讀取失敗本有 try/catch 降級回傳 []（見 sheet.ts），故雲端排行榜固定停在
+      // 「尚無資料」提示——面板內可聚焦元素固定只有關閉✕ 這 1 個，與案例檔/營運趨勢/風場拓展同屬
+      // 「單一可聚焦元素」邊界情境。
+      await page.getByText("排行", { exact: true }).click();
+      const dialog = page.locator('[role="dialog"].wfg-modal-panel');
+      await dialog.waitFor({ state: "visible", timeout: 5000 });
+
+      for (const label of ["綜合績效分", "機組可用率", "累積發電量", "完成任務", "預算", "天數"]) {
+        const text = await dialog.textContent();
+        ok(text?.includes(label), `應顯示「${label}」列`);
+      }
+      ok((await dialog.textContent())?.includes("班級雲端排行"), "應顯示「班級雲端排行」區塊標題(SHEET_CONFIG.enabled=true)");
+      await page.waitForFunction(() => {
+        const panel = document.querySelector('[role="dialog"].wfg-modal-panel');
+        return !!panel && (panel.textContent?.includes("尚無資料") ?? false);
+      }, { timeout: 5000 });
+
+      const inPanel = () => page.evaluate(() => {
+        const panel = document.querySelector('[role="dialog"].wfg-modal-panel');
+        return !!panel && panel.contains(document.activeElement);
+      });
+      ok(await inPanel(), "彈窗開啟後 focus 應落在面板內");
+      for (let i = 0; i < 4; i++) {
+        await page.keyboard.press("Tab");
+        ok(await inPanel(), `第 ${i + 1} 次 Tab 後 focus 逃出了彈窗（僅關閉✕ 1 個可聚焦元素，其餘皆純展示 <div>）`);
+      }
+      await page.keyboard.press("Escape");
+      await dialog.waitFor({ state: "hidden", timeout: 5000 }).catch(() => {});
+      eq(await dialog.count(), 0, "Esc 後彈窗應已卸載");
+      const restored = await page.evaluate(() => document.activeElement?.textContent?.includes("排行") ?? false);
+      ok(restored, "焦點應歸還給開啟彈窗前的「排行」設施列");
+    });
+
     await test("整段流程無 console 錯誤或未捕捉例外", () => {
       eq(consoleErrors.length, 0, `console errors: ${consoleErrors.join(" | ")}`);
       eq(pageErrors.length, 0, `page errors: ${pageErrors.join(" | ")}`);
