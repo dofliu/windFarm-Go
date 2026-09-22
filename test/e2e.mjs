@@ -907,6 +907,59 @@ async function main() {
       ok(restored, "焦點應歸還給開啟彈窗前的「排行」設施列");
     });
 
+    await test("技師公會彈窗（FacilityModal kind=\"tech\"）：focus trap 迴歸（依即時可聚焦元素數動態驗算，不鎖定候選名單內容）", async () => {
+      // FacilityModal 最後 1 種尚未覆蓋的 kind：kind="tech"（技師公會）。查核 FacilityModal.tsx 後
+      // 確認此分支同樣全是原生 <button>（現有技師「✕ 解僱」鈕、🔄 換一批、各候選「招募」鈕），
+      // 無缺鍵盤操作的自訂卡片，純屬 e2e 覆蓋缺口。先前多輪盤點暫緩此 kind 的顧慮是候選名單
+      // genCandidates() 每次開啟/換一批皆以 Math.random() 產生（姓名/科別/等級皆隨機），可聚焦
+      // 元素數量看似不穩定，需先鎖定 Math.random() 才適合納入。查核後發現真正影響可聚焦元素數的
+      // 只有「解僱」鈕的 busy 狀態與「招募」鈕的 can（budget >= fee，fee 上限僅 60 萬，本測試流程
+      // 開局預算 8420 萬遠高於此門檻，全程不會構成瓶頸）——與「船隊整備廠」(2026-09-20) 同一手法：
+      // 不預先假設任一按鈕的 disabled 狀態、不鎖定 Math.random()，改為開啟當下直接讀取面板內實際
+      // 渲染的可聚焦元素數（與 a11y.ts 的 FOCUSABLE_SELECTOR 同一份選擇器），據此動態決定 Tab 次數，
+      // 徹底不受候選名單隨機內容影響，也不需鎖定 Math.random()。
+      await page.getByText("技師公會", { exact: true }).click();
+      const dialog = page.locator('[role="dialog"].wfg-modal-panel');
+      await dialog.waitFor({ state: "visible", timeout: 5000 });
+
+      const text = await dialog.textContent();
+      ok(text?.includes("現有技師"), "應顯示「現有技師」區塊");
+      ok(text?.includes("阿銘"), "開局起始技師「阿銘」應列出（本測試流程尚未招募/解僱過任何技師）");
+      ok(text?.includes("可招募"), "應顯示「可招募」區塊");
+      const hireButtons = dialog.locator("button", { hasText: "招募" });
+      eq(await hireButtons.count(), 3, "候選名單固定為 3 名（genCandidates() 恆回傳長度 3 的陣列）");
+
+      const FOCUSABLE_SELECTOR = 'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
+      const focusableCount = await page.evaluate((sel) => {
+        const panel = document.querySelector('[role="dialog"].wfg-modal-panel');
+        return panel ? panel.querySelectorAll(sel).length : 0;
+      }, FOCUSABLE_SELECTOR);
+      ok(focusableCount >= 1, "面板內至少應有 1 個可聚焦元素（關閉✕）");
+
+      const inPanel = () => page.evaluate(() => {
+        const panel = document.querySelector('[role="dialog"].wfg-modal-panel');
+        return !!panel && panel.contains(document.activeElement);
+      });
+      ok(await inPanel(), "彈窗開啟後 focus 應落在面板內");
+      const tabCount = focusableCount + 2; // 多繞一輪以涵蓋循環 wrap-around
+      for (let i = 0; i < tabCount; i++) {
+        await page.keyboard.press("Tab");
+        ok(await inPanel(), `第 ${i + 1} 次 Tab 後 focus 逃出了彈窗`);
+      }
+
+      // 鍵盤 Enter 觸發「🔄 換一批」，確認換批後仍固定 3 名（驗證互動確實有效，不只是靜態渲染）。
+      const refreshBtn = dialog.getByText("換一批", { exact: false });
+      await refreshBtn.focus();
+      await page.keyboard.press("Enter");
+      eq(await hireButtons.count(), 3, "換一批後候選名單仍固定為 3 名");
+
+      await page.keyboard.press("Escape");
+      await dialog.waitFor({ state: "hidden", timeout: 5000 }).catch(() => {});
+      eq(await dialog.count(), 0, "Esc 後彈窗應已卸載");
+      const restored = await page.evaluate(() => document.activeElement?.textContent?.includes("技師公會") ?? false);
+      ok(restored, "焦點應歸還給開啟彈窗前的「技師公會」設施列");
+    });
+
     await test("整段流程無 console 錯誤或未捕捉例外", () => {
       eq(consoleErrors.length, 0, `console errors: ${consoleErrors.join(" | ")}`);
       eq(pageErrors.length, 0, `page errors: ${pageErrors.join(" | ")}`);
