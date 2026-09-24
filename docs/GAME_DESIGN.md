@@ -181,7 +181,7 @@ scores(user_id, score, availability, generation_mwh, missions_done, day, updated
 2. **微觀天氣預報**：✅ 已實作。天氣改為時間軸屬性（馬可夫慣性，風暴成群），每日「昨日預報」實現為今日海象（含 ~18% 預報誤差，教學：預報非百分百準確），並滾動產生未來三日預報。母港「風場動態」、出航就緒檢查、頂部 HUD 皆顯示三日預報＋風暴警示，支援預防性排程（預知風暴 → 提前搶修或靠港等更好的天氣窗）。見 `advanceWeather`/`makeForecast`/`forecast`、`Forecast.tsx`。
 3. **合約 SLA**：✅ 已實作。設季度（`QUARTER_DAYS`=90 天）可用率底線 `SLA_FLOOR`（90%）；每日累計可用率，跨季結算平均，低於底線 → 扣違約金 `SLA_PENALTY` 並計入績效扣分（`computeScore` −25/次）。Hub「風場動態」顯示本季平均/底線/剩餘天數/風險，季末跳結算通知。逼出「戰略性放棄單機保全體」決策（與 #4 大修的停機取捨直接衝突，形成張力）。見 `advance()` 之 SLA 區段、`lastSla`。
 4. **倉儲成本 / 備品折舊**：✅ 已實作。持有備品每日課徵倉儲維持費 `STORAGE_COST_PER_UNIT`（隨持有量上升），且每類備品每日有 `SPOIL_CHANCE` 機率折舊報廢 1 件（跳通知）。考驗 JIT vs 安全庫存：備愈多停機風險愈低，但維持費與耗損愈高。見 `advance()`、`dailyStorageCost`、Hub「備品庫存」面板。
-5. **機組健康度（Health Index）**：✅ 已實作。全場健康度 `fleetHealth`（0-100）每日衰退（有未修故障時加速＝連鎖反應的根源）；越低 → `rollEvent` 觸發機率越高且偏向壞事件（連鎖故障）；維修(+8)/休整(+1.5)/良好預防決策可回復。見 `game.ts`/`events.ts`。（後續可加：每機獨立健康度、付費進階檢測）
+5. **機組健康度（Health Index）**：✅ 已實作。全場健康度 `fleetHealth`（0-100）每日衰退（有未修故障時加速＝連鎖反應的根源）；越低 → `rollEvent` 觸發機率越高且偏向壞事件（連鎖故障）；維修(+8)/休整(+1.5)/良好預防決策可回復。見 `game.ts`/`events.ts`。**每機獨立健康度 / RUL 預測性維護**：設計草案已完成（2026-09-24），詳見 [RUL_DESIGN.md](RUL_DESIGN.md)，分 4 階段實作，尚未動工。
 6. **動態 SCADA 趨勢圖**：✅ 已實作。自由營運中心的輔助圖改為**即時動畫饋送**（趨勢/頻譜/雷達/長條隨時間變化）；付費解鎖 `DIAG_COST` 的**進階檢測** `diagLevel` 後，趨勢圖加上投影虛線、告警門檻線與風險讀數（如「約 N 步後達門檻」、BPFI 標註、胞 ETA），判讀更清晰。見 `OpsCenterModal.tsx` 的 `TaskChart`。
 7. **技師疲勞 / 船舶保養週期**：✅ 已實作。技師加入 `fatigue`（0-100）：出勤/大修工日累積（`FATIGUE_PER_JOB`），每日休整回復（`FATIGUE_RECOVERY`）；達輪班上限 `FATIGUE_LIMIT` 不得派工（出航就緒檢查擋下，需休整或招募同科別技師輪班）。船舶加入 `vesselWear`：每趟出航累積，過高縮短維修作業窗，於 CTV 整備廠付費保養歸零。見 `availableEngineer`/`deployFatigue`/`vesselWindowPenalty`、Hub/技師公會/CTV 整備廠 UI。
 

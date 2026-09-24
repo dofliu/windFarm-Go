@@ -25,6 +25,7 @@
 | 文件 | 內容 |
 |---|---|
 | [GAME_DESIGN.md](GAME_DESIGN.md) | **遊戲設計文件(權威版)**:出勤就緒閘門、經濟、KPI、擬真系統的單一真實來源 |
+| [RUL_DESIGN.md](RUL_DESIGN.md) | 每機獨立健康度 / RUL 預測性維護 — 設計草案(尚未實作,分階段實作計畫) |
 | [ROADMAP.md](ROADMAP.md) | 未來藍圖:已完成里程碑、後續接續工作、待決策事項 |
 | [HANDOFF.md](HANDOFF.md) | Session 交接紀錄:目前狀態、開發備忘、驗證流程 |
 | [TEST_REPORT.md](TEST_REPORT.md) | 全系統測試報告(typecheck / test / build / sim / stress) |
