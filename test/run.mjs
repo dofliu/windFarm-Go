@@ -1025,7 +1025,12 @@ function checkInvariants(s, ctx) {
   if (s.fleetHealth < 0 || s.fleetHealth > 100) throw new Error(`fleetHealth ${s.fleetHealth} after ${ctx}`);
   if (s.vesselWear < 0 || s.vesselWear > 100) throw new Error(`vesselWear ${s.vesselWear} after ${ctx}`);
   if (!Array.isArray(s.fleet)) throw new Error("fleet not array");
-  for (const tt of s.fleet) { if (!["ok", "fault", "repair"].includes(tt.status)) throw new Error(`bad turbine status ${tt.status}`); if (!(tt.gen > 0)) throw new Error("turbine gen<=0"); }
+  for (const tt of s.fleet) {
+    if (!["ok", "fault", "repair"].includes(tt.status)) throw new Error(`bad turbine status ${tt.status}`);
+    if (!(tt.gen > 0)) throw new Error("turbine gen<=0");
+    const w = tt.wear ?? 0; if (typeof w !== "number" || !Number.isFinite(w) || w < 0 || w > 100) throw new Error(`turbine ${tt.id} wear out of range (${w})`);
+    const ag = tt.age ?? 0; if (typeof ag !== "number" || !Number.isFinite(ag) || ag < 0) throw new Error(`turbine ${tt.id} age invalid (${ag})`);
+  }
   if (!Array.isArray(s.forecast) || s.forecast.length !== g.FORECAST_DAYS) throw new Error("forecast length");
   for (const f of s.forecast) if (!["workable", "caution", "closed"].includes(f)) throw new Error("bad forecast state");
   for (const e of s.engineers) { const fa = e.fatigue ?? 0; if (fa < 0 || fa > 100) throw new Error(`fatigue ${fa}`); }
@@ -1475,6 +1480,79 @@ test("scheduled service: due gating + fault-rate buff + health + clock reset (#8
   ok(s.fleetHealth > dueState.fleetHealth, "health restored by service");
   eq(s.lastServiceDay, dueState.day + g.SCHEDULED_SERVICE_DAYS, "service clock reset");
   ok(!g.serviceDue(s), "not due again right after service");
+});
+
+// ───────────────────────── 每機獨立劣化 / RUL 預測性維護 Stage 1（docs/RUL_DESIGN.md）─────────────────────────
+// Stage 1 只做資料骨架 + 純展示：faultTurbines/戰情室逐日新故障仍是均勻隨機，不吃 wear（Stage 2 才接上）。
+test("wearOf/ageOf default to 0 for turbines without the optional fields (back-compat with pre-Stage-1 saves)", () => {
+  eq(g.wearOf({ id: "x", farm: 0, status: "ok", gen: 1 }), 0, "no wear field -> 0");
+  eq(g.ageOf({ id: "x", farm: 0, status: "ok", gen: 1 }), 0, "no age field -> 0");
+  eq(g.wearOf({ id: "x", farm: 0, status: "ok", gen: 1, wear: 42 }), 42, "existing wear field passes through");
+});
+test("wearRiskTier: four risk bands match docs/RUL_DESIGN.md thresholds", () => {
+  eq(g.wearRiskTier(0), "low"); eq(g.wearRiskTier(29), "low");
+  eq(g.wearRiskTier(30), "watch"); eq(g.wearRiskTier(54), "watch");
+  eq(g.wearRiskTier(55), "high"); eq(g.wearRiskTier(79), "high");
+  eq(g.wearRiskTier(80), "critical"); eq(g.wearRiskTier(100), "critical");
+});
+test("advance(): every turbine's wear/age accumulate daily (isolated from event/new-fault randomness)", () => {
+  // rollEvent 觸發機率上限 0.85、faultProb 上限 <=0.55、案例快報 CASE_ROLL_PROB=0.05,固定回傳 0.99 恆不觸發任一者,
+  // 讓本測試單純觀察每日劣化累積邏輯,不被隨機事件/新故障/案例快報干擾。
+  const realRandomLocal = Math.random;
+  Math.random = () => 0.99;
+  try {
+    let s = { ...I, fleet: I.fleet.map((t) => ({ ...t, status: "ok", faultId: undefined, wear: 0, age: 0 })) };
+    s = R(s, { type: "OPS_ADVANCE" });
+    for (const t of s.fleet) { near(t.wear, g.WEAR_PER_DAY_BASE, 1e-9, `${t.id} wear after 1 day`); eq(t.age, 1, `${t.id} age after 1 day`); }
+    for (let i = 0; i < 5; i++) s = R(s, { type: "OPS_ADVANCE" });
+    for (const t of s.fleet) { near(t.wear, g.WEAR_PER_DAY_BASE * 6, 1e-9, `${t.id} wear after 6 days`); eq(t.age, 6, `${t.id} age after 6 days`); }
+  } finally { Math.random = realRandomLocal; }
+});
+test("advance(): unresolved fault accelerates wear vs. normal operation", () => {
+  const realRandomLocal = Math.random;
+  Math.random = () => 0.99; // 同上,隔離出純劣化累積邏輯（此狀態下唯一機組已故障,無「正常機組」可再抽中新故障）
+  try {
+    const fleet = [{ id: "F1", farm: 0, status: "fault", faultId: "converter", gen: 1, wear: 0, age: 0 }];
+    const s = R({ ...I, fleet, opsJobs: [] }, { type: "OPS_ADVANCE" });
+    near(s.fleet[0].wear, g.WEAR_PER_DAY_BASE + g.WEAR_FAULT_EXTRA_PER_DAY, 1e-9, "faulted turbine wears faster than base rate");
+  } finally { Math.random = realRandomLocal; }
+});
+test("wear clamps at 100 even under prolonged unresolved fault", () => {
+  const realRandomLocal = Math.random;
+  Math.random = () => 0.99;
+  try {
+    const fleet = [{ id: "F1", farm: 0, status: "fault", faultId: "converter", gen: 1, wear: 99, age: 0 }];
+    const s = R({ ...I, fleet, opsJobs: [] }, { type: "OPS_ADVANCE" });
+    eq(s.fleet[0].wear, 100, "wear clamped at 100, never exceeds");
+  } finally { Math.random = realRandomLocal; }
+});
+test("OPS_INSPECT completion relieves wear fleet-wide", () => {
+  const realRandomLocal = Math.random;
+  Math.random = () => 0.99;
+  try {
+    let s = { ...I, fleet: I.fleet.map((t) => ({ ...t, wear: 50, age: 10 })), engineers: [{ id: "k", name: "k", discipline: "control", level: 1, fatigue: 0 }] };
+    s = R(s, { type: "OPS_INSPECT", engineerId: "k" });
+    for (let i = 0; i < g.INSPECT_DAYS; i++) s = R(s, { type: "OPS_ADVANCE" });
+    for (const t of s.fleet) ok(t.wear < 50, `${t.id} wear relieved after fleet-wide inspection completes`);
+  } finally { Math.random = realRandomLocal; }
+});
+test("SCHEDULED_SERVICE relieves wear fleet-wide", () => {
+  const realRandomLocal = Math.random;
+  Math.random = () => 0.99;
+  try {
+    const dueState = { ...I, fleet: I.fleet.map((t) => ({ ...t, wear: 60, age: 10 })), lastServiceDay: I.day - g.SERVICE_INTERVAL_DAYS, fleetHealth: 50, budget: 50_000_000 };
+    const s = R(dueState, { type: "SCHEDULED_SERVICE" });
+    for (const t of s.fleet) ok(t.wear < 60, `${t.id} wear relieved by scheduled service`);
+  } finally { Math.random = realRandomLocal; }
+});
+test("dispatched repair completion relieves that turbine's wear, but not to zero", () => {
+  const { state, turbine } = withFault("converter", "electrical");
+  let s = { ...state, fleet: state.fleet.map((t) => (t.id === turbine ? { ...t, wear: 60 } : t)) };
+  s = R(s, { type: "OPS_DISPATCH", turbine, engineerId: "em" });
+  seed(31); for (let i = 0; i < 4 && s.opsJobs.length; i++) s = R(s, { type: "OPS_ADVANCE" });
+  const fixed = s.fleet.find((t) => t.id === turbine);
+  eq(fixed.status, "ok", "sanity: same fixture/seed as the existing dispatch-completion test above");
+  ok(fixed.wear < 60 && fixed.wear > 0, "repair relieves wear but doesn't reset to 0 (repair != as-new)");
 });
 
 // ───────────────────────── 故障/備品分層擴充（#82） ─────────────────────────

@@ -9,7 +9,7 @@ import { DISC } from "./disc";
 import { FARMS } from "../state/farms";
 import { incidentAt } from "../state/incidents";
 import { PARTS } from "./data";
-import { fleetUptime, engineerBusy, fatigueOf, FATIGUE_LIMIT, jobCapOf, effectiveJobCapOf, crewShortfallJobs, onsiteJobCount, INSPECT_DAYS, SEA_INDEX, seaTolOf, activeVesselSpec, SEA_LABEL, dailyPayroll, toWan, sortieCostOf, QUARTER_DAYS, SLA_FLOOR } from "../state/game";
+import { fleetUptime, engineerBusy, fatigueOf, FATIGUE_LIMIT, jobCapOf, effectiveJobCapOf, crewShortfallJobs, onsiteJobCount, INSPECT_DAYS, SEA_INDEX, seaTolOf, activeVesselSpec, SEA_LABEL, dailyPayroll, toWan, sortieCostOf, QUARTER_DAYS, SLA_FLOOR, wearOf, wearRiskTier, WEAR_RISK_LABEL, WEAR_RISK_ICON } from "../state/game";
 import { LedgerView } from "./Ledger";
 import { onKeyActivate } from "./a11y";
 import { useFocusTrap } from "./useFocusTrap";
@@ -144,17 +144,22 @@ export default function FleetOpsModal({ open, onClose }: { open: boolean; onClos
               {cells.map((tt) => {
                 const isSel = sel === tt.id;
                 const clickable = tt.status === "fault";
+                const riskTier = wearRiskTier(wearOf(tt));
+                const riskIcon = WEAR_RISK_ICON[riskTier];
+                const riskTitle = riskIcon ? ` · ${t({ zh: "劣化", en: "Wear" })}: ${t(WEAR_RISK_LABEL[riskTier])}` : "";
                 return (
                   <div
                     key={tt.id}
                     onClick={() => { if (clickable) { Sfx.click(); setSel(isSel ? null : tt.id); } }}
-                    title={tt.id + (tt.faultId ? ` · ${t(incidentAt(tt.faultId)?.name ?? { zh: "", en: "" })}` : "")}
+                    title={tt.id + (tt.faultId ? ` · ${t(incidentAt(tt.faultId)?.name ?? { zh: "", en: "" })}` : "") + riskTitle}
                     style={{ width: 40, height: 32, borderRadius: 4, background: STATUS_COLOR[tt.status], opacity: tt.status === "ok" ? 0.55 : 1, border: isSel ? "2px solid #ffe6b0" : "1px solid rgba(0,0,0,.3)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 700, color: "#fff", cursor: clickable ? "pointer" : "default", position: "relative" }}
                   >
                     {tt.id.replace(/^[A-Za-z-]+/, "")}
                     {tt.status === "repair" && <span style={{ position: "absolute", top: -2, right: -2, fontSize: 9 }}>🔧</span>}
                     {/* 無障礙:故障格加 ⚠ 圖示,不只靠紅色區分(色覺友善) */}
                     {tt.status === "fault" && <span style={{ position: "absolute", top: -3, right: -3, fontSize: 9 }}>⚠</span>}
+                    {/* 每機獨立劣化風險徽章（RUL Stage 1，純展示）：良好層級不顯示徽章,避免畫面雜訊 */}
+                    {riskIcon && <span style={{ position: "absolute", bottom: -3, left: -3, fontSize: 9 }}>{riskIcon}</span>}
                   </div>
                 );
               })}
@@ -168,6 +173,9 @@ export default function FleetOpsModal({ open, onClose }: { open: boolean; onClos
         <span><span style={{ display: "inline-block", width: 10, height: 10, background: STATUS_COLOR.ok, opacity: 0.55, borderRadius: 2, marginRight: 4 }} />{t({ zh: "正常", en: "OK" })}</span>
         <span><span style={{ display: "inline-block", width: 10, height: 10, background: STATUS_COLOR.fault, borderRadius: 2, marginRight: 4 }} />{t({ zh: "故障(可點擊派工)", en: "Fault (click to dispatch)" })}</span>
         <span><span style={{ display: "inline-block", width: 10, height: 10, background: STATUS_COLOR.repair, borderRadius: 2, marginRight: 4 }} />{t({ zh: "維修中", en: "In repair" })}</span>
+        <span>{WEAR_RISK_ICON.watch} {t({ zh: "劣化觀察中", en: "Wear: watch" })}</span>
+        <span>{WEAR_RISK_ICON.high} {t({ zh: "劣化高風險", en: "Wear: high risk" })}</span>
+        <span>{WEAR_RISK_ICON.critical} {t({ zh: "劣化危急", en: "Wear: critical" })}</span>
       </div>
 
       {/* 出海航次提示（鼓勵批次維修） */}
