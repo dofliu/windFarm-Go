@@ -1,6 +1,8 @@
 # 每機獨立健康度 / RUL 預測性維護 — 設計草案
 
-> 狀態:**設計草案(尚未實作)**。對應 [ROADMAP.md](ROADMAP.md)「後續接續工作」P2 教學深化項目、[GAME_DESIGN.md](GAME_DESIGN.md) §14 項目 5「機組健康度(Health Index)」文末預留的「後續可加:每機獨立健康度、付費進階檢測」,以及 §16 `#81` 明確點名尚未補齊的「狀態式 CBM(Condition-Based Monitoring)」這一類維護。本文只定範圍與資料模型,**不含程式改動**;實作將依下方「分階段實作計畫」逐輪推進,每輪一個明確階段。最後更新:2026-09-24(例行開發 session)。
+> 狀態:**Stage 1(資料骨架 + 純展示)已實作完成(2026-09-25)**,Stage 2–4 待續。對應 [ROADMAP.md](ROADMAP.md)「後續接續工作」P2 教學深化項目、[GAME_DESIGN.md](GAME_DESIGN.md) §14 項目 5「機組健康度(Health Index)」文末預留的「後續可加:每機獨立健康度、付費進階檢測」,以及 §16 `#81` 明確點名尚未補齊的「狀態式 CBM(Condition-Based Monitoring)」這一類維護。實作依下方「分階段實作計畫」逐輪推進,每輪一個明確階段。最後更新:2026-09-25(例行開發 session,Stage 1 實作)。
+>
+> **Stage 1 實作紀錄**:`Turbine.wear?`/`age?` 欄位、`advance()` 每日累積(含故障加速)、`OPS_INSPECT`/`SCHEDULED_SERVICE`/單機維修工單完工下修、`wearRiskTier()` 四級分類、`FleetOpsModal.tsx` 風險徽章展示,皆依本文第 3–5 節設計原樣落地,細節/測試見 [ROADMAP.md](ROADMAP.md) 2026-09-25 條目與 [TEST_REPORT.md](TEST_REPORT.md)。第 8 節「分階段實作計畫」第 1 項狀態已改為完成,下一輪接續 Stage 2。
 
 ## 1. 為什麼要做(現況缺口)
 
@@ -84,7 +86,7 @@ export interface Turbine {
 
 不在單一 PR 內做完,依風險由低到高分階段:
 
-1. **Stage 1・資料骨架 + 純展示(免影響平衡)**:`Turbine` 新增 `wear`/`age` 欄位與每日累積邏輯,母港/戰情室 UI 顯示風險分級徽章,但**故障挑選仍維持均勻隨機**(`wear` 純觀察用)。目的:先驗證資料模型與 UI 呈現、跑過一輪 `npm test`/`npm run e2e` 確認無回歸,不動平衡數字。
+1. ✅ **Stage 1・資料骨架 + 純展示(免影響平衡)——已完成(2026-09-25)**:`Turbine` 新增 `wear`/`age` 欄位與每日累積邏輯,戰情室(`FleetOpsModal.tsx`)機組陣列顯示風險分級徽章,**故障挑選仍維持均勻隨機**(`wear` 純觀察用)。已跑過 `npm test`(175 全綠)/`npm run e2e`(38 全過)/`typecheck`/`build` 確認無回歸,平衡數字未變動。
 2. **Stage 2・接上故障挑選權重**:`faultTurbines`/戰情室逐日新故障選取改為依 `wear` 加權,`OPS_INSPECT`/`SCHEDULED_SERVICE`/`FINISH_REPAIR` 對 `wear` 的下修效果同步上線。此階段需要 `npm run sim` 重新校正。
 3. **Stage 3・單機定檢動作 + `diagLevel` 真數值接軌**:新增「針對單一機組」的定檢/進階檢測選項,`TaskChart` 的 ETA 敘事接上真實 `wear`/風險分級。
 4. **Stage 4(選配,依課堂回饋再評估)**:部件級細分、與 `#overhaul` 大修分支(`MAJOR_FAULTS`)的劣化觸發條件整合、教師端統計(如「班級平均機組劣化」)。

@@ -53,7 +53,27 @@ export interface Turbine {
   status: TurbineStatus;
   faultId?: string; // 故障型錄 id（incidents.ts）
   gen: number; // 此機組每日發電佔比 (MWh, 100%)
+  wear?: number; // 每機獨立劣化度 0-100（RUL Stage 1，選配・向後相容舊存檔，讀取一律經 wearOf() 補預設 0）
+  age?: number; // 自建置/上次大修以來累積運轉天數（RUL 敘事用，同樣選配）
 }
+// 每機獨立健康度 / RUL 預測性維護（docs/RUL_DESIGN.md Stage 1）：資料骨架 + 純展示，
+// 本階段刻意不接上故障挑選權重（faultTurbines/戰情室逐日新故障仍是均勻隨機），降低回歸風險。
+export const wearOf = (t: Turbine): number => t.wear ?? 0;
+export const ageOf = (t: Turbine): number => t.age ?? 0;
+export const WEAR_PER_DAY_BASE = 0.4; // 每日基礎劣化累積（正常運轉）
+export const WEAR_FAULT_EXTRA_PER_DAY = 1.0; // 故障待修期間，額外加速劣化
+export const WEAR_REPAIR_RELIEF = 30; // 該機組完成維修後劣化下修量（不歸零：修復不等於整新如新）
+export const WEAR_INSPECT_RELIEF = 15; // 全場預防性定檢完工後，全機隊劣化下修量
+export const WEAR_SCHEDULED_SERVICE_RELIEF = 25; // 計畫性保養完工後，全機隊劣化下修量
+export type WearRiskTier = "low" | "watch" | "high" | "critical";
+export const wearRiskTier = (wear: number): WearRiskTier => (wear < 30 ? "low" : wear < 55 ? "watch" : wear < 80 ? "high" : "critical");
+export const WEAR_RISK_LABEL: Record<WearRiskTier, I18n> = {
+  low: { zh: "良好", en: "Good" },
+  watch: { zh: "觀察中", en: "Watch" },
+  high: { zh: "高風險", en: "High risk" },
+  critical: { zh: "危急", en: "Critical" },
+};
+export const WEAR_RISK_ICON: Record<WearRiskTier, string> = { low: "", watch: "🟡", high: "🟠", critical: "🔺" };
 export type OpsJobKind = "repair" | "inspect"; // 維修工單 / 預防性定檢（Phase C2）
 export interface OpsJob {
   id: string;
@@ -130,7 +150,7 @@ export function buildFleetForFarm(f: number): Turbine[] {
   const farm = FARMS[f];
   if (!farm) return [];
   const share = Math.round((farm.genPerDay / farm.units) * 10) / 10;
-  return Array.from({ length: farm.units }, (_, i) => ({ id: `${farm.code}${String(i + 1).padStart(2, "0")}`, farm: f, status: "ok" as TurbineStatus, gen: share }));
+  return Array.from({ length: farm.units }, (_, i) => ({ id: `${farm.code}${String(i + 1).padStart(2, "0")}`, farm: f, status: "ok" as TurbineStatus, gen: share, wear: 0, age: 0 }));
 }
 export function buildFleet(farmsOwned: number, tier = 1): Turbine[] {
   let out: Turbine[] = [];
@@ -596,15 +616,18 @@ function advance(s: GameData, days = 1): Partial<GameData> {
         if (j.kind === "inspect") {
           buffDays = INSPECT_BUFF_DAYS; // 定檢完成 → 降低未來故障率
           healthBoost += 3;
+          fleet = fleet.map((t) => ({ ...t, wear: clampN(wearOf(t) - WEAR_INSPECT_RELIEF, 0, 100) })); // RUL Stage 1：全場定檢下修全機隊劣化
         } else {
           const ti = fleet.findIndex((t) => t.id === j.turbine);
-          if (ti >= 0) fleet[ti] = { ...fleet[ti], status: "ok", faultId: undefined };
+          if (ti >= 0) fleet[ti] = { ...fleet[ti], status: "ok", faultId: undefined, wear: clampN(wearOf(fleet[ti]) - WEAR_REPAIR_RELIEF, 0, 100) };
           resolved += 1;
           fixPay += FLEET_FIX_REWARD;
         }
         if (!j.remote) engs = deployFatigue(engs, j.discipline);
       }
       jobs = jobs.filter((j) => j.daysLeft > 0);
+      // 每機獨立劣化累積（RUL Stage 1）：純觀察量，尚未接上故障挑選權重（Stage 2 才會讓 wear 影響下方的隨機新增故障）
+      fleet = fleet.map((t) => ({ ...t, wear: clampN(wearOf(t) + WEAR_PER_DAY_BASE + (t.status === "fault" ? WEAR_FAULT_EXTRA_PER_DAY : 0), 0, 100), age: ageOf(t) + 1 }));
       // 隨機新增故障（機率隨健康度下降而上升；定檢生效期間降低），鎖定一台正常且未在維修的機組。
       // 只有「運轉中」的機組會新故障 → 機率隨運轉比例縮放，形成穩定平衡而非死亡螺旋（不會全場掛掉）。
       const oks = fleet.filter((t) => t.status === "ok");
@@ -840,6 +863,7 @@ export function reducer(s: GameData, a: Action): GameData {
         budget: Math.max(0, (adv.budget ?? s.budget) - SCHEDULED_SERVICE_COST),
         inspectBuffDays: Math.max(adv.inspectBuffDays ?? s.inspectBuffDays, SCHEDULED_SERVICE_BUFF_DAYS),
         fleetHealth: clampN((adv.fleetHealth ?? s.fleetHealth) + SCHEDULED_SERVICE_HEALTH, 0, 100),
+        fleet: (adv.fleet ?? s.fleet).map((t) => ({ ...t, wear: clampN(wearOf(t) - WEAR_SCHEDULED_SERVICE_RELIEF, 0, 100) })), // RUL Stage 1：計畫性保養同步下修全機隊劣化
         lastServiceDay: s.day + SCHEDULED_SERVICE_DAYS,
       };
     }
