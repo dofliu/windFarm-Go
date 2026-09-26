@@ -1555,6 +1555,82 @@ test("dispatched repair completion relieves that turbine's wear, but not to zero
   ok(fixed.wear < 60 && fixed.wear > 0, "repair relieves wear but doesn't reset to 0 (repair != as-new)");
 });
 
+// ───────────────────────── 每機獨立劣化 / RUL 預測性維護 Stage 2（docs/RUL_DESIGN.md）─────────────────────────
+// Stage 2：faultTurbines/戰情室逐日新故障改依 wear 加權抽樣（pickWeightedByWear）。
+test("pickWeightedByWear: high-wear turbine gets picked far more often than a low-wear one over many trials", () => {
+  const items = [{ id: "hi", farm: 0, status: "ok", gen: 1, wear: 100 }, { id: "lo", farm: 0, status: "ok", gen: 1, wear: 0 }];
+  const realRandomLocal = Math.random;
+  try {
+    let hiCount = 0;
+    const N = 20000;
+    for (let i = 0; i < N; i++) if (g.pickWeightedByWear(items).id === "hi") hiCount++;
+    const frac = hiCount / N;
+    // weight(hi) = FLOOR+100, weight(lo) = FLOOR+0 → expected frac = (FLOOR+100)/(2*FLOOR+100) = 120/140 ≈ 0.857 for FLOOR=20
+    ok(frac > 0.7, `high-wear turbine should dominate the draw, got frac=${frac}`);
+    ok(hiCount < N, "low-wear turbine still retains a nonzero floor chance of being picked");
+  } finally { Math.random = realRandomLocal; }
+});
+test("pickWeightedByWear: equal wear across the fleet degenerates to ~uniform (doesn't break existing uniform-pick assumptions)", () => {
+  const items = Array.from({ length: 4 }, (_, i) => ({ id: `t${i}`, farm: 0, status: "ok", gen: 1, wear: 40 }));
+  const counts = { t0: 0, t1: 0, t2: 0, t3: 0 };
+  const realRandomLocal = Math.random;
+  try {
+    const N = 20000;
+    for (let i = 0; i < N; i++) counts[g.pickWeightedByWear(items).id]++;
+    for (const id of Object.keys(counts)) {
+      const frac = counts[id] / N;
+      ok(Math.abs(frac - 0.25) < 0.03, `${id} should draw ~uniformly (25%) when all wear is equal, got ${frac}`);
+    }
+  } finally { Math.random = realRandomLocal; }
+});
+test("faultTurbines: weighted draw still faults exactly n distinct running units (count invariant unchanged from Stage 1)", () => {
+  const fleet = [
+    { id: "a", farm: 0, status: "ok", gen: 1, wear: 90 },
+    { id: "b", farm: 0, status: "ok", gen: 1, wear: 10 },
+    { id: "c", farm: 0, status: "ok", gen: 1, wear: 50 },
+  ];
+  for (const sd of [1, 2, 3, 4, 5]) {
+    seed(sd);
+    const out = g.faultTurbines(fleet, 2);
+    eq(out.filter((t) => t.status === "fault").length, 2, `seed ${sd}: exactly 2 units faulted`);
+    eq(new Set(out.filter((t) => t.status === "fault").map((t) => t.id)).size, 2, `seed ${sd}: two distinct units, no double-pick`);
+  }
+});
+test("faultTurbines: over many trials, the high-wear unit is faulted more often than the low-wear one", () => {
+  const fleet = [{ id: "hi", farm: 0, status: "ok", gen: 1, wear: 100 }, { id: "lo", farm: 0, status: "ok", gen: 1, wear: 0 }];
+  const realRandomLocal = Math.random;
+  try {
+    let hiFaulted = 0;
+    const N = 5000;
+    for (let i = 0; i < N; i++) if (g.faultTurbines(fleet, 1)[0].status === "fault") hiFaulted++;
+    ok(hiFaulted / N > 0.7, `high-wear unit should be faulted far more often, got frac=${hiFaulted / N}`);
+  } finally { Math.random = realRandomLocal; }
+});
+test("advance(): daily new-fault selection favors the high-wear turbine over many trials (Stage 2 wired in)", () => {
+  // 強制觸發每日新故障（health 拉到 0 讓 faultProb 貼近上限，並提高 rollEvent/loop 覆蓋率),
+  // 用真隨機跑多次獨立單日推進,統計「哪一台機組」被標記為新故障的次數。
+  const base = {
+    ...I,
+    fleetHealth: 0,
+    fleet: [
+      { id: "hi", farm: 0, status: "ok", gen: 1, wear: 100, age: 0 },
+      { id: "lo", farm: 0, status: "ok", gen: 1, wear: 0, age: 0 },
+    ],
+    opsJobs: [],
+  };
+  let hiFaulted = 0, loFaulted = 0;
+  const N = 3000;
+  for (let i = 0; i < N; i++) {
+    const s = R(base, { type: "OPS_ADVANCE" });
+    const hi = s.fleet.find((t) => t.id === "hi");
+    const lo = s.fleet.find((t) => t.id === "lo");
+    if (hi.status === "fault") hiFaulted++;
+    if (lo.status === "fault") loFaulted++;
+  }
+  ok(hiFaulted > 0 && loFaulted > 0, `both should be able to newly fault at least once (hi=${hiFaulted}, lo=${loFaulted})`);
+  ok(hiFaulted > loFaulted * 1.5, `high-wear turbine should be newly faulted noticeably more often (hi=${hiFaulted}, lo=${loFaulted})`);
+});
+
 // ───────────────────────── 故障/備品分層擴充（#82） ─────────────────────────
 test("content expansion: new tier-gated faults/incidents/parts slot in cleanly (#82)", () => {
   // 新故障存在且具完整結構(catalog 測試已逐項驗證);此處確認 tier 分層與多重根因成長
