@@ -56,8 +56,8 @@ export interface Turbine {
   wear?: number; // 每機獨立劣化度 0-100（RUL Stage 1，選配・向後相容舊存檔，讀取一律經 wearOf() 補預設 0）
   age?: number; // 自建置/上次大修以來累積運轉天數（RUL 敘事用，同樣選配）
 }
-// 每機獨立健康度 / RUL 預測性維護（docs/RUL_DESIGN.md Stage 1）：資料骨架 + 純展示，
-// 本階段刻意不接上故障挑選權重（faultTurbines/戰情室逐日新故障仍是均勻隨機），降低回歸風險。
+// 每機獨立健康度 / RUL 預測性維護（docs/RUL_DESIGN.md Stage 1+2）：資料骨架 + 展示（Stage 1）
+// 已接上故障挑選權重（Stage 2）——faultTurbines/戰情室逐日新故障改依 wear 加權抽樣。
 export const wearOf = (t: Turbine): number => t.wear ?? 0;
 export const ageOf = (t: Turbine): number => t.age ?? 0;
 export const WEAR_PER_DAY_BASE = 0.4; // 每日基礎劣化累積（正常運轉）
@@ -67,6 +67,20 @@ export const WEAR_INSPECT_RELIEF = 15; // 全場預防性定檢完工後，全�
 export const WEAR_SCHEDULED_SERVICE_RELIEF = 25; // 計畫性保養完工後，全機隊劣化下修量
 export type WearRiskTier = "low" | "watch" | "high" | "critical";
 export const wearRiskTier = (wear: number): WearRiskTier => (wear < 30 ? "low" : wear < 55 ? "watch" : wear < 80 ? "high" : "critical");
+// RUL Stage 2：wear 加權抽樣。權重 = 下限（WEAR_PICK_FLOOR）+ wear，讓 wear 越高的機組越容易被抽中做為
+// 新故障對象，同時保留下限權重讓低 wear 機組仍有機會故障（真實世界也有意外/隨機失效，不應讓「顧好高風險
+// 機組」變成絕對安全）。全場 wear 相同時，各機組權重相等 → 退化為近似均勻分布（不破壞既有隨機挑選假設）。
+export const WEAR_PICK_FLOOR = 20;
+export function pickWeightedByWear<T extends Turbine>(items: T[]): T {
+  const weights = items.map((t) => WEAR_PICK_FLOOR + wearOf(t));
+  const total = weights.reduce((a, b) => a + b, 0);
+  let r = Math.random() * total;
+  for (let i = 0; i < items.length; i++) {
+    r -= weights[i];
+    if (r <= 0) return items[i];
+  }
+  return items[items.length - 1];
+}
 export const WEAR_RISK_LABEL: Record<WearRiskTier, I18n> = {
   low: { zh: "良好", en: "Good" },
   watch: { zh: "觀察中", en: "Watch" },
@@ -172,7 +186,8 @@ export function faultTurbines(fleet: Turbine[], n: number, tier = 99): Turbine[]
   const out = fleet.map((t) => ({ ...t }));
   const oks = out.filter((t) => t.status === "ok");
   for (let k = 0; k < n && oks.length; k++) {
-    const pick = oks.splice(Math.floor(Math.random() * oks.length), 1)[0];
+    const pick = pickWeightedByWear(oks); // RUL Stage 2：wear 越高越容易被抽中，保留下限機率
+    oks.splice(oks.findIndex((t) => t.id === pick.id), 1);
     const i = out.findIndex((t) => t.id === pick.id);
     out[i] = { ...out[i], status: "fault", faultId: randomIncidentId(tier) };
   }
@@ -626,7 +641,7 @@ function advance(s: GameData, days = 1): Partial<GameData> {
         if (!j.remote) engs = deployFatigue(engs, j.discipline);
       }
       jobs = jobs.filter((j) => j.daysLeft > 0);
-      // 每機獨立劣化累積（RUL Stage 1）：純觀察量，尚未接上故障挑選權重（Stage 2 才會讓 wear 影響下方的隨機新增故障）
+      // 每機獨立劣化累積（RUL Stage 1）
       fleet = fleet.map((t) => ({ ...t, wear: clampN(wearOf(t) + WEAR_PER_DAY_BASE + (t.status === "fault" ? WEAR_FAULT_EXTRA_PER_DAY : 0), 0, 100), age: ageOf(t) + 1 }));
       // 隨機新增故障（機率隨健康度下降而上升；定檢生效期間降低），鎖定一台正常且未在維修的機組。
       // 只有「運轉中」的機組會新故障 → 機率隨運轉比例縮放，形成穩定平衡而非死亡螺旋（不會全場掛掉）。
@@ -636,7 +651,7 @@ function advance(s: GameData, days = 1): Partial<GameData> {
       const weeklyMult = s.weekly?.faultMult ?? 1;
       const faultProb = Math.min(0.5, FAULT_RATE_BASE + ((100 - health) / 100) * 0.15) * (buffDays > 0 ? INSPECT_FAULT_MULT : 1) * okFrac * TIER_FAULT_MULT[tier] * weeklyMult;
       if (oks.length && Math.random() < faultProb) {
-        const pick = oks[Math.floor(Math.random() * oks.length)];
+        const pick = pickWeightedByWear(oks); // RUL Stage 2：wear 越高越容易被抽中，保留下限機率
         const fi = fleet.findIndex((t) => t.id === pick.id);
         fleet[fi] = { ...fleet[fi], status: "fault", faultId: randomIncidentId(tier) };
       }
