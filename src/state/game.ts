@@ -88,6 +88,16 @@ export const WEAR_RISK_LABEL: Record<WearRiskTier, I18n> = {
   critical: { zh: "危急", en: "Critical" },
 };
 export const WEAR_RISK_ICON: Record<WearRiskTier, string> = { low: "", watch: "🟡", high: "🟠", critical: "🔺" };
+// RUL Stage 3：單機定檢——集中火力顧一台機組，折減幅度大於全場定檢（但不像全場定檢那樣觸發全場故障率 buff）。
+export const WEAR_UNIT_INSPECT_RELIEF = 35;
+// RUL Stage 3：diagLevel 真數值接軌——解鎖進階檢測後，把「風險分級」換成可讀的粗估天數（依目前基礎劣化率反推
+// 距下一風險門檻還有幾天），未解鎖前仍只顯示風險分級文字（維持既有付費檢測誘因）。已達最高門檻(100)時回傳 null。
+export function wearNextThresholdEta(wear: number): number | null {
+  const thresholds = [30, 55, 80, 100];
+  const next = thresholds.find((th) => wear < th);
+  if (next === undefined) return null;
+  return Math.max(1, Math.ceil((next - wear) / WEAR_PER_DAY_BASE));
+}
 export type OpsJobKind = "repair" | "inspect"; // 維修工單 / 預防性定檢（Phase C2）
 export interface OpsJob {
   id: string;
@@ -628,10 +638,15 @@ function advance(s: GameData, days = 1): Partial<GameData> {
       // 並行工單推進；完工 → 維修(機組復歸+報酬) 或 定檢(啟動降故障 buff)；派工(非遠端)累積疲勞
       jobs = jobs.map((j) => ({ ...j, daysLeft: j.daysLeft - 1 }));
       for (const j of jobs.filter((j) => j.daysLeft <= 0)) {
-        if (j.kind === "inspect") {
+        if (j.kind === "inspect" && j.turbine === "__sweep__") {
           buffDays = INSPECT_BUFF_DAYS; // 定檢完成 → 降低未來故障率
           healthBoost += 3;
           fleet = fleet.map((t) => ({ ...t, wear: clampN(wearOf(t) - WEAR_INSPECT_RELIEF, 0, 100) })); // RUL Stage 1：全場定檢下修全機隊劣化
+        } else if (j.kind === "inspect") {
+          // RUL Stage 3：單機定檢——只折減該機組劣化度（幅度大於全場定檢），不觸發全場故障率 buff
+          const ti = fleet.findIndex((t) => t.id === j.turbine);
+          if (ti >= 0) fleet[ti] = { ...fleet[ti], wear: clampN(wearOf(fleet[ti]) - WEAR_UNIT_INSPECT_RELIEF, 0, 100) };
+          healthBoost += 1;
         } else {
           const ti = fleet.findIndex((t) => t.id === j.turbine);
           if (ti >= 0) fleet[ti] = { ...fleet[ti], status: "ok", faultId: undefined, wear: clampN(wearOf(fleet[ti]) - WEAR_REPAIR_RELIEF, 0, 100) };
@@ -761,6 +776,7 @@ export type Action =
   | { type: "OPS_DISPATCH"; turbine: string; engineerId: string } // 戰情室派工：指派技師維修某故障機組（Phase C）
   | { type: "OPS_RESET"; turbine: string } // 戰情室遠端重啟：清除可重啟的軟性故障（免技師、較快）
   | { type: "OPS_INSPECT"; engineerId: string } // 戰情室預防性定檢（Phase C2）：派一組人巡檢，降低未來故障率
+  | { type: "OPS_INSPECT_UNIT"; turbine: string; engineerId: string } // RUL Stage 3：單機定檢，集中折減單一機組劣化度，不觸發全場故障率 buff
   | { type: "OPS_ADVANCE" } // 戰情室推進一天（Phase C）：並行工單前進、隨機新增故障
   | { type: "NEXT_QUEST"; poolSize: number } // 下一關（#20 主線推進）
   | { type: "RESTART_CAMPAIGN" } // 重玩戰役（#20）
@@ -968,6 +984,20 @@ export function reducer(s: GameData, a: Action): GameData {
       if (SEA_INDEX[s.seaState] > seaTolOf(s)) return s; // 海象超過目前作業船耐受度，無法派船
       const job: OpsJob = { id: "ins_" + Math.random().toString(36).slice(2, 9), turbine: "__sweep__", engineerId: eng.id, discipline: eng.discipline, daysLeft: INSPECT_DAYS, kind: "inspect" };
       const newSortie = onsiteJobCount(s.opsJobs) === 0; // 定檢也算一趟出海
+      return { ...s, opsJobs: [...s.opsJobs, job], budget: newSortie ? Math.max(0, s.budget - sortieCostOf(s)) : s.budget, vesselWear: newSortie ? clampN(s.vesselWear + vesselWearOf(s), 0, 100) : s.vesselWear };
+    }
+    case "OPS_INSPECT_UNIT": {
+      const tb = s.fleet.find((x) => x.id === a.turbine);
+      if (!tb || tb.status !== "ok") return s; // 只鎖定正常運轉中的機組（故障/維修中的機組由派工/等待工單完工處理）
+      const eng = s.engineers.find((e) => e.id === a.engineerId);
+      if (!eng) return s;
+      if (fatigueOf(eng) >= FATIGUE_LIMIT) return s; // 過勞不可派
+      if (engineerBusy(s.opsJobs, eng.id)) return s; // 該技師已在執行工單
+      if (s.opsJobs.some((j) => j.turbine === a.turbine)) return s; // 避免同一機組被重複指派定檢
+      if (onsiteJobCount(s.opsJobs) >= effectiveJobCapOf(s)) return s; // 現場工單上限
+      if (SEA_INDEX[s.seaState] > seaTolOf(s)) return s; // 海象超過目前作業船耐受度，無法派船
+      const job: OpsJob = { id: "insu_" + Math.random().toString(36).slice(2, 9), turbine: tb.id, engineerId: eng.id, discipline: eng.discipline, daysLeft: INSPECT_DAYS, kind: "inspect" };
+      const newSortie = onsiteJobCount(s.opsJobs) === 0;
       return { ...s, opsJobs: [...s.opsJobs, job], budget: newSortie ? Math.max(0, s.budget - sortieCostOf(s)) : s.budget, vesselWear: newSortie ? clampN(s.vesselWear + vesselWearOf(s), 0, 100) : s.vesselWear };
     }
     case "BUY": {

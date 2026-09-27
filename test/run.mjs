@@ -993,7 +993,7 @@ function randomAction(s, rnd) {
   const t = pick([
     "REST", "REST", "REMOTE_CHECK", "OPS_ADVANCE", "OPS_ADVANCE", "ACCEPT_QUEST", "DEPART", "ARRIVE", "BUY", "SELL",
     "UPGRADE", "HIRE", "BUY_SOV", "UNLOCK_FARM", "SERVICE_VESSEL", "BUY_DIAGNOSTICS", "DO_ROUTINE",
-    "OPS_DISPATCH", "OPS_DISPATCH", "OPS_RESET", "OPS_INSPECT", "FINISH_REPAIR", "FAIL_REPAIR", "REPLAN_RETURN", "RUSH_SOP", "NEXT_QUEST", "RESOLVE_TASK", "RESTART_CAMPAIGN",
+    "OPS_DISPATCH", "OPS_DISPATCH", "OPS_RESET", "OPS_INSPECT", "OPS_INSPECT_UNIT", "FINISH_REPAIR", "FAIL_REPAIR", "REPLAN_RETURN", "RUSH_SOP", "NEXT_QUEST", "RESOLVE_TASK", "RESTART_CAMPAIGN",
     "BUILD_RESOLVE", "BUILD_RESOLVE", "BUILD_RESET",
   ]);
   switch (t) {
@@ -1012,6 +1012,7 @@ function randomAction(s, rnd) {
     case "OPS_DISPATCH": { const f = s.fleet.find((x) => x.status === "fault"); const e = s.engineers[Math.floor(rnd() * s.engineers.length)]; return { type: "OPS_DISPATCH", turbine: f ? f.id : "none", engineerId: e ? e.id : "none" }; }
     case "OPS_RESET": { const f = s.fleet.find((x) => x.status === "fault"); return { type: "OPS_RESET", turbine: f ? f.id : "none" }; }
     case "OPS_INSPECT": { const e = s.engineers[Math.floor(rnd() * s.engineers.length)]; return { type: "OPS_INSPECT", engineerId: e ? e.id : "none" }; }
+    case "OPS_INSPECT_UNIT": { const ok = s.fleet.find((x) => x.status === "ok"); const e = s.engineers[Math.floor(rnd() * s.engineers.length)]; return { type: "OPS_INSPECT_UNIT", turbine: ok ? ok.id : "none", engineerId: e ? e.id : "none" }; }
     case "NEXT_QUEST": return { type: "NEXT_QUEST", poolSize: 7 };
     case "RUSH_SOP": return { type: "RUSH_SOP", incident: rnd() < 0.5 };
     default: return { type: t };
@@ -1629,6 +1630,50 @@ test("advance(): daily new-fault selection favors the high-wear turbine over man
   }
   ok(hiFaulted > 0 && loFaulted > 0, `both should be able to newly fault at least once (hi=${hiFaulted}, lo=${loFaulted})`);
   ok(hiFaulted > loFaulted * 1.5, `high-wear turbine should be newly faulted noticeably more often (hi=${hiFaulted}, lo=${loFaulted})`);
+});
+
+// ───────────────────────── 每機獨立劣化 / RUL 預測性維護 Stage 3（docs/RUL_DESIGN.md）─────────────────────────
+// Stage 3：單機定檢動作（集中折減單一機組劣化度，不觸發全場故障率 buff）+ diagLevel 真數值接軌（wearNextThresholdEta）。
+test("OPS_INSPECT_UNIT creates a job pinned to that turbine; completion relieves only its wear (no fleet-wide fault-rate buff)", () => {
+  const realRandomLocal = Math.random;
+  Math.random = () => 0.99; // 隔離事件/新故障/案例快報,單純觀察定檢下修效果
+  try {
+    let s = {
+      ...I,
+      fleet: I.fleet.map((t) => ({ ...t, status: "ok", faultId: undefined, wear: 50, age: 10 })),
+      engineers: [{ id: "k", name: "k", discipline: "control", level: 1, fatigue: 0 }],
+      opsJobs: [],
+    };
+    const target = s.fleet[0].id;
+    s = R(s, { type: "OPS_INSPECT_UNIT", turbine: target, engineerId: "k" });
+    eq(s.opsJobs.length, 1, "creates exactly one job");
+    eq(s.opsJobs[0].kind, "inspect", "job kind is inspect");
+    eq(s.opsJobs[0].turbine, target, "job is pinned to the selected turbine, not __sweep__");
+    for (let i = 0; i < g.INSPECT_DAYS; i++) s = R(s, { type: "OPS_ADVANCE" });
+    const targetT = s.fleet.find((t) => t.id === target);
+    const others = s.fleet.filter((t) => t.id !== target);
+    const accrued = g.WEAR_PER_DAY_BASE * g.INSPECT_DAYS;
+    near(targetT.wear, 50 + accrued - g.WEAR_UNIT_INSPECT_RELIEF, 1e-9, "targeted unit: daily accrual minus the larger unit-inspection relief");
+    for (const o of others) near(o.wear, 50 + accrued, 1e-9, `${o.id}: unaffected by another unit's inspection, only normal daily accrual`);
+    ok(g.WEAR_UNIT_INSPECT_RELIEF > g.WEAR_INSPECT_RELIEF, "unit inspection relief is bigger than the fleet-wide sweep's per-unit share");
+    eq(s.inspectBuffDays, 0, "unit inspection does not grant the fleet-wide fault-rate buff (that's the sweep's job)");
+  } finally { Math.random = realRandomLocal; }
+});
+test("OPS_INSPECT_UNIT blocked: turbine not ok, already has a job, crew busy/fatigued, or at on-site cap", () => {
+  const base = { ...I, fleet: I.fleet.map((t) => ({ ...t, status: "ok", faultId: undefined, wear: 50 })), engineers: [{ id: "k", name: "k", discipline: "control", level: 1, fatigue: 0 }], opsJobs: [] };
+  const target = base.fleet[0].id;
+  const faulted = { ...base, fleet: base.fleet.map((t) => (t.id === target ? { ...t, status: "fault", faultId: "converter" } : t)) };
+  eq(R(faulted, { type: "OPS_INSPECT_UNIT", turbine: target, engineerId: "k" }).opsJobs.length, 0, "can't unit-inspect a faulted turbine");
+  const busyJob = { ...base, opsJobs: [{ id: "j1", turbine: target, engineerId: "other", discipline: "control", daysLeft: 1, kind: "inspect" }] };
+  eq(R(busyJob, { type: "OPS_INSPECT_UNIT", turbine: target, engineerId: "k" }).opsJobs.length, 1, "can't double-assign inspection to the same turbine");
+  const tiredCrew = { ...base, engineers: [{ id: "k", name: "k", discipline: "control", level: 1, fatigue: g.FATIGUE_LIMIT }] };
+  eq(R(tiredCrew, { type: "OPS_INSPECT_UNIT", turbine: target, engineerId: "k" }).opsJobs.length, 0, "fatigued crew can't unit-inspect");
+});
+test("wearNextThresholdEta: matches docs/RUL_DESIGN.md thresholds and the base daily wear rate", () => {
+  eq(g.wearNextThresholdEta(100), null, "already at max wear -> no next threshold");
+  eq(g.wearNextThresholdEta(0), Math.ceil(30 / g.WEAR_PER_DAY_BASE), "0 -> days to the 'watch' threshold (30)");
+  eq(g.wearNextThresholdEta(29), Math.ceil(1 / g.WEAR_PER_DAY_BASE), "1 point below a threshold still takes multiple days at the base daily rate");
+  eq(g.wearNextThresholdEta(79), Math.ceil(1 / g.WEAR_PER_DAY_BASE), "just below 'critical' threshold (80)");
 });
 
 // ───────────────────────── 故障/備品分層擴充（#82） ─────────────────────────
