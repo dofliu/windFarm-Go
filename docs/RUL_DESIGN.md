@@ -90,7 +90,7 @@ export interface Turbine {
 
 1. ✅ **Stage 1・資料骨架 + 純展示(免影響平衡)——已完成(2026-09-25)**:`Turbine` 新增 `wear`/`age` 欄位與每日累積邏輯,戰情室(`FleetOpsModal.tsx`)機組陣列顯示風險分級徽章,**故障挑選仍維持均勻隨機**(`wear` 純觀察用)。已跑過 `npm test`(175 全綠)/`npm run e2e`(38 全過)/`typecheck`/`build` 確認無回歸,平衡數字未變動。
 2. ✅ **Stage 2・接上故障挑選權重——已完成(2026-09-26)**:`faultTurbines`/戰情室逐日新故障選取改為依 `wear` 加權(`pickWeightedByWear`),`OPS_INSPECT`/`SCHEDULED_SERVICE`/`FINISH_REPAIR` 對 `wear` 的下修效果同步上線(首次真正影響故障率,不再只是展示)。已跑過 `npm test`(180 全綠,新增 5 項)/`typecheck`/`build`/`npm run sim`(相對排序 passive≪active<full-crew、梯度略擴大,免校正)確認無回歸。
-3. **Stage 3・單機定檢動作 + `diagLevel` 真數值接軌**:新增「針對單一機組」的定檢/進階檢測選項,`TaskChart` 的 ETA 敘事接上真實 `wear`/風險分級。
+3. ✅ **Stage 3・單機定檢動作 + `diagLevel` 真數值接軌——已完成(2026-09-27)**:戰情室新增 `OPS_INSPECT_UNIT` 動作,可點選任一正常運轉(`ok`)機組派員「單機定檢」,完工後只折減該機組劣化度(`WEAR_UNIT_INSPECT_RELIEF=35`,幅度大於全場定檢的 `WEAR_INSPECT_RELIEF=15`),且**不觸發**全場故障率 buff(那是全場定檢的專屬效果,兩者刻意區隔)。`diagLevel` 真數值接軌部分:選中機組後,面板一律顯示風險分級文字;`diagLevel>0`(已付費解鎖進階檢測)時額外顯示精確劣化度數字與 `wearNextThresholdEta()` 換算的粗估天數(依 `WEAR_PER_DAY_BASE` 反推距下一風險門檻還有幾天,已達最高值時提示「強烈建議立即安排維護」)。**刻意保留的範圍邊界**:未把此接軌套用到自由營運中心(`OpsCenterModal.tsx`)的 `TaskChart`——該處的 `task.unit` 是與戰情室 `fleet[].id` 互不相干的合成字串(見第 4 節第 5 點既有邊界),硬接真實 `wear` 數值到一個隨機合成的機組編號不具教學意義,故本階段的「真數值接軌」只發生在真正持有 `wear` 資料的戰情室(`FleetOpsModal.tsx`),`TaskChart` 的視覺投影維持原樣。
 4. **Stage 4(選配,依課堂回饋再評估)**:部件級細分、與 `#overhaul` 大修分支(`MAJOR_FAULTS`)的劣化觸發條件整合、教師端統計(如「班級平均機組劣化」)。
 
-每個 Stage 各自是一個可獨立合併、可獨立回測的 PR,對應例行排程「大型項目拆階段推進,每次實作一個明確階段」的既定節奏。**下一輪例行開發建議接續 Stage 3**(單機定檢動作 + `diagLevel` 真數值接軌)。
+每個 Stage 各自是一個可獨立合併、可獨立回測的 PR,對應例行排程「大型項目拆階段推進,每次實作一個明確階段」的既定節奏。四個 Stage 中三個已完成,**Stage 4 屬選配,建議依課堂回饋再評估是否推進**;下一輪例行開發若暫不推進 Stage 4,可轉往 ROADMAP 其他 P2/持續項目。

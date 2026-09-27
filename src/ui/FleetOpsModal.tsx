@@ -9,7 +9,7 @@ import { DISC } from "./disc";
 import { FARMS } from "../state/farms";
 import { incidentAt } from "../state/incidents";
 import { PARTS } from "./data";
-import { fleetUptime, engineerBusy, fatigueOf, FATIGUE_LIMIT, jobCapOf, effectiveJobCapOf, crewShortfallJobs, onsiteJobCount, INSPECT_DAYS, SEA_INDEX, seaTolOf, activeVesselSpec, SEA_LABEL, dailyPayroll, toWan, sortieCostOf, QUARTER_DAYS, SLA_FLOOR, wearOf, wearRiskTier, WEAR_RISK_LABEL, WEAR_RISK_ICON } from "../state/game";
+import { fleetUptime, engineerBusy, fatigueOf, FATIGUE_LIMIT, jobCapOf, effectiveJobCapOf, crewShortfallJobs, onsiteJobCount, INSPECT_DAYS, SEA_INDEX, seaTolOf, activeVesselSpec, SEA_LABEL, dailyPayroll, toWan, sortieCostOf, QUARTER_DAYS, SLA_FLOOR, wearOf, wearRiskTier, WEAR_RISK_LABEL, WEAR_RISK_ICON, wearNextThresholdEta } from "../state/game";
 import { LedgerView } from "./Ledger";
 import { onKeyActivate } from "./a11y";
 import { useFocusTrap } from "./useFocusTrap";
@@ -75,6 +75,15 @@ export default function FleetOpsModal({ open, onClose }: { open: boolean; onClos
     setSel(null);
   };
   const inspect = () => { if (!idleCrew.length || !canDeploy) return; Sfx.success(); dispatch({ type: "OPS_INSPECT", engineerId: idleCrew[0].id }); };
+  // RUL Stage 3：單機定檢——挑一台仍在運轉(ok)且未被指派工單的機組，集中折減其劣化度。
+  const unitAlreadyInspected = selT ? data.opsJobs.some((j) => j.turbine === selT.id) : false;
+  const canUnitInspect = !!selT && selT.status === "ok" && !unitAlreadyInspected && idleCrew.length > 0 && canDeploy;
+  const inspectUnit = (engineerId: string) => {
+    if (!selT) return;
+    Sfx.success();
+    dispatch({ type: "OPS_INSPECT_UNIT", turbine: selT.id, engineerId });
+    setSel(null);
+  };
   const nextDay = () => { Sfx.click(); dispatch({ type: "OPS_ADVANCE" }); };
 
   const farmsShown = Math.min(data.farmsOwned, FARMS.length);
@@ -143,7 +152,7 @@ export default function FleetOpsModal({ open, onClose }: { open: boolean; onClos
             <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
               {cells.map((tt) => {
                 const isSel = sel === tt.id;
-                const clickable = tt.status === "fault";
+                const clickable = tt.status === "fault" || tt.status === "ok"; // RUL Stage 3：ok 機組也可點選,進行單機定檢
                 const riskTier = wearRiskTier(wearOf(tt));
                 const riskIcon = WEAR_RISK_ICON[riskTier];
                 const riskTitle = riskIcon ? ` · ${t({ zh: "劣化", en: "Wear" })}: ${t(WEAR_RISK_LABEL[riskTier])}` : "";
@@ -225,6 +234,43 @@ export default function FleetOpsModal({ open, onClose }: { open: boolean; onClos
         </div>
       )}
 
+      {/* 單機定檢面板（RUL Stage 3）：選中一台仍在運轉(ok)的機組，可派員集中折減其劣化度 */}
+      {selT && selT.status === "ok" && (() => {
+        const riskTier = wearRiskTier(wearOf(selT));
+        const eta = wearNextThresholdEta(wearOf(selT));
+        return (
+          <div style={{ marginBottom: 12, padding: "10px 12px", borderRadius: 6, background: "rgba(95,168,217,.08)", border: "1px solid rgba(95,168,217,.28)" }}>
+            <div style={{ fontSize: 13.5, fontWeight: 700, color: C.cream }}>{selT.id} <span style={{ color: C.mist, fontWeight: 400, fontSize: 12 }}>· {t({ zh: "劣化", en: "Wear" })}: {t(WEAR_RISK_LABEL[riskTier])}</span></div>
+            {/* diagLevel 解鎖後才顯示真實數值/粗估天數（維持既有付費檢測誘因）：Stage 1/2 只給風險分級敘事,Stage 3 把「看得更準」接上真數值 */}
+            <div style={{ fontSize: 11.5, color: C.mist, margin: "4px 0 8px" }}>
+              {data.diagLevel > 0
+                ? (eta === null
+                    ? t({ zh: `🔬 進階檢測：劣化度 ${Math.round(wearOf(selT))}/100，已達最高風險區間，強烈建議立即安排維護`, en: `🔬 Diag: wear ${Math.round(wearOf(selT))}/100 — already at the highest risk band, maintenance strongly advised now` })
+                    : t({ zh: `🔬 進階檢測：劣化度 ${Math.round(wearOf(selT))}/100，約 ${eta} 天後升至下一風險等級`, en: `🔬 Diag: wear ${Math.round(wearOf(selT))}/100 — ~${eta}d to the next risk band` }))
+                : t({ zh: "解鎖進階檢測可看到精確劣化數值與粗估天數", en: "Unlock Advanced Diagnostics to see the exact wear value and an ETA estimate" })}
+            </div>
+            {unitAlreadyInspected ? (
+              <div style={{ fontSize: 12, color: C.mist }}>{t({ zh: "此機組已有進行中的定檢工單。", en: "This unit already has an inspection job in progress." })}</div>
+            ) : !seaOk ? (
+              <div style={{ fontSize: 12, color: C.amber2 }}>{t({ zh: `海象「${SEA_LABEL[data.seaState].zh}」無法派船。`, en: `Seas "${SEA_LABEL[data.seaState].en}" — can't deploy.` })}</div>
+            ) : atCap ? (
+              <div style={{ fontSize: 12, color: C.amber2 }}>{t({ zh: `現場工單已滿（${onsite}/${cap}）。`, en: `On-site jobs full (${onsite}/${cap}).` })}</div>
+            ) : !idleCrew.length ? (
+              <div style={{ fontSize: 12, color: C.mist }}>{t({ zh: "無閒置技師可派遣。", en: "No idle crew available." })}</div>
+            ) : (
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                {idleCrew.map((e) => (
+                  <button key={e.id} disabled={!canUnitInspect} onClick={() => inspectUnit(e.id)} style={{ padding: "6px 12px", borderRadius: 5, border: "1px solid rgba(255,236,196,.6)", background: canUnitInspect ? primaryBg() : "rgba(255,255,255,.08)", color: canUnitInspect ? C.ink : C.mist, fontFamily: FONT_SERIF, fontWeight: 900, fontSize: 12.5, cursor: canUnitInspect ? "pointer" : "not-allowed" }}>
+                    🛡 {t({ zh: "單機定檢", en: "Inspect" })} {e.name} <span style={{ fontWeight: 400 }}>Lv.{e.level} · {t({ zh: "疲勞", en: "fat" })} {Math.round(fatigueOf(e))}%</span>
+                  </button>
+                ))}
+              </div>
+            )}
+            <div style={{ fontSize: 10.5, color: C.mist, marginTop: 6 }}>{t({ zh: `集中折減該機組劣化度（幅度大於全場定檢），工期 ${INSPECT_DAYS} 天，占用一個現場工單名額`, en: `Concentrated wear relief for this unit (bigger than a fleet-wide inspection); ${INSPECT_DAYS}d, uses one on-site slot` })}</div>
+          </div>
+        );
+      })()}
+
       {/* 進行中工單 */}
       {data.opsJobs.length > 0 && (
         <div style={{ marginBottom: 12 }}>
@@ -233,10 +279,11 @@ export default function FleetOpsModal({ open, onClose }: { open: boolean; onClos
             const e = data.engineers.find((x) => x.id === j.engineerId);
             const ic = incidentAt(data.fleet.find((tt) => tt.id === j.turbine)?.faultId);
             const isInspect = j.kind === "inspect";
+            const isSweep = isInspect && j.turbine === "__sweep__";
             return (
               <div key={j.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "5px 8px", borderRadius: 4, background: "rgba(255,255,255,.04)", marginBottom: 4, fontSize: 12.5 }}>
-                <span style={{ color: C.goldText, fontWeight: 700 }}>{isInspect ? "🛡" : j.turbine}</span>
-                <span style={{ color: C.cream }}>{isInspect ? t({ zh: "全場預防性定檢", en: "Fleet inspection" }) : ic ? t(ic.name) : ""}</span>
+                <span style={{ color: C.goldText, fontWeight: 700 }}>{isSweep ? "🛡" : isInspect ? `🛡 ${j.turbine}` : j.turbine}</span>
+                <span style={{ color: C.cream }}>{isSweep ? t({ zh: "全場預防性定檢", en: "Fleet inspection" }) : isInspect ? t({ zh: "單機定檢", en: "Unit inspection" }) : ic ? t(ic.name) : ""}</span>
                 <span style={{ color: C.mist }}>· {j.remote ? t({ zh: "遠端重啟", en: "Remote restart" }) : `${e?.name ?? "?"} (${t(DISC[j.discipline])})`}</span>
                 <span style={{ marginLeft: "auto", color: C.amber2 }}>{t({ zh: "剩", en: "" })} {j.daysLeft} {t({ zh: "天", en: "d left" })}</span>
               </div>
