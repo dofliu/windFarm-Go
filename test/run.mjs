@@ -2125,6 +2125,35 @@ test("a11y: getFocusables queries the container with the shared focusable select
   ok(usedSelector.includes("button") && usedSelector.includes("[tabindex]"), "selector covers native controls + explicit tabindex");
 });
 
+// ───────────────────────── 色盲配色審查(a11y) ─────────────────────────
+const tokensMod = await load("src/ui/tokens.ts");
+{
+  const lin = (c) => { c /= 255; return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; };
+  const rgbOf = (h) => [1, 3, 5].map((i) => lin(parseInt(h.slice(i, i + 2), 16)));
+  const CVD = {
+    protanopia: [[0.152286, 1.052583, -0.204868], [0.114503, 0.786281, 0.099216], [-0.003882, -0.048116, 1.051998]],
+    deuteranopia: [[0.367322, 0.860646, -0.227968], [0.280085, 0.672501, 0.047413], [-0.01182, 0.04294, 0.968881]],
+  };
+  const simulate = (v, m) => m.map((r) => Math.min(1, Math.max(0, r[0] * v[0] + r[1] * v[1] + r[2] * v[2])));
+  const fx = (x) => (x > 0.008856 ? Math.cbrt(x) : 7.787 * x + 16 / 116);
+  const toLab = ([r, g, b]) => {
+    const X = (0.4124 * r + 0.3576 * g + 0.1805 * b) / 0.95047, Y = 0.2126 * r + 0.7152 * g + 0.0722 * b, Z = (0.0193 * r + 0.1192 * g + 0.9505 * b) / 1.08883;
+    return [116 * fx(Y) - 16, 500 * (fx(X) - fx(Y)), 200 * (fx(Y) - fx(Z))];
+  };
+  const dE = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
+  test("a11y: 狀態三色(綠/琥珀/紅)在紅綠色盲模擬下仍保持 ΔE≥18(不只靠顏色,另有圖示雙重編碼)", () => {
+    const C = tokensMod.C;
+    const trio = [["green", C.green], ["greenBright", C.greenBright], ["amber", C.amber], ["red", C.red]];
+    for (const [kind, m] of Object.entries(CVD)) {
+      for (let i = 0; i < trio.length; i++) for (let j = i + 1; j < trio.length; j++) {
+        if (trio[i][0].startsWith("green") && trio[j][0].startsWith("green")) continue; // 兩款綠為同語意
+        const d = dE(toLab(simulate(rgbOf(trio[i][1]), m)), toLab(simulate(rgbOf(trio[j][1]), m)));
+        ok(d >= 18, `${kind}: ${trio[i][0]} vs ${trio[j][0]} ΔE=${d.toFixed(1)} < 18`);
+      }
+    }
+  });
+}
+
 console.log(`\n${pass} passed, ${fail} failed (${pass + fail} total)`);
 if (fail) { console.log("\nFailures:"); for (const f of fails) console.log("  ✗ " + f); process.exit(1); }
 console.log("✓ all green");
