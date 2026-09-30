@@ -269,7 +269,7 @@ async function main() {
       // 未補 role="button"/tabIndex，不進 tab 序，數據格同理——故實際可聚焦元素數只取決於「是否已
       // 作答/答錯過」，而非成就解鎖進度。在此測試流程只驗證過「調度中心」彈窗、尚未接下工單前插入，
       // 此時 data.mastery/data.mistakes 皆為空（後面「連續故意答錯」等測試才會產生作答紀錄），
-      // 面板內可聚焦元素固定為：關閉✕ + 減少動態切換鈕 = 2 個——補上先前樣本(1/2/3/5/28 個)之外
+      // 面板內可聚焦元素固定為：關閉✕ + 減少動態切換鈕 + 音效字幕切換鈕 = 3 個——補上先前樣本(1/2/3/5/28 個)之外
       // 的另一個「雙元素」情境，且觸發元件（頂欄個人檔案晶片）先前完全未被納入 e2e。
       const chip = page.locator('[role="button"]', { hasText: "訪客" }).first(); // TopBar 先掛載於 MobileBar
       await chip.press("Enter"); // 鍵盤觸發，驗證頂欄鍵盤操作補完（2026-09-10）確實可開啟此彈窗
@@ -284,7 +284,9 @@ async function main() {
       await page.keyboard.press("Tab");
       eq((await activeInfo()).text, "關閉", "第 1 次 Tab 後應落在「減少動態」切換鈕（預設 OFF，未開啟時文字為「關閉」）");
       await page.keyboard.press("Tab");
-      eq((await activeInfo()).ariaLabel, "關閉", "第 2 次 Tab 應循環回關閉✕（僅 2 個可聚焦元素）");
+      eq((await activeInfo()).text, "關閉", "第 2 次 Tab 應落在「音效字幕」切換鈕（2026-09-30 新增，預設 OFF）");
+      await page.keyboard.press("Tab");
+      eq((await activeInfo()).ariaLabel, "關閉", "第 3 次 Tab 應循環回關閉✕（3 個可聚焦元素）");
       await page.keyboard.press("Escape");
       await dialog.waitFor({ state: "hidden", timeout: 5000 }).catch(() => {});
       eq(await dialog.count(), 0, "Esc 後 ProfileModal 應已卸載");

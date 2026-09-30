@@ -1,9 +1,10 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { C, FONT_SERIF, panel } from "./tokens";
 import { t } from "../game/systems/i18n";
 import { useLang } from "./useLang";
 import { useGame } from "../state/GameContext";
 import { computeScore } from "../state/game";
+import { Captions } from "../audio/captions";
 import { getProfile, displayName } from "../state/profile";
 import { ACHIEVEMENTS, ACHIEVEMENT_COUNT, loadRecord } from "../state/records";
 import { masteryRows, weakest, totalAnswered } from "../state/mastery";
@@ -23,6 +24,7 @@ export default function ProfileModal({ open, onClose }: { open: boolean; onClose
   useLang();
   const { data } = useGame();
   const profile = getProfile();
+  const [caps, setCaps] = useState(Captions.isEnabled());
   const reduced = useReducedMotion(); // 設定:減少動態(跟隨系統 or 手動開啟)
   // 開啟時讀一次紀錄（含本回合已累積的最佳值）
   const rec = useMemo(() => loadRecord(profile), [open, profile]);
@@ -85,6 +87,21 @@ export default function ProfileModal({ open, onClose }: { open: boolean; onClose
               style={{ flex: "none", padding: "6px 14px", borderRadius: 999, border: `1px solid ${reduced ? "rgba(127,206,142,.6)" : "rgba(214,167,84,.4)"}`, background: reduced ? "rgba(127,206,142,.16)" : "rgba(255,255,255,.06)", color: reduced ? C.green : C.mist, fontWeight: 900, fontSize: 12, cursor: "pointer" }}
             >
               {reduced ? t({ zh: "已開啟", en: "ON" }) : t({ zh: "關閉", en: "OFF" })}
+            </button>
+          </div>
+
+          {/* 設定:音效字幕(無障礙)——重要音效同步以文字顯示於畫面底部 */}
+          <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 12px", borderRadius: 6, background: "rgba(255,255,255,.04)", border: "1px solid rgba(214,167,84,.25)", marginBottom: 16 }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 12.5, color: C.cream, fontWeight: 700 }}>💬 {t({ zh: "音效字幕(以文字呈現提示音)", en: "Sound captions (show sound cues as text)" })}</div>
+              <div style={{ fontSize: 10.5, color: C.mist2, marginTop: 2 }}>{t({ zh: "聽障/靜音環境友善;靜音時仍會顯示", en: "Helpful for deaf/hard-of-hearing or muted play; shown even when muted" })}</div>
+            </div>
+            <button
+              onClick={() => { Captions.setEnabled(!caps); setCaps(!caps); }}
+              aria-pressed={caps}
+              style={{ flex: "none", padding: "6px 14px", borderRadius: 999, border: `1px solid ${caps ? "rgba(127,206,142,.6)" : "rgba(214,167,84,.4)"}`, background: caps ? "rgba(127,206,142,.16)" : "rgba(255,255,255,.06)", color: caps ? C.green : C.mist, fontWeight: 900, fontSize: 12, cursor: "pointer" }}
+            >
+              {caps ? t({ zh: "已開啟", en: "ON" }) : t({ zh: "關閉", en: "OFF" })}
             </button>
           </div>
 

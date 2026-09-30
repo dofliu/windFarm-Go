@@ -2154,6 +2154,28 @@ const tokensMod = await load("src/ui/tokens.ts");
   });
 }
 
+// ───────────────────────── 音效字幕(a11y) ─────────────────────────
+const capMod = await load("src/audio/captions.ts");
+test("a11y: 音效字幕預設關閉;開啟後 emit 才通知、關閉後不通知;靜音與否不影響", () => {
+  const { Captions, SFX_CAPTIONS } = capMod;
+  const got = [];
+  const off = Captions.subscribe((m) => got.push(m));
+  Captions.setEnabled(false);
+  Captions.emit("success");
+  eq(got.length, 0);
+  Captions.setEnabled(true);
+  for (const k of ["success", "error", "cash"]) Captions.emit(k);
+  eq(got.length, 3);
+  eq(got[1], SFX_CAPTIONS.error);
+  off();
+  Captions.emit("cash");
+  eq(got.length, 3, "取消訂閱後不應再收到");
+  Captions.setEnabled(false);
+});
+test("a11y: 每種有字幕的音效皆有中英文描述", () => {
+  for (const [k, m] of Object.entries(capMod.SFX_CAPTIONS)) ok(m.zh && m.en, `${k} 缺字幕`);
+});
+
 console.log(`\n${pass} passed, ${fail} failed (${pass + fail} total)`);
 if (fail) { console.log("\nFailures:"); for (const f of fails) console.log("  ✗ " + f); process.exit(1); }
 console.log("✓ all green");
