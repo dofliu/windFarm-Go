@@ -1,3 +1,5 @@
+import { Captions } from "./captions";
+
 // 免素材音效：用 Web Audio 合成（#11）。皆於使用者點擊時觸發，符合自動播放政策。
 let ctx: AudioContext | null = null;
 let muted = false;
@@ -54,15 +56,18 @@ export const Sfx = {
     tone(620, 0, 0.07, "triangle", 0.14);
   },
   success() {
+    Captions.emit("success");
     if (muted) return;
     [523.25, 659.25, 783.99].forEach((f, i) => tone(f, i * 0.085, 0.2, "triangle", 0.16)); // C–E–G 上行
   },
   error() {
+    Captions.emit("error");
     if (muted) return;
     tone(220, 0, 0.18, "square", 0.16);
     tone(160, 0.07, 0.22, "square", 0.13);
   },
   cash() {
+    Captions.emit("cash");
     if (muted) return;
     tone(988, 0, 0.09, "square", 0.12); // 投幣感雙高音
     tone(1319, 0.07, 0.13, "square", 0.12);

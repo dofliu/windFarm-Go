@@ -8,6 +8,7 @@ import { useIsMobile } from "./ui/useIsMobile";
 import DialogueLayer from "./ui/DialogueLayer";
 import TutorialOverlay from "./ui/TutorialOverlay";
 import Toaster from "./ui/Toaster";
+import SoundCaptions from "./ui/SoundCaptions";
 import { LedgerToaster } from "./ui/Ledger";
 import LoginScreen from "./ui/LoginScreen";
 import ScoreSync from "./ui/ScoreSync";
@@ -142,7 +143,7 @@ export default function App() {
       {showExam && <ExamModal open onClose={() => setShowExam(false)} />}
     </Suspense>
   );
-  const trackers = (<><ScoreSync /><RecordsTracker /><DailyTracker /><WeeklyTracker /><WelcomeOnLogin /><LedgerToaster /><Toaster /></>);
+  const trackers = (<><ScoreSync /><RecordsTracker /><DailyTracker /><WeeklyTracker /><WelcomeOnLogin /><LedgerToaster /><Toaster /><SoundCaptions /></>);
 
   return (
     <GameProvider>
