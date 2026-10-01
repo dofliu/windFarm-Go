@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { C, FONT_SERIF } from "./tokens";
 import { t } from "../game/systems/i18n";
 import { useLang } from "./useLang";
@@ -33,6 +33,18 @@ export default function DialogueLayer() {
     return () => window.clearInterval(id);
   }, [current, full]);
 
+  const rootRef = useRef<HTMLDivElement>(null);
+  const active = !!current && !tutorialRunning;
+  // 對話出現時把焦點移到對話層(鍵盤/螢幕閱讀器可操作),結束後還給原本的元素
+  useEffect(() => {
+    if (!active) return;
+    const prev = document.activeElement as HTMLElement | null;
+    rootRef.current?.focus();
+    return () => {
+      if (prev && prev !== document.body && document.contains(prev)) prev.focus();
+    };
+  }, [active]);
+
   if (!current || tutorialRunning) return null; // 教學進行中暫停一般對話框，改由導覽覆蓋層主導
   const ch = CHARACTERS[current.speaker];
   const img = current.expr ? exprUrl(current.speaker, current.expr) : portraitUrl(current.speaker);
@@ -48,12 +60,22 @@ export default function DialogueLayer() {
   };
 
   return (
-    <div data-testid="dialogue-layer" onClick={handle} style={{ position: "absolute", inset: 0, zIndex: 50, display: "flex", alignItems: "flex-end", justifyContent: "center", paddingBottom: 24, cursor: "pointer" }}>
+    <div ref={rootRef} data-testid="dialogue-layer" role="dialog" aria-label={`${ch ? t(ch.name) : current.speaker}`} tabIndex={-1}
+      onClick={handle}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " " || e.key === "Escape") {
+          e.preventDefault();
+          handle();
+        }
+      }}
+      style={{ position: "absolute", inset: 0, zIndex: 50, display: "flex", alignItems: "flex-end", justifyContent: "center", paddingBottom: 24, cursor: "pointer", outline: "none" }}>
       <div style={{ display: "flex", alignItems: "flex-end", gap: 10 }}>
         <img src={img} alt={current.speaker} style={{ height: 200, width: "auto", objectFit: "contain", objectPosition: "bottom center", filter: "drop-shadow(0 10px 20px rgba(0,0,0,.6))" }} />
         <div style={{ width: 560, maxWidth: "92vw", background: "linear-gradient(180deg, rgba(20,50,63,.97), rgba(13,36,46,.98))", border: "1px solid rgba(214,167,84,.6)", borderRadius: 10, padding: "14px 18px", boxShadow: "0 16px 40px rgba(0,0,0,.6)" }}>
           <div style={{ fontFamily: FONT_SERIF, fontWeight: 900, fontSize: 16, color: C.goldText, marginBottom: 6 }}>{ch ? t(ch.name) : current.speaker}</div>
-          <div style={{ fontSize: 15, lineHeight: 1.6, color: C.cream, minHeight: 48 }}>
+          {/* 逐字動畫對螢幕閱讀器隱藏,另以整句 live region 一次朗讀 */}
+          <div role="status" aria-live="polite" style={{ position: "absolute", width: 1, height: 1, overflow: "hidden", clip: "rect(0 0 0 0)" }}>{full}</div>
+          <div aria-hidden="true" style={{ fontSize: 15, lineHeight: 1.6, color: C.cream, minHeight: 48 }}>
             {shown}
             {!done && <span style={{ opacity: 0.6 }}>▌</span>}
           </div>

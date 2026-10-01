@@ -85,6 +85,14 @@ async function dismissDialogue(page, maxClicks = 10) {
   const layer = page.locator('[data-testid="dialogue-layer"]');
   for (let i = 0; i < maxClicks; i++) {
     if (await layer.count() === 0) return;
+    if (i === 0) {
+      // 無障礙:對話層為 role=dialog、焦點自動落入,且可用鍵盤(Enter)推進
+      ok(await layer.getAttribute("role") === "dialog", "對話層應為 role=dialog");
+      ok(await layer.evaluate((el) => el === document.activeElement), "對話出現時焦點應落在對話層");
+      await page.keyboard.press("Enter");
+      await page.waitForTimeout(120);
+      continue;
+    }
     await layer.click();
     await page.waitForTimeout(120);
   }
