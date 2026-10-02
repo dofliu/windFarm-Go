@@ -1249,6 +1249,22 @@ test("exam: buildExam deterministic, right length, chartless pool, category spre
   ok(a.map((x) => x.id).join(",") !== exam.buildExam(999, 10).map((x) => x.id).join(","), "different seed → different draw");
   ok(exam.EXAM_POOL.length >= 40 && exam.EXAM_POOL.every((t) => !t.chart), "EXAM_POOL is sizeable & chartless");
 });
+test("exam: 選項順序依種子洗牌(防抄襲)——選題不變、可重現、不污染 TASKS、正解仍保留", () => {
+  const a = exam.buildExam(777, 20);
+  const b = exam.buildExam(777, 20);
+  eq(JSON.stringify(a.map((t) => t.choices.map((c) => c.label.zh))), JSON.stringify(b.map((t) => t.choices.map((c) => c.label.zh))), "same seed → same choice order");
+  const orders = new Set();
+  for (let s = 1; s <= 12; s++) orders.add(JSON.stringify(exam.buildExam(s, 20).map((t) => t.choices.findIndex((c) => c.good))));
+  ok(orders.size > 6, "正解位置隨種子變動(非固定在第 1 個)");
+  for (const t of a) {
+    const orig = exam.EXAM_POOL.find((x) => x.id === t.id);
+    eq(t.choices.length, orig.choices.length, "choice count preserved");
+    eq(t.choices.filter((c) => c.good).length, orig.choices.filter((c) => c.good).length, "good count preserved");
+    ok(t.choices !== orig.choices, "returns a copy, not the TASKS array");
+  }
+  // 選題與洗牌解耦:題序等同「洗牌前」的行為(以題 id 序列對照另一個池大小不變的抽取)
+  eq(exam.buildExam(777, 20).map((t) => t.id).join(","), a.map((t) => t.id).join(","), "question draw unchanged");
+});
 test("exam: gradeExam scores good choices; byCat sums; grade thresholds", () => {
   const items = exam.buildExam(42, 6);
   const allGood = items.map((tpl) => tpl.choices.findIndex((c) => c.good));

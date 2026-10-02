@@ -63,7 +63,7 @@ npm install
 npm run dev        # http://localhost:5173
 npm run build      # type-check + production build
 npm run typecheck  # tsc --noEmit
-npm test           # dependency-free game-logic tests (test/run.mjs) — 186 passing
+npm test           # dependency-free game-logic tests (test/run.mjs) — 187 passing
 npm run sim        # balance simulator: passive / active / full-crew strategies (test/sim.mjs)
 npm run stress     # concurrency/load simulation for the cloud leaderboard backend (test/stress.mjs)
 npm run e2e        # Playwright browser regression against the built app (test/e2e.mjs) — run `npm run build` first

@@ -539,12 +539,14 @@ async function main() {
 
       // 固定種子下，第 1 題（cat B，索引 0）與第 6 題（cat C，索引 5）故意選第 2 個選項（錯），
       // 其餘 8 題皆選第 1 個選項（正解）→ 8/10 正確。
+      // 選項順序依種子洗牌(防抄襲):各題正解索引同為離線算得(2 選項題,誤答索引 = 1 - 正解索引)。
+      const GOOD_IDX = [1, 1, 0, 1, 0, 1, 0, 1, 1, 1];
       const wrongAt = new Set([0, 5]);
       for (let i = 0; i < EXPECTED_TITLES.length; i++) {
         await dialog.getByText(EXPECTED_TITLES[i], { exact: true }).waitFor({ state: "visible", timeout: 5000 });
         const infoText = await dialog.textContent();
         ok(infoText?.includes(`${i + 1} / ${EXPECTED_TITLES.length}`) ?? false, `第 ${i + 1} 題應顯示題號 ${i + 1} / ${EXPECTED_TITLES.length}`);
-        await dialog.locator("button").nth(wrongAt.has(i) ? 1 : 0).click();
+        await dialog.locator("button").nth(wrongAt.has(i) ? 1 - GOOD_IDX[i] : GOOD_IDX[i]).click();
       }
 
       // 結果頁：驗證計分、等第、各類別對錯（標籤與 correct/n 緊鄰無間隔，見 ExamModal.tsx byCat 列渲染）、錯題覆盤。
@@ -576,8 +578,7 @@ async function main() {
       // 同一種子是完全決定性的純函式)，補上先前多輪盤點(2026-08-30 起「建議下一步優先序」)列為
       // 已知限制的「20 題」長度：離線用同一份 esbuild bundle 跑 buildExam(另一組固定種子, 20)
       // 算出全部 20 題與各選項對錯(見開發備忘)，刻意選一組與「10 題」樣本(1700000000000)不同的
-      // 時間戳(1700000000123)，避免兩個樣本巧合抽到相同題序。20 題全數只有 2 個選項(索引 0 為
-      // 正解、索引 1 為誤答)，事先決定第 1、11 題(索引 0、10)故意選錯、其餘 18 題選正解 →
+      // 時間戳(1700000000123)，避免兩個樣本巧合抽到相同題序。20 題全數只有 2 個選項(正解索引見 GOOD_IDX)，事先決定第 1、11 題(索引 0、10)故意選錯、其餘 18 題選正解 →
       // 18/20=90%「優異 A」，是先前「10 題」樣本(80%「良好 B」)之外尚未覆蓋過的等第。
       await page.locator('[role="button"]', { hasText: "⚙" }).first().click();
       const courseDialog = page.locator('[role="dialog"].wfg-modal-panel');
@@ -599,12 +600,14 @@ async function main() {
       await dialog.getByText(EXPECTED_TITLES[0], { exact: true }).waitFor({ state: "visible", timeout: 5000 });
       await page.evaluate(() => { Date.now = window.__wfgOrigDateNow; delete window.__wfgOrigDateNow; });
 
+      // 選項順序依種子洗牌(防抄襲):各題正解索引離線算得(全為 2 選項題,誤答索引 = 1 - 正解索引)。
+      const GOOD_IDX = [0, 1, 1, 0, 1, 0, 1, 0, 0, 1, 1, 0, 1, 1, 1, 1, 0, 0, 0, 1];
       const wrongAt = new Set([0, 10]);
       for (let i = 0; i < EXPECTED_TITLES.length; i++) {
         await dialog.getByText(EXPECTED_TITLES[i], { exact: true }).waitFor({ state: "visible", timeout: 5000 });
         const infoText = await dialog.textContent();
         ok(infoText?.includes(`${i + 1} / ${EXPECTED_TITLES.length}`) ?? false, `第 ${i + 1} 題應顯示題號 ${i + 1} / ${EXPECTED_TITLES.length}`);
-        await dialog.locator("button").nth(wrongAt.has(i) ? 1 : 0).click();
+        await dialog.locator("button").nth(wrongAt.has(i) ? 1 - GOOD_IDX[i] : GOOD_IDX[i]).click();
       }
 
       // 結果頁：驗證題數(20)、計分、等第、各類別對錯（G/A/F/C/D/E 各 3 題、B 2 題，兩題故意選錯分屬 G/C）、錯題覆盤。
