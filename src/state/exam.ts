@@ -27,7 +27,7 @@ function shuffle<T>(arr: T[], r: () => number): T[] {
   return arr;
 }
 
-// 抽 n 題,盡量「跨類別均衡」:各類別各自洗牌後 round-robin 輪流取一題,湊滿 n。
+// 抽 n 題,盡量「跨類別均衡」:各類別各自洗牌後 round-robin 輪流取一題,湊滿 n;並依種子打亂各題選項順序。
 // 回傳題目模板陣列(不足 n 時回全部可用題)。
 export function buildExam(seed: number, n: number = DEFAULT_EXAM_LENGTH, pool: TaskTemplate[] = EXAM_POOL): TaskTemplate[] {
   const r = rng(seed);
@@ -52,7 +52,9 @@ export function buildExam(seed: number, n: number = DEFAULT_EXAM_LENGTH, pool: T
       }
     }
   }
-  return out;
+  // 防抄襲:題目選出後,再以同一條偽隨機流把每題「選項順序」洗牌(回傳複本,不動 TASKS 原資料)。
+  // 放在選題之後 → 同一種子的選題結果與先前版本完全相同,只有選項排列不同;同一種子仍完全可重現。
+  return out.map((tpl) => ({ ...tpl, choices: shuffle([...tpl.choices], r) }));
 }
 
 // 某題是否答對:所選選項為 good(可能有多個 good 皆算對)。pick = -1(未答)算錯。
