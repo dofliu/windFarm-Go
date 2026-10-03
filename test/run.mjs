@@ -364,6 +364,15 @@ test("codex & components: every fault has a deep codex entry; components map 1:1
     eq(symptoms.length, new Set(symptoms).size, `component ${c.id} symptoms are distinct`);
   }
 });
+test("task catalog: 數位化/資安 5 題(SCADA/韌體/感測漂移/資料保存/長交期備品)存在且各有唯一正解", () => {
+  const ids = ["g_scada_intrusion", "c_firmware_update", "b_sensor_drift", "d_data_retention", "f_spare_lead_time"];
+  for (const id of ids) {
+    const t = tasks.TASKS.find((x) => x.id === id);
+    ok(t, `task ${id} exists`);
+    eq(t.choices.filter((c) => c.good).length, 1, `task ${id} has exactly one good choice`);
+  }
+  eq(tasks.TASKS.length, 197, "TASKS.length === 197");
+});
 test("ops-center task catalog: well-formed, balanced & generator stable (#2 expansion)", () => {
   const T = tasks.TASKS;
   ok(T.length >= 180, `tasks >= 180 (got ${T.length})`);

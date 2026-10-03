@@ -784,6 +784,32 @@ export const TASKS: TaskTemplate[] = [
   { id: "d_curtail_maint", cat: "D", xp: 60, title: { zh: "順勢限電維修", en: "Maintenance during curtailment" }, scenario: { zh: "電網預告明日某時段限電,正好有數件待排維修。", en: "The grid pre-announces a curtailment window tomorrow, and several repairs are queued." }, choices: [
     { label: { zh: "把停機維修排進限電時段執行", en: "Schedule the downtime into the curtailment window" }, good: true, feedback: { zh: "✓ 限電本就少發,順勢維修幾乎零額外發電損失。", en: "✓ Output is already curtailed — repairing then costs almost no extra generation." }, eff: { a: 3 } },
     { label: { zh: "限電時段照常發電、維修另找時段", en: "Keep exporting during curtailment; repair elsewhere" }, good: false, feedback: { zh: "△ 浪費了一個免費的停機窗,維修還要再吃別的發電。", en: "△ Wastes a free downtime window and spends real output later." }, eff: { a: -1, g: -60 } } ] },
+  // ── 數位化 / 資安(SCADA、韌體、資料品質):OT 網路與監控資料可信度的取捨 ──
+  { id: "g_scada_intrusion", cat: "G", xp: 90, title: { zh: "SCADA 異常連線", en: "SCADA anomalous login" }, scenario: { zh: "監控系統記錄到非維運時段、來自未知位址的遠端登入嘗試,風場控制網路疑遭探測。", en: "SCADA logs show remote login attempts from an unknown address outside maintenance hours — the control network may be under probing." }, choices: [
+    { label: { zh: "隔離可疑連線、保全日誌並通報資安窗口", en: "Isolate the session, preserve logs and notify the security contact" }, good: true, feedback: { zh: "✓ 先隔離再保全證據,避免攻擊擴散並利於事後鑑識。", en: "✓ Contain first and preserve evidence — limits spread and enables forensics." }, eff: { s: -1, b: -150_000 } },
+    { label: { zh: "直接關閉全場 SCADA 觀察情況", en: "Shut down the whole SCADA to see what happens" }, good: false, feedback: { zh: "✗ 全場失去監控與遠端控制,等於自己造成停機與安全風險。", en: "✗ Losing all monitoring and remote control causes its own downtime and safety risk." }, eff: { g: -300 } },
+    { label: { zh: "判斷是誤報,不處理", en: "Dismiss it as a false alarm" }, good: false, feedback: { zh: "✗ 未查證就忽略,真入侵將持續擴大。", en: "✗ Ignoring it unverified lets a real intrusion keep growing." }, eff: { s: 1 } },
+  ] },
+  { id: "c_firmware_update", cat: "C", xp: 70, title: { zh: "控制器韌體更新排程", en: "Controller firmware rollout" }, scenario: { zh: "原廠發布控制器韌體修補(含穩定性修正),全場數十台機組都需更新。", en: "The OEM released a controller firmware patch with stability fixes; dozens of units need it." }, choices: [
+    { label: { zh: "先於 1–2 台試點驗證,再分批滾動更新", en: "Pilot on 1–2 units, then roll out in batches" }, good: true, feedback: { zh: "✓ 分批更新可及早發現相容問題,並保留大部分機組持續發電。", en: "✓ Batching surfaces compatibility issues early while most units keep generating." }, eff: { a: 3, b: -120_000 } },
+    { label: { zh: "全場同時更新、一次做完", en: "Update every unit at once" }, good: false, feedback: { zh: "△ 若韌體有問題將同時癱瘓全場,風險集中。", en: "△ A bad build would take down the entire farm at once." }, eff: { g: -260 } },
+    { label: { zh: "不更新,等出問題再說", en: "Skip it until something breaks" }, good: false, feedback: { zh: "✗ 已知缺陷累積,可靠度與資安風險持續擴大。", en: "✗ Known defects accumulate, eroding reliability and security." }, eff: { a: -2 } },
+  ] },
+  { id: "b_sensor_drift", cat: "B", xp: 70, chart: "trend", title: { zh: "溫度感測器漂移", en: "Temperature sensor drift" }, scenario: { zh: "某機組齒輪箱油溫讀數緩慢高於鄰機 8°C,但油品與振動皆正常。", en: "One unit's gearbox oil temperature reads 8°C above its neighbours, yet oil and vibration look normal." }, choices: [
+    { label: { zh: "以手持量測交叉比對並校正/更換感測器", en: "Cross-check with a handheld probe, then recalibrate or replace the sensor" }, good: true, feedback: { zh: "✓ 多源交叉驗證才能分辨是真過熱還是感測器漂移。", en: "✓ Cross-validation separates true overheating from sensor drift." }, eff: { a: 2, b: -40_000 } },
+    { label: { zh: "照讀數直接降載保護", en: "Derate based on the reading alone" }, good: false, feedback: { zh: "△ 若只是漂移,白白損失發電量。", en: "△ If it is only drift, you lose generation for nothing." }, eff: { g: -150 } },
+    { label: { zh: "調高告警門檻讓警報消失", en: "Raise the alarm threshold to silence it" }, good: false, feedback: { zh: "✗ 掩蓋訊號,真實過熱時反而失去預警。", en: "✗ Masking the signal removes warning when real overheating comes." }, eff: { s: 1 } },
+  ] },
+  { id: "d_data_retention", cat: "D", xp: 60, chart: "bars", title: { zh: "運轉資料保存策略", en: "Operating data retention" }, scenario: { zh: "儲存空間逼近上限,需決定哪些歷史資料可以縮減。", en: "Storage is nearly full and you must decide which history to thin out." }, choices: [
+    { label: { zh: "高頻原始資料降採樣保存,事件前後與故障紀錄完整留存", en: "Down-sample raw high-rate data; keep full records around events and faults" }, good: true, feedback: { zh: "✓ 保留對 RUL 與根因分析最有價值的片段,兼顧成本。", en: "✓ Keeps what matters for RUL and root-cause analysis while controlling cost." }, eff: { b: -30_000 } },
+    { label: { zh: "全部歷史資料刪除重來", en: "Delete all history" }, good: false, feedback: { zh: "✗ 喪失趨勢基準,預測性維護無法進行。", en: "✗ Losing the baseline makes predictive maintenance impossible." }, eff: { a: -2 } },
+    { label: { zh: "無限擴充儲存、什麼都不刪", en: "Buy unlimited storage and delete nothing" }, good: false, feedback: { zh: "△ 成本持續膨脹,且大量雜訊反而拖慢分析。", en: "△ Costs balloon and noise slows analysis." }, eff: { b: -400_000 } },
+  ] },
+  { id: "f_spare_lead_time", cat: "F", xp: 70, title: { zh: "長交期備品備貨", en: "Long-lead spare" }, scenario: { zh: "某關鍵部件原廠交期長達 20 週,庫存僅剩 1 件。", en: "A critical part has a 20-week OEM lead time and only one is left in stock." }, choices: [
+    { label: { zh: "依故障率與交期設定安全庫存,提前下單補貨", en: "Set safety stock from failure rate and lead time, reorder early" }, good: true, feedback: { zh: "✓ 長交期品項要以交期涵蓋量決定補貨點,避免缺料久停。", en: "✓ Long-lead items need a reorder point that covers lead time to avoid extended stock-outs." }, eff: { b: -250_000, a: 2 } },
+    { label: { zh: "用完再訂", en: "Order only after it is used" }, good: false, feedback: { zh: "✗ 交期內的停機損失遠高於庫存成本。", en: "✗ Downtime during the lead time dwarfs the holding cost." }, eff: { g: -320 } },
+    { label: { zh: "一次囤放十件", en: "Stockpile ten at once" }, good: false, feedback: { zh: "△ 資金積壓並增加倉儲折舊。", en: "△ Ties up capital and adds storage depreciation." }, eff: { b: -900_000 } },
+  ] },
 ];
 
 export interface TaskInstance {
