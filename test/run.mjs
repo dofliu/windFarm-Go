@@ -371,7 +371,16 @@ test("task catalog: 數位化/資安 5 題(SCADA/韌體/感測漂移/資料保�
     ok(t, `task ${id} exists`);
     eq(t.choices.filter((c) => c.good).length, 1, `task ${id} has exactly one good choice`);
   }
-  eq(tasks.TASKS.length, 197, "TASKS.length === 197");
+  eq(tasks.TASKS.length, 202, "TASKS.length === 202");
+});
+
+test("task catalog: 現場實務 5 題(葉片侵蝕/潤滑/海況窗/落物/備品調撥)存在且各有唯一正解", () => {
+  const ids = ["a_blade_leading_edge", "c_grease_interval", "e_transfer_window", "g_medevac_delay", "d_spare_pooling"];
+  for (const id of ids) {
+    const t = tasks.TASKS.find((x) => x.id === id);
+    ok(t, `task ${id} exists`);
+    eq(t.choices.filter((c) => c.good).length, 1, `task ${id} has exactly one good choice`);
+  }
 });
 test("ops-center task catalog: well-formed, balanced & generator stable (#2 expansion)", () => {
   const T = tasks.TASKS;

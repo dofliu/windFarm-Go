@@ -810,6 +810,32 @@ export const TASKS: TaskTemplate[] = [
     { label: { zh: "用完再訂", en: "Order only after it is used" }, good: false, feedback: { zh: "✗ 交期內的停機損失遠高於庫存成本。", en: "✗ Downtime during the lead time dwarfs the holding cost." }, eff: { g: -320 } },
     { label: { zh: "一次囤放十件", en: "Stockpile ten at once" }, good: false, feedback: { zh: "△ 資金積壓並增加倉儲折舊。", en: "△ Ties up capital and adds storage depreciation." }, eff: { b: -900_000 } },
   ] },
+  // ── 現場實務(葉片/潤滑/高空/海況窗/備品共用):常見現場判斷 ──
+  { id: "a_blade_leading_edge", cat: "A", xp: 70, title: { zh: "葉片前緣侵蝕", en: "Blade leading-edge erosion" }, scenario: { zh: "巡檢發現多片葉片前緣出現砂礫狀侵蝕,尚未見結構裂紋。", en: "Inspection finds sand-blast style erosion on several blade leading edges, with no structural cracks yet." }, choices: [
+    { label: { zh: "排入下個風速較低的窗口做前緣修補與塗裝", en: "Schedule leading-edge repair and coating in the next low-wind window" }, good: true, feedback: { zh: "✓ 早期修補成本低,可避免氣動效率下滑與後續結構損傷。", en: "✓ Early repair is cheap and prevents aerodynamic loss and structural damage." }, eff: { a: 2, b: -180_000 } },
+    { label: { zh: "放著不管直到出現裂紋", en: "Ignore it until cracks appear" }, good: false, feedback: { zh: "✗ 侵蝕會加劇,拖到結構損傷時修復費用與停機都大增。", en: "✗ Erosion accelerates; waiting for structural damage multiplies cost and downtime." }, eff: { a: -2, g: -120 } },
+    { label: { zh: "立刻全場停機換新葉片", en: "Shut down and replace all blades immediately" }, good: false, feedback: { zh: "△ 反應過度,表面侵蝕不需整片更換。", en: "△ Overreaction — surface erosion does not need full blade replacement." }, eff: { b: -1_200_000, g: -300 } },
+  ] },
+  { id: "c_grease_interval", cat: "C", xp: 60, title: { zh: "潤滑脂補充週期", en: "Grease re-lubrication interval" }, scenario: { zh: "變槳與偏航軸承的潤滑脂補充已逾期,且近期為高風速季。", en: "Re-greasing of pitch and yaw bearings is overdue, and it is the high-wind season." }, choices: [
+    { label: { zh: "依手冊用量補脂並取樣檢查有無金屬屑", en: "Re-grease per the manual quantity and sample for metal particles" }, good: true, feedback: { zh: "✓ 定量補脂並檢視廢脂,可及早發現磨耗。", en: "✓ Correct quantity plus used-grease inspection catches wear early." }, eff: { a: 2, b: -30_000 } },
+    { label: { zh: "加倍灌脂以彌補逾期", en: "Double the grease to make up for the delay" }, good: false, feedback: { zh: "✗ 過量潤滑脂會造成壓力過高、損壞密封。", en: "✗ Over-greasing builds pressure and damages seals." }, eff: { a: -1, b: -60_000 } },
+    { label: { zh: "再延到下一次年度大修", en: "Defer to the next annual overhaul" }, good: false, feedback: { zh: "△ 高風速季軸承負荷大,缺油磨耗加速。", en: "△ High loads in this season accelerate wear without lubrication." }, eff: { a: -2 } },
+  ] },
+  { id: "e_transfer_window", cat: "E", xp: 70, title: { zh: "人員轉移海況窗", en: "Crew transfer weather window" }, scenario: { zh: "預報顯示上午浪高 1.2 m、午後升至 2.0 m,CTV 的轉移上限為 1.5 m。", en: "The forecast shows 1.2 m waves in the morning rising to 2.0 m in the afternoon; the CTV transfer limit is 1.5 m." }, choices: [
+    { label: { zh: "清晨出發、完成作業並於浪高升高前返航", en: "Depart early, finish, and return before the waves rise" }, good: true, feedback: { zh: "✓ 善用窗口並預留返航裕度,安全與產出兼顧。", en: "✓ Using the window with return margin balances safety and output." }, eff: { s: 1, a: 1 } },
+    { label: { zh: "午後再出發,趕在傍晚完成", en: "Leave in the afternoon and finish by evening" }, good: false, feedback: { zh: "✗ 作業與轉移落在超限海況,風險不可接受。", en: "✗ Transfers would fall in out-of-limit seas — unacceptable risk." }, eff: { s: -2 } },
+    { label: { zh: "整天取消不出海", en: "Cancel the whole day" }, good: false, feedback: { zh: "△ 浪費可用窗口,可能延誤待修機組。", en: "△ Wastes a usable window and delays queued repairs." }, eff: { g: -100 } },
+  ] },
+  { id: "g_medevac_delay", cat: "G", xp: 80, title: { zh: "傷患後送決策", en: "Casualty evacuation decision" }, scenario: { zh: "機艙內一名技師疑似扭傷腳踝並感到頭暈,無明顯出血,海況尚可。", en: "A technician in the nacelle has a suspected ankle sprain and feels dizzy; no visible bleeding, sea state acceptable." }, choices: [
+    { label: { zh: "停止作業、啟動緊急應變計畫並聯絡救援與醫療指導", en: "Stop work, activate the emergency response plan, and contact rescue and medical advice" }, good: true, feedback: { zh: "✓ 頭暈可能代表更嚴重傷勢,依 ERP 專業後送最安全。", en: "✓ Dizziness may signal a worse injury — professional evacuation per the ERP is safest." }, eff: { s: 2, g: -80 } },
+    { label: { zh: "讓他休息一下後繼續完成工單", en: "Let them rest briefly, then finish the job" }, good: false, feedback: { zh: "✗ 帶傷作業且症狀不明,風險倍增。", en: "✗ Working injured with unclear symptoms multiplies risk." }, eff: { s: -2 } },
+    { label: { zh: "請同事自行用小艇載他回港", en: "Have a colleague ferry them back by small boat" }, good: false, feedback: { zh: "✗ 未經評估的非專業後送可能加重傷勢並製造第二起事故。", en: "✗ Unassessed amateur transport may worsen injury and cause a second incident." }, eff: { s: -1 } },
+  ] },
+  { id: "d_spare_pooling", cat: "D", xp: 60, title: { zh: "備品共用調度", en: "Spare-part pooling" }, scenario: { zh: "鄰近風場有一件你方缺貨的備品閒置,對方願意有償調撥。", en: "A neighbouring farm has an idle spare you lack and is willing to lend it for a fee." }, choices: [
+    { label: { zh: "簽訂有償調撥並於用畢後補回庫存", en: "Agree a paid loan and restock after use" }, good: true, feedback: { zh: "✓ 以較低成本縮短停機,並維持雙方庫存平衡。", en: "✓ Cuts downtime cheaply and keeps both stocks balanced." }, eff: { a: 2, b: -90_000 } },
+    { label: { zh: "堅持等原廠補貨", en: "Insist on waiting for OEM resupply" }, good: false, feedback: { zh: "△ 等待期間持續停機,損失高於調撥費。", en: "△ Downtime while waiting exceeds the loan fee." }, eff: { g: -220 } },
+    { label: { zh: "未經同意直接取用", en: "Take it without agreement" }, good: false, feedback: { zh: "✗ 違反合規與信任,可能引發糾紛。", en: "✗ Breaches compliance and trust, inviting disputes." }, eff: { s: -1, b: -200_000 } },
+  ] },
 ];
 
 export interface TaskInstance {

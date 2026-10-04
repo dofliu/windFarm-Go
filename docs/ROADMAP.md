@@ -2,7 +2,9 @@
 
 > 以 zh-TW 為主、English secondary。本藍圖依現況（[STATUS.yaml](../STATUS.yaml)、[GAME_DESIGN.md](GAME_DESIGN.md)）盤點已完成與待辦，並提出**規劃方向**。
 > ⚠ 標示為**規劃中／推測（speculative）**者尚未實作，請勿當成現況；本文為**規劃**而非承諾。
-> Lead with zh-TW; English summaries follow. Last reviewed: 2026-10-03。
+> Lead with zh-TW; English summaries follow. Last reviewed: 2026-10-04。
+
+**✅ 內容擴充 · 現場實務判斷任務 +5 題**(2026-10-04 例行 session):`TASKS` 197→**202**。新增葉片前緣侵蝕(A)、潤滑脂補充週期(C)、人員轉移海況窗(E)、傷患後送決策(G)、備品共用調度(D),各題一個正解、雙語回饋;單元測試 188→**189**;`public/sw.js` v24→**v25**。typecheck/test/build 全綠(CI 月額度考量,未等 CI,自行覆核)。
 
 **✅ 內容擴充 · 數位化/資安判斷任務 +5 題**(2026-10-03 例行 session):`TASKS` 192→**197**。新增 SCADA 異常連線(G)、控制器韌體滾動更新(C)、感測器漂移交叉驗證(B)、運轉資料保存策略(D)、長交期備品安全庫存(F),每題一個正解、雙語回饋。`test/run.mjs` 新增 1 項(188);`public/sw.js` v23→v24。typecheck/test/build 本機全綠(CI 月額度緊,以本機為準)。
 
