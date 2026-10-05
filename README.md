@@ -43,7 +43,7 @@ An educational, *Uncharted-Waters*-style game that reframes offshore **wind-farm
 
 ### Teaching design
 - **Fault-diagnosis quiz + SOP** is the learning core: each fault is a SCADA alarm → 4-choice "what to check FIRST" quiz → 5-step SOP (first two pre-done: confirm weather window, LOTO lock-out).
-- **202-template judgment-task engine** across 7 categories (corrective / predictive / preventive / operational / weather / logistics / incident), most with trade-off choices, teaching feedback, and aid charts (trend / spectrum / radar).
+- **207-template judgment-task engine** across 7 categories (corrective / predictive / preventive / operational / weather / logistics / incident), most with trade-off choices, teaching feedback, and aid charts (trend / spectrum / radar).
 - **Exam Mode** — a standalone, no-hint, single-attempt assessment that draws a balanced cross-category set (10 or 20 questions), grades A–F with a per-category breakdown and a miss-review, and feeds knowledge-point mastery & the mistake log **without** touching your game score.
 - **Codex** of cleared faults for revision, **Course Mode** for teachers (assign a week's fault, lock graded missions by week), knowledge-point tagging, and a **cloud class leaderboard** (free, no backend) via a Google Apps Script Web App with server-side validation; nickname + class-code login, per-user save isolation.
 - **Instructor panel & mastery drill-down** — with a class + teacher code, read the whole class's latest progress (score / days / availability / generation), export CSV, and **click any student to drill into per-discipline / per-category accuracy** synced from the cloud (backend v2.2+).
@@ -63,7 +63,7 @@ npm install
 npm run dev        # http://localhost:5173
 npm run build      # type-check + production build
 npm run typecheck  # tsc --noEmit
-npm test           # dependency-free game-logic tests (test/run.mjs) — 189 passing
+npm test           # dependency-free game-logic tests (test/run.mjs) — 190 passing
 npm run sim        # balance simulator: passive / active / full-crew strategies (test/sim.mjs)
 npm run stress     # concurrency/load simulation for the cloud leaderboard backend (test/stress.mjs)
 npm run e2e        # Playwright browser regression against the built app (test/e2e.mjs) — run `npm run build` first
@@ -80,7 +80,7 @@ src/
 │  ├─ game.ts                    # core reducer: economy, SLA, fleet, scoring
 │  ├─ farms.ts                   # 4 farms × 24 units each
 │  ├─ events.ts / incidents.ts   # random events & fault catalogue (Fleet Ops)
-│  ├─ tasks.ts                   # 202-template judgment-task engine
+│  ├─ tasks.ts                   # 207-template judgment-task engine
 │  ├─ exam.ts                    # Exam Mode engine (draw / grade, pure & deterministic)
 │  ├─ mastery.ts / records.ts    # knowledge-point mastery, achievements & bests
 │  └─ profile.ts / course.ts     # login, class code, weekly unlock

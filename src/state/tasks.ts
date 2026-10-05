@@ -836,6 +836,32 @@ export const TASKS: TaskTemplate[] = [
     { label: { zh: "堅持等原廠補貨", en: "Insist on waiting for OEM resupply" }, good: false, feedback: { zh: "△ 等待期間持續停機,損失高於調撥費。", en: "△ Downtime while waiting exceeds the loan fee." }, eff: { g: -220 } },
     { label: { zh: "未經同意直接取用", en: "Take it without agreement" }, good: false, feedback: { zh: "✗ 違反合規與信任,可能引發糾紛。", en: "✗ Breaches compliance and trust, inviting disputes." }, eff: { s: -1, b: -200_000 } },
   ] },
+  // ── 判斷/監控/備援(變壓器/海纜/塔筒/海生物/人員疲勞):常見現場判斷 ──
+  { id: "a_pitch_battery_low", cat: "A", xp: 70, title: { zh: "變槳備援電池電壓偏低", en: "Pitch backup battery voltage low" }, scenario: { zh: "SCADA 警報顯示某機組變槳備援電池電壓低於門檻,機組仍在運轉。", en: "SCADA flags a turbine's pitch backup battery voltage below threshold; the turbine is still running." }, choices: [
+    { label: { zh: "安排最近窗口停機更換電池並測試緊急順槳", en: "Schedule the next window to replace the battery and test emergency feathering" }, good: true, feedback: { zh: "✓ 備援電池是失電時順槳的最後防線,須盡快恢復。", en: "✓ The backup battery is the last line of defence for feathering on power loss — restore it promptly." }, eff: { s: 2, b: -80_000 } },
+    { label: { zh: "先觀察一個月再說", en: "Watch it for a month first" }, good: false, feedback: { zh: "✗ 電網失電時可能無法順槳,有超速風險。", en: "✗ On grid loss the blades may fail to feather, risking overspeed." }, eff: { s: -2 } },
+    { label: { zh: "遠端重置警報後繼續運轉", en: "Reset the alarm remotely and keep running" }, good: false, feedback: { zh: "✗ 清除警報不等於修復,隱藏了安全隱患。", en: "✗ Clearing the alarm is not a repair and hides a safety hazard." }, eff: { s: -1, a: -1 } },
+  ] },
+  { id: "b_cable_strain_trend", cat: "B", xp: 70, title: { zh: "動態海纜應變趨勢", en: "Dynamic cable strain trend" }, scenario: { zh: "動態陣列海纜的光纖應變監測顯示,近兩週在某一段的應變峰值持續上升。", en: "Fibre strain monitoring on a dynamic array cable shows peak strain rising steadily in one section over two weeks." }, choices: [
+    { label: { zh: "排 ROV 檢查該段彎曲限制器與固定點,並比對海況紀錄", en: "Send an ROV to inspect that section's bend restrictors and clamps, and compare against sea-state records" }, good: true, feedback: { zh: "✓ 持續上升的趨勢常是固定件鬆脫或沖刷,早查早處理。", en: "✓ A rising trend often means loose fittings or scour — investigate early." }, eff: { a: 2, b: -150_000 } },
+    { label: { zh: "當作雜訊忽略", en: "Treat it as noise and ignore it" }, good: false, feedback: { zh: "✗ 海纜故障停機與修復代價極高。", en: "✗ A cable failure means very costly outage and repair." }, eff: { a: -2, g: -150 } },
+    { label: { zh: "直接整段更換海纜", en: "Replace the whole cable section outright" }, good: false, feedback: { zh: "△ 尚無損傷證據,先診斷再決定更換。", en: "△ No evidence of damage yet — diagnose before replacing." }, eff: { b: -3_000_000 } },
+  ] },
+  { id: "c_tower_flange_inspect", cat: "C", xp: 60, title: { zh: "塔筒法蘭螺栓抽檢", en: "Tower flange bolt spot check" }, scenario: { zh: "年度保養中抽檢塔筒法蘭螺栓,發現數顆預緊力低於規範。", en: "During annual service a spot check of tower flange bolts finds several below specified preload." }, choices: [
+    { label: { zh: "擴大抽檢範圍並依程序重新鎖固與記錄,追查原因", en: "Widen the check, re-torque per procedure, record it, and find the cause" }, good: true, feedback: { zh: "✓ 局部異常可能代表系統性問題,須擴大確認。", en: "✓ A local anomaly may signal a systemic issue — widen the check." }, eff: { a: 2, s: 1, b: -40_000 } },
+    { label: { zh: "只鎖緊那幾顆就收工", en: "Tighten just those bolts and finish" }, good: false, feedback: { zh: "△ 未確認整圈狀況,可能遺漏其他鬆動螺栓。", en: "△ Without checking the rest, other loose bolts may be missed." }, eff: { a: -1 } },
+    { label: { zh: "判定合格,不處理", en: "Declare it acceptable and do nothing" }, good: false, feedback: { zh: "✗ 預緊力不足會導致疲勞裂紋,威脅結構安全。", en: "✗ Low preload drives fatigue cracking and threatens structural safety." }, eff: { s: -2, a: -2 } },
+  ] },
+  { id: "e_jellyfish_intake", cat: "E", xp: 60, title: { zh: "水母群與冷卻進水", en: "Jellyfish bloom and cooling intake" }, scenario: { zh: "海況觀測發現大量水母聚集,維運船與升壓站的海水冷卻進水口有堵塞風險。", en: "A jellyfish bloom is reported near the site, risking blockage of vessel and substation seawater cooling intakes." }, choices: [
+    { label: { zh: "加強進水濾網巡檢頻率並準備反沖洗,必要時降載運轉", en: "Increase intake strainer checks, prepare backflushing, and derate if needed" }, good: true, feedback: { zh: "✓ 主動防堵並保留降載選項,避免過熱跳機。", en: "✓ Proactive blockage control with a derate option avoids overheating trips." }, eff: { a: 1, g: 40 } },
+    { label: { zh: "維持原巡檢頻率", en: "Keep the usual inspection frequency" }, good: false, feedback: { zh: "△ 堵塞會讓冷卻失效,後果比預防更貴。", en: "△ Blockage kills cooling; the consequence costs more than prevention." }, eff: { a: -1, g: -100 } },
+    { label: { zh: "關閉冷卻系統避免吸入", en: "Switch off cooling to avoid ingestion" }, good: false, feedback: { zh: "✗ 沒有冷卻設備會過熱損壞。", en: "✗ Without cooling, equipment overheats and is damaged." }, eff: { a: -2, b: -200_000 } },
+  ] },
+  { id: "f_shift_fatigue_handover", cat: "F", xp: 70, title: { zh: "連續輪班疲勞管理", en: "Consecutive shift fatigue" }, scenario: { zh: "颱風後搶修連續作業,數名技師已工作超過十四小時,仍有一項工單未完成。", en: "After a typhoon, repairs have run on and several technicians have worked over fourteen hours with one job unfinished." }, choices: [
+    { label: { zh: "安排換班與休息,未完工單做好交接並重新排程", en: "Rotate crews, rest the tired ones, hand over the job properly and reschedule" }, good: true, feedback: { zh: "✓ 疲勞是事故主因之一,良好交接讓工作安全延續。", en: "✓ Fatigue is a leading incident cause; a clean handover keeps work safe." }, eff: { s: 2, g: -60 } },
+    { label: { zh: "要求他們撐完再休息", en: "Ask them to push through before resting" }, good: false, feedback: { zh: "✗ 過勞作業大幅提高失誤與受傷風險。", en: "✗ Overwork sharply raises error and injury risk." }, eff: { s: -2 } },
+    { label: { zh: "全部收工且不做交接", en: "Stand everyone down with no handover" }, good: false, feedback: { zh: "△ 無交接會造成資訊斷層與重工。", en: "△ No handover creates an information gap and rework." }, eff: { a: -1, g: -80 } },
+  ] },
 ];
 
 export interface TaskInstance {
