@@ -371,11 +371,20 @@ test("task catalog: 數位化/資安 5 題(SCADA/韌體/感測漂移/資料保�
     ok(t, `task ${id} exists`);
     eq(t.choices.filter((c) => c.good).length, 1, `task ${id} has exactly one good choice`);
   }
-  eq(tasks.TASKS.length, 202, "TASKS.length === 202");
+  eq(tasks.TASKS.length, 207, "TASKS.length === 207");
 });
 
 test("task catalog: 現場實務 5 題(葉片侵蝕/潤滑/海況窗/落物/備品調撥)存在且各有唯一正解", () => {
   const ids = ["a_blade_leading_edge", "c_grease_interval", "e_transfer_window", "g_medevac_delay", "d_spare_pooling"];
+  for (const id of ids) {
+    const t = tasks.TASKS.find((x) => x.id === id);
+    ok(t, `task ${id} exists`);
+    eq(t.choices.filter((c) => c.good).length, 1, `task ${id} has exactly one good choice`);
+  }
+});
+
+test("task catalog: 監控/備援 5 題(變槳電池/海纜應變/法蘭螺栓/水母/輪班疲勞)存在且各有唯一正解", () => {
+  const ids = ["a_pitch_battery_low", "b_cable_strain_trend", "c_tower_flange_inspect", "e_jellyfish_intake", "f_shift_fatigue_handover"];
   for (const id of ids) {
     const t = tasks.TASKS.find((x) => x.id === id);
     ok(t, `task ${id} exists`);
