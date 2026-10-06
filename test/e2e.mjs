@@ -6,6 +6,7 @@ import { readFile, stat } from "node:fs/promises";
 import { extname, join, normalize } from "node:path";
 import { fileURLToPath } from "node:url";
 import { chromium } from "playwright";
+import { build } from "esbuild";
 
 const ROOT = fileURLToPath(new URL("..", import.meta.url));
 const DIST = join(ROOT, "dist");
@@ -17,6 +18,25 @@ const MIME = {
   ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".webp": "image/webp", ".mp4": "video/mp4",
   ".woff2": "font/woff2", ".ico": "image/x-icon", ".webmanifest": "application/manifest+json",
 };
+
+// ExamModal 樣本的預期值一律在執行時由同一份原始碼(buildExam/gradeExam)算出,不寫死題目標題/正解索引:
+// 先前把離線算得的題序硬編碼在測試裡,導致題庫(TASKS)每擴充一次就整段失敗(10/3 起 CI e2e 連續紅燈的主因)。
+let examLibPromise;
+function loadExamLib() {
+  examLibPromise ??= build({
+    stdin: { contents: 'export * from "./src/state/exam"; export { CAT_LABEL, TASKS } from "./src/state/tasks";', resolveDir: ROOT, loader: "ts" },
+    bundle: true, format: "esm", write: false, logLevel: "silent",
+  }).then((r) => import("data:text/javascript," + encodeURIComponent(r.outputFiles[0].text)));
+  return examLibPromise;
+}
+async function examPlan(seed, n, wrongAt) {
+  const lib = await loadExamLib();
+  const items = lib.buildExam(seed, n);
+  const goodIdx = items.map((tpl) => tpl.choices.findIndex((c) => c.good));
+  const picks = goodIdx.map((g, i) => (wrongAt.has(i) ? (g + 1) % items[i].choices.length : g));
+  const result = lib.gradeExam(items, picks);
+  return { items, titles: items.map((tpl) => tpl.title.zh), picks, result, catZh: (c) => lib.CAT_LABEL[c].zh, tasks: lib.TASKS, goodZh: (tpl) => lib.goodChoiceOf(tpl).label.zh };
+}
 
 async function ensureBuilt() {
   try { await stat(join(DIST, "index.html")); }
@@ -530,40 +550,31 @@ async function main() {
       const FIXED_NOW = 1700000000000; // 固定種子：離線算得抽出題序見下方 EXPECTED_TITLES
       await page.evaluate((ts) => { window.__wfgOrigDateNow = Date.now; Date.now = () => ts; }, FIXED_NOW);
       await dialog.getByRole("button", { name: "10 題" }).click();
-      const EXPECTED_TITLES = [
-        "葉片污染趨勢", "環境通報義務", "技師證照到期", "無人機風速上限", "加裝儲能評估",
-        "葉片清潔巡檢", "風速計故障", "葉片異音趨勢", "海底纜線勾掛", "碼頭吊掛資源",
-      ];
+      const plan = await examPlan(FIXED_NOW, 10, new Set([0, 5]));
+      const EXPECTED_TITLES = plan.titles;
       await dialog.getByText(EXPECTED_TITLES[0], { exact: true }).waitFor({ state: "visible", timeout: 5000 });
       await page.evaluate(() => { Date.now = window.__wfgOrigDateNow; delete window.__wfgOrigDateNow; });
 
-      // 固定種子下，第 1 題（cat B，索引 0）與第 6 題（cat C，索引 5）故意選第 2 個選項（錯），
-      // 其餘 8 題皆選第 1 個選項（正解）→ 8/10 正確。
-      // 選項順序依種子洗牌(防抄襲):各題正解索引同為離線算得(2 選項題,誤答索引 = 1 - 正解索引)。
-      const GOOD_IDX = [1, 1, 0, 1, 0, 1, 0, 1, 1, 1];
-      const wrongAt = new Set([0, 5]);
       for (let i = 0; i < EXPECTED_TITLES.length; i++) {
         await dialog.getByText(EXPECTED_TITLES[i], { exact: true }).waitFor({ state: "visible", timeout: 5000 });
         const infoText = await dialog.textContent();
         ok(infoText?.includes(`${i + 1} / ${EXPECTED_TITLES.length}`) ?? false, `第 ${i + 1} 題應顯示題號 ${i + 1} / ${EXPECTED_TITLES.length}`);
-        await dialog.locator("button").nth(wrongAt.has(i) ? 1 - GOOD_IDX[i] : GOOD_IDX[i]).click();
+        await dialog.locator("button").nth(plan.picks[i]).click();
       }
 
       // 結果頁：驗證計分、等第、各類別對錯（標籤與 correct/n 緊鄰無間隔，見 ExamModal.tsx byCat 列渲染）、錯題覆盤。
-      await dialog.getByText("80%", { exact: true }).waitFor({ state: "visible", timeout: 5000 });
+      const R = plan.result;
+      await dialog.getByText(`${R.pct}%`, { exact: true }).waitFor({ state: "visible", timeout: 5000 });
       const resultText = await dialog.textContent();
-      ok(resultText?.includes("良好 B"), "80% 應對應「良好 B」等第");
-      ok(resultText?.includes("答對 8 / 10"), "應顯示「答對 8 / 10」");
-      ok(resultText?.includes("監控判讀1/2"), "監控判讀（cat B，2 題對 1）各類別列應顯示 1/2");
-      ok(resultText?.includes("突發事件2/2"), "突發事件（cat G，2 題對 2）各類別列應顯示 2/2");
-      ok(resultText?.includes("供應鏈/人力2/2"), "供應鏈/人力（cat F，2 題對 2）各類別列應顯示 2/2");
-      ok(resultText?.includes("天候處置1/1"), "天候處置（cat E，1 題對 1）各類別列應顯示 1/1");
-      ok(resultText?.includes("營運決策1/1"), "營運決策（cat D，1 題對 1）各類別列應顯示 1/1");
-      ok(resultText?.includes("預防保養0/1"), "預防保養（cat C，1 題對 0）各類別列應顯示 0/1");
-      ok(resultText?.includes("故障搶修1/1"), "故障搶修（cat A，1 題對 1）各類別列應顯示 1/1");
-      ok(resultText?.includes("錯題覆盤 (2)"), "錯題覆盤區塊應顯示 2 題");
-      ok(resultText?.includes("葉片污染趨勢") && resultText?.includes("✓ 正解: 排程清潔回復效率"), "第 1 題錯題覆盤應揭示正解「排程清潔回復效率」");
-      ok(resultText?.includes("葉片清潔巡檢") && resultText?.includes("✓ 正解: 安排繩索清潔與前緣保護"), "第 6 題錯題覆盤應揭示正解「安排繩索清潔與前緣保護」");
+      ok(resultText?.includes(R.grade.label.zh), `${R.pct}% 應對應等第「${R.grade.label.zh}」`);
+      ok(resultText?.includes(`答對 ${R.correct} / ${R.total}`), `應顯示「答對 ${R.correct} / ${R.total}」`);
+      for (const [cat, cell] of Object.entries(R.byCat)) {
+        ok(resultText?.includes(`${plan.catZh(cat)}${cell.correct}/${cell.n}`), `${plan.catZh(cat)} 各類別列應顯示 ${cell.correct}/${cell.n}`);
+      }
+      ok(resultText?.includes(`錯題覆盤 (${R.wrong.length})`), `錯題覆盤區塊應顯示 ${R.wrong.length} 題`);
+      for (const w of R.wrong) {
+        ok(resultText?.includes(w.tpl.title.zh) && resultText?.includes(`✓ 正解: ${plan.goodZh(w.tpl)}`), `錯題覆盤應揭示「${w.tpl.title.zh}」的正解`);
+      }
 
       // 「再測一次」應重置回開始頁（phase→intro），確認未卡在結果頁。
       await dialog.getByRole("button", { name: "再測一次" }).click();
@@ -591,40 +602,32 @@ async function main() {
       const FIXED_NOW = 1700000000123; // 固定種子（與「10 題」樣本不同）：離線算得抽出題序見下方 EXPECTED_TITLES
       await page.evaluate((ts) => { window.__wfgOrigDateNow = Date.now; Date.now = () => ts; }, FIXED_NOW);
       await dialog.getByRole("button", { name: "20 題" }).click();
-      const EXPECTED_TITLES = [
-        "緊急全員撤離", "變槳失控", "學徒培訓計畫", "吊裝設備檢驗", "增容改造評估",
-        "大氣穩定低風切", "疲勞載荷累積", "海洋哺乳類進入工區", "發電機繞組過溫", "交接班落差",
-        "爬梯/防墜系統檢查", "售電合約談判", "無人機風速上限", "發電機絕緣下降", "海上醫療急症",
-        "潤滑泵故障", "單一供應商風險", "滅火系統測試", "天氣窗排程", "雷季作業規劃",
-      ];
+      const plan = await examPlan(FIXED_NOW, 20, new Set([0, 10]));
+      const EXPECTED_TITLES = plan.titles;
       await dialog.getByText(EXPECTED_TITLES[0], { exact: true }).waitFor({ state: "visible", timeout: 5000 });
       await page.evaluate(() => { Date.now = window.__wfgOrigDateNow; delete window.__wfgOrigDateNow; });
 
-      // 選項順序依種子洗牌(防抄襲):各題正解索引離線算得(全為 2 選項題,誤答索引 = 1 - 正解索引)。
-      const GOOD_IDX = [0, 1, 1, 0, 1, 0, 1, 0, 0, 1, 1, 0, 1, 1, 1, 1, 0, 0, 0, 1];
-      const wrongAt = new Set([0, 10]);
+      // 預期題序/正解索引/計分皆由 examPlan 在執行時算出(題庫擴充不影響本測試)。
       for (let i = 0; i < EXPECTED_TITLES.length; i++) {
         await dialog.getByText(EXPECTED_TITLES[i], { exact: true }).waitFor({ state: "visible", timeout: 5000 });
         const infoText = await dialog.textContent();
         ok(infoText?.includes(`${i + 1} / ${EXPECTED_TITLES.length}`) ?? false, `第 ${i + 1} 題應顯示題號 ${i + 1} / ${EXPECTED_TITLES.length}`);
-        await dialog.locator("button").nth(wrongAt.has(i) ? 1 - GOOD_IDX[i] : GOOD_IDX[i]).click();
+        await dialog.locator("button").nth(plan.picks[i]).click();
       }
 
       // 結果頁：驗證題數(20)、計分、等第、各類別對錯（G/A/F/C/D/E 各 3 題、B 2 題，兩題故意選錯分屬 G/C）、錯題覆盤。
-      await dialog.getByText("90%", { exact: true }).waitFor({ state: "visible", timeout: 5000 });
+      const R = plan.result;
+      await dialog.getByText(`${R.pct}%`, { exact: true }).waitFor({ state: "visible", timeout: 5000 });
       const resultText = await dialog.textContent();
-      ok(resultText?.includes("優異 A"), "90% 應對應「優異 A」等第（與「10 題」樣本的 80%「良好 B」不同）");
-      ok(resultText?.includes("答對 18 / 20"), "應顯示「答對 18 / 20」");
-      ok(resultText?.includes("突發事件2/3"), "突發事件（cat G，3 題對 2）各類別列應顯示 2/3");
-      ok(resultText?.includes("故障搶修3/3"), "故障搶修（cat A，3 題對 3）各類別列應顯示 3/3");
-      ok(resultText?.includes("供應鏈/人力3/3"), "供應鏈/人力（cat F，3 題對 3）各類別列應顯示 3/3");
-      ok(resultText?.includes("預防保養2/3"), "預防保養（cat C，3 題對 2）各類別列應顯示 2/3");
-      ok(resultText?.includes("營運決策3/3"), "營運決策（cat D，3 題對 3）各類別列應顯示 3/3");
-      ok(resultText?.includes("天候處置3/3"), "天候處置（cat E，3 題對 3）各類別列應顯示 3/3");
-      ok(resultText?.includes("監控判讀2/2"), "監控判讀（cat B，2 題對 2）各類別列應顯示 2/2");
-      ok(resultText?.includes("錯題覆盤 (2)"), "錯題覆盤區塊應顯示 2 題");
-      ok(resultText?.includes("緊急全員撤離") && resultText?.includes("✓ 正解: 依撤離程序有序撤回"), "第 1 題錯題覆盤應揭示正解「依撤離程序有序撤回」");
-      ok(resultText?.includes("爬梯/防墜系統檢查") && resultText?.includes("✓ 正解: 檢查防墜軌與安全裝置"), "第 11 題錯題覆盤應揭示正解「檢查防墜軌與安全裝置」");
+      ok(resultText?.includes(R.grade.label.zh), `${R.pct}% 應對應等第「${R.grade.label.zh}」`);
+      ok(resultText?.includes(`答對 ${R.correct} / ${R.total}`), `應顯示「答對 ${R.correct} / ${R.total}」`);
+      for (const [cat, cell] of Object.entries(R.byCat)) {
+        ok(resultText?.includes(`${plan.catZh(cat)}${cell.correct}/${cell.n}`), `${plan.catZh(cat)} 各類別列應顯示 ${cell.correct}/${cell.n}`);
+      }
+      ok(resultText?.includes(`錯題覆盤 (${R.wrong.length})`), `錯題覆盤區塊應顯示 ${R.wrong.length} 題`);
+      for (const w of R.wrong) {
+        ok(resultText?.includes(w.tpl.title.zh) && resultText?.includes(`✓ 正解: ${plan.goodZh(w.tpl)}`), `錯題覆盤應揭示「${w.tpl.title.zh}」的正解`);
+      }
 
       await dialog.getByRole("button", { name: "再測一次" }).click();
       await dialog.getByText("選擇題數", { exact: true }).waitFor({ state: "visible", timeout: 3000 });
@@ -652,33 +655,36 @@ async function main() {
       const dialog = page.locator('[role="dialog"].wfg-modal-panel');
       await dialog.waitFor({ state: "visible", timeout: 5000 });
       await page.evaluate(() => { Math.random = window.__wfgOrigRandom; delete window.__wfgOrigRandom; });
-      ok((await dialog.textContent())?.includes("順勢限電維修") ?? false, "固定種子下應抽到 TASKS 最後一筆模板「順勢限電維修」(cat D，2 個選項)");
+      // 預期內容由執行時的 TASKS 最後一筆算出(題庫擴充後不需手改本測試)。
+      const lastTask = (await examPlan(1, 1, new Set())).tasks.at(-1);
+      const LT = lastTask.title.zh;
+      const choiceZh = lastTask.choices.map((c) => c.label.zh);
+      const goodAt = lastTask.choices.findIndex((c) => c.good);
+      ok((await dialog.textContent())?.includes(LT) ?? false, `固定種子下應抽到 TASKS 最後一筆模板「${LT}」(${choiceZh.length} 個選項)`);
       const activeInfo = () => page.evaluate(() => {
         const el = document.activeElement;
         return { tag: el?.tagName ?? "", role: el?.getAttribute("role") ?? "", ariaLabel: el?.getAttribute("aria-label") ?? "", text: (el?.textContent ?? "").trim() };
       });
       // 面板內可聚焦元素（尚未作答）：關閉✕ + 🔬進階檢測「解鎖」原生 <button>（開局預算遠高於
-      // DIAG_COST，未 disabled）+ 2 個選項 = 4 個。
+      // DIAG_COST，未 disabled）+ N 個選項。
       eq((await activeInfo()).ariaLabel, "關閉", "彈窗開啟後 focus 應落在關閉✕");
       await page.keyboard.press("Tab");
       let info = await activeInfo();
       eq(info.tag, "BUTTON", "第 1 次 Tab 後應落在🔬進階檢測的「解鎖」原生 <button>");
       ok(info.text.includes("解鎖"), "第 1 次 Tab 後應落在「解鎖」按鈕");
+      for (let i = 0; i < choiceZh.length; i++) {
+        await page.keyboard.press("Tab");
+        info = await activeInfo();
+        eq(info.role, "button", `第 ${i + 2} 次 Tab 後應落在第 ${i + 1} 個判斷選項（role=button）`);
+        ok(info.text.includes(choiceZh[i]), `第 ${i + 2} 次 Tab 後應落在第 ${i + 1} 個選項`);
+      }
       await page.keyboard.press("Tab");
-      info = await activeInfo();
-      eq(info.role, "button", "第 2 次 Tab 後應落在第一個判斷選項（role=button，本輪新補）");
-      ok(info.text.includes("把停機維修排進限電時段執行"), "第 2 次 Tab 後應落在第一個選項");
-      await page.keyboard.press("Tab");
-      info = await activeInfo();
-      eq(info.role, "button", "第 3 次 Tab 後應落在第二個判斷選項（role=button，本輪新補）");
-      ok(info.text.includes("限電時段照常發電、維修另找時段"), "第 3 次 Tab 後應落在第二個選項");
-      await page.keyboard.press("Tab");
-      eq((await activeInfo()).ariaLabel, "關閉", "第 4 次 Tab 應循環回關閉✕（僅 4 個可聚焦元素）");
-      // 鍵盤 Enter 選取第一個選項（正解）：驗證 onKeyActivate 真的觸發 resolve、推進遊戲狀態、揭曉回饋。
-      await page.keyboard.press("Tab"); // 回到「解鎖」
-      await page.keyboard.press("Tab"); // 回到第一個選項
+      eq((await activeInfo()).ariaLabel, "關閉", `下一次 Tab 應循環回關閉✕（共 ${choiceZh.length + 2} 個可聚焦元素）`);
+      // 鍵盤 Enter 選取正解選項：驗證 onKeyActivate 真的觸發 resolve、推進遊戲狀態、揭曉回饋。
+      for (let i = 0; i < goodAt + 2; i++) await page.keyboard.press("Tab"); // 解鎖 → 各選項,停在正解
       await page.keyboard.press("Enter");
-      await page.getByText("順勢維修幾乎零額外發電損失", { exact: false }).waitFor({ state: "visible", timeout: 3000 });
+      const fb = lastTask.choices[goodAt].feedback.zh.replace(/^[✓✗△]\s*/, "").slice(0, 10);
+      await page.getByText(fb, { exact: false }).first().waitFor({ state: "visible", timeout: 3000 });
       ok(await page.getByText("下一個狀況", { exact: false }).count() > 0, "答題後應出現「下一個狀況」按鈕");
       await page.keyboard.press("Escape");
       await dialog.waitFor({ state: "hidden", timeout: 5000 }).catch(() => {});
