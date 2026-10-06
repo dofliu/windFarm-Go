@@ -862,6 +862,32 @@ export const TASKS: TaskTemplate[] = [
     { label: { zh: "要求他們撐完再休息", en: "Ask them to push through before resting" }, good: false, feedback: { zh: "✗ 過勞作業大幅提高失誤與受傷風險。", en: "✗ Overwork sharply raises error and injury risk." }, eff: { s: -2 } },
     { label: { zh: "全部收工且不做交接", en: "Stand everyone down with no handover" }, good: false, feedback: { zh: "△ 無交接會造成資訊斷層與重工。", en: "△ No handover creates an information gap and rework." }, eff: { a: -1, g: -80 } },
   ] },
+  // ── 事故調查/環境合規/氣象/備品/運維決策:現場常見判斷 ──
+  { id: "g_near_miss_report", cat: "G", xp: 70, title: { zh: "虛驚事件通報", en: "Near-miss reporting" }, scenario: { zh: "吊裝作業中一件工具險些從機艙平台滑落,無人受傷,現場同仁覺得「沒事就不必提」。", en: "During a lift a tool nearly slipped off the nacelle platform. Nobody was hurt, and the crew feels there is no need to mention it." }, choices: [
+    { label: { zh: "立即通報並記錄虛驚事件,檢討工具繫繩與作業區管制", en: "Report and log the near miss, and review tool tethering and exclusion-zone control" }, good: true, feedback: { zh: "✓ 虛驚是免費的警訊,通報才能在受傷前修正系統。", en: "✓ A near miss is a free warning — reporting lets you fix the system before someone is hurt." }, eff: { s: 2 } },
+    { label: { zh: "口頭提醒大家小心就好", en: "Just remind everyone verbally to be careful" }, good: false, feedback: { zh: "△ 沒有紀錄就無法追蹤與統計,同樣的情況會再發生。", en: "△ Without a record there is no tracking or trend analysis, so it will recur." }, eff: { s: -1 } },
+    { label: { zh: "不提,以免影響無事故天數", en: "Say nothing so the incident-free streak is not affected" }, good: false, feedback: { zh: "✗ 隱匿通報會破壞安全文化,小事故終將演變成大事故。", en: "✗ Hiding reports damages safety culture; small events eventually become serious ones." }, eff: { s: -2, a: -1 } },
+  ] },
+  { id: "e_bird_curtailment", cat: "E", xp: 60, title: { zh: "候鳥遷徙季節性停機", en: "Seasonal bird-migration curtailment" }, scenario: { zh: "環評許可條件要求候鳥過境高峰期在雷達偵測到大量鳥群時啟動停機,今晚雷達顯示鳥群正通過風場,但風況正好、電價偏高。", en: "Permit conditions require curtailment when radar detects heavy bird passage during migration peaks. Tonight radar shows a large flock crossing the site, while wind is good and prices are high." }, choices: [
+    { label: { zh: "依許可條件啟動停機,待鳥群通過後恢復並留存紀錄", en: "Curtail as the permit requires, resume once the flock passes, and keep the records" }, good: true, feedback: { zh: "✓ 環評承諾是營運的前提,留存紀錄也是合規證明。", en: "✓ Permit commitments are a condition of operating, and the records prove compliance." }, eff: { s: 1, g: -120 } },
+    { label: { zh: "為了發電收益照常運轉", en: "Keep running for the generation revenue" }, good: false, feedback: { zh: "✗ 違反許可條件可能遭裁罰甚至影響營運執照。", en: "✗ Breaching permit conditions risks penalties and even the operating licence." }, eff: { s: -1, g: 100, b: -500_000 } },
+    { label: { zh: "只停一半機組,其餘照轉", en: "Stop only half the turbines and keep the rest running" }, good: false, feedback: { zh: "△ 許可條件未允許自行折衷,須先與主管機關確認。", en: "△ The permit does not allow ad-hoc compromises — confirm with the authority first." }, eff: { a: -1, g: -30 } },
+  ] },
+  { id: "a_hydraulic_leak", cat: "A", xp: 70, title: { zh: "輪轂液壓油滲漏", en: "Hub hydraulic oil leak" }, scenario: { zh: "巡檢發現某機組輪轂內有液壓油滲漏痕跡,油位略低但尚在範圍內,機組運轉正常。", en: "An inspection finds hydraulic oil seepage inside a turbine hub; the level is slightly low but within range and the turbine runs normally." }, choices: [
+    { label: { zh: "找出滲漏點更換密封件,清潔油污並依規定處理廢油", en: "Locate the leak, replace the seal, clean up and dispose of waste oil properly" }, good: true, feedback: { zh: "✓ 根除漏點才能避免油位持續下降、污染環境與變槳失效。", en: "✓ Fixing the source stops falling oil level, pollution and pitch-system failure." }, eff: { a: 2, b: -50_000 } },
+    { label: { zh: "補油了事,不查漏點", en: "Top up the oil without finding the leak" }, good: false, feedback: { zh: "△ 治標不治本,漏油會繼續擴大。", en: "△ Treats the symptom only; the leak will keep growing." }, eff: { a: -1 } },
+    { label: { zh: "擦乾淨就當沒發生", en: "Wipe it clean and carry on" }, good: false, feedback: { zh: "✗ 漏油可能污染海域並違反環保規定,也會讓變槳系統失壓。", en: "✗ Leaks can pollute the sea, breach regulations and depressurise the pitch system." }, eff: { s: -1, a: -2 } },
+  ] },
+  { id: "d_spare_stock_level", cat: "D", xp: 60, title: { zh: "關鍵備品安全庫存", en: "Critical spare safety stock" }, scenario: { zh: "年度預算檢討時,財務建議把低周轉的大型備品(如齒輪箱軸承)庫存全部清掉以釋出資金,但該備品交期長達九個月。", en: "In the annual budget review, finance proposes clearing slow-moving large spares (e.g. gearbox bearings) to free cash, but the lead time is nine months." }, choices: [
+    { label: { zh: "依故障後果與交期保留關鍵備品,並與財務說明停機損失", en: "Keep critical spares based on failure consequence and lead time, and explain downtime cost to finance" }, good: true, feedback: { zh: "✓ 低周轉不等於不重要,缺料的停機損失遠高於持有成本。", en: "✓ Slow-moving is not unimportant; stock-out downtime far exceeds holding cost." }, eff: { a: 1, b: -100_000 } },
+    { label: { zh: "全部清掉,缺了再緊急採購", en: "Clear it all and buy in an emergency when needed" }, good: false, feedback: { zh: "✗ 九個月交期意味著一旦故障就長期停機。", en: "✗ A nine-month lead time means a long outage the moment it fails." }, eff: { a: -2, g: -200 } },
+    { label: { zh: "所有備品一律加倍囤貨", en: "Double-stock every spare" }, good: false, feedback: { zh: "△ 一體適用會占用過多資金與倉儲,應依風險分級。", en: "△ A blanket rule ties up cash and space; tier by risk instead." }, eff: { b: -400_000 } },
+  ] },
+  { id: "e_swell_transfer_limit", cat: "E", xp: 70, title: { zh: "長浪湧與登塔限制", en: "Long swell and access limits" }, scenario: { zh: "預報顯著波高僅 1.0 公尺,但長週期湧浪使船舶垂盪明顯,船長提醒登塔平台相對運動偏大。", en: "The forecast significant wave height is only 1.0 m, but a long-period swell makes the vessel heave noticeably, and the captain warns of large relative motion at the transfer point." }, choices: [
+    { label: { zh: "尊重船長判斷,延後登塔或改用運動補償設備,同步更新窗口評估", en: "Respect the captain's call, delay the transfer or use motion compensation, and update the window assessment" }, good: true, feedback: { zh: "✓ 只看波高會漏掉週期與湧浪,人員轉移須綜合評估。", en: "✓ Wave height alone misses period and swell; transfer needs a combined assessment." }, eff: { s: 2, g: -50 } },
+    { label: { zh: "波高在標準內,照原計畫登塔", en: "Wave height is within limits, transfer as planned" }, good: false, feedback: { zh: "✗ 相對運動過大易造成跌落或夾傷。", en: "✗ Excess relative motion risks falls and crush injuries." }, eff: { s: -3 } },
+    { label: { zh: "要求技師自行判斷是否登塔", en: "Leave it to each technician to decide whether to climb" }, good: false, feedback: { zh: "△ 責任不明確,應由船長與現場主管依程序決定。", en: "△ Accountability is unclear; the captain and site lead should decide per procedure." }, eff: { s: -1 } },
+  ] },
 ];
 
 export interface TaskInstance {
