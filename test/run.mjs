@@ -371,7 +371,7 @@ test("task catalog: 數位化/資安 5 題(SCADA/韌體/感測漂移/資料保�
     ok(t, `task ${id} exists`);
     eq(t.choices.filter((c) => c.good).length, 1, `task ${id} has exactly one good choice`);
   }
-  eq(tasks.TASKS.length, 207, "TASKS.length === 207");
+  eq(tasks.TASKS.length, 212, "TASKS.length === 212");
 });
 
 test("task catalog: 現場實務 5 題(葉片侵蝕/潤滑/海況窗/落物/備品調撥)存在且各有唯一正解", () => {
@@ -385,6 +385,14 @@ test("task catalog: 現場實務 5 題(葉片侵蝕/潤滑/海況窗/落物/備�
 
 test("task catalog: 監控/備援 5 題(變槳電池/海纜應變/法蘭螺栓/水母/輪班疲勞)存在且各有唯一正解", () => {
   const ids = ["a_pitch_battery_low", "b_cable_strain_trend", "c_tower_flange_inspect", "e_jellyfish_intake", "f_shift_fatigue_handover"];
+  for (const id of ids) {
+    const t = tasks.TASKS.find((x) => x.id === id);
+    ok(t, `task ${id} exists`);
+    eq(t.choices.filter((c) => c.good).length, 1, `task ${id} has exactly one good choice`);
+  }
+});
+test("task catalog: 事故/環境/備品/海況 5 題(虛驚通報/候鳥停機/液壓滲漏/安全庫存/長浪湧)存在且各有唯一正解", () => {
+  const ids = ["g_near_miss_report", "e_bird_curtailment", "a_hydraulic_leak", "d_spare_stock_level", "e_swell_transfer_limit"];
   for (const id of ids) {
     const t = tasks.TASKS.find((x) => x.id === id);
     ok(t, `task ${id} exists`);

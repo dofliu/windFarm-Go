@@ -1,11 +1,12 @@
 # 交接紀錄 — Session Handoff
 
-> 給下一個開發 session 的快速接手筆記。最後更新:**2026-10-05**(例行開發 session,內容擴充 · 監控/備援判斷任務 +5 題)。
+> 給下一個開發 session 的快速接手筆記。最後更新:**2026-10-06**(例行開發 session,內容擴充 · 事故/環境/備品/海況判斷任務 +5 題)。
 > 完整藍圖見 [ROADMAP.md](ROADMAP.md);設計權威版見 [GAME_DESIGN.md](GAME_DESIGN.md)(§14 項目 5 機組健康度/§17 出海決策/§18 人力・軸承/§19 測驗・掌握度・母港);每機健康度/RUL 設計草案見 [RUL_DESIGN.md](RUL_DESIGN.md);專案現況見 `../STATUS.yaml`;文件地圖見 [docs/README.md](README.md);**專案慣例速查見 `../CLAUDE.md`**。
-> 測試數以 `npm test` 實跑為準(目前 **190**);判斷任務題數以 `TASKS.length` 為準(**207**);另有 Playwright UI 迴歸測試 `npm run e2e`(**38** 項)。
+> 測試數以 `npm test` 實跑為準(目前 **191**);判斷任務題數以 `TASKS.length` 為準(**212**);另有 Playwright UI 迴歸測試 `npm run e2e`(**38** 項)。
 
 ## 目前狀態
-- 本輪(2026-10-05,例行開發 session):**內容擴充 · 監控/備援判斷任務 +5 題**——無未合併 PR。`TASKS` 202→207(新增題 id:`a_pitch_battery_low`/`b_cable_strain_trend`/`c_tower_flange_inspect`/`e_jellyfish_intake`/`f_shift_fatigue_handover`),單元測試 189→**190**,`public/sw.js` v25→**v26**。typecheck/test/build 全綠。**下一步**:Exam 教師發布/雲端報告(需後端)、內容編輯器、戰情室停機折抵現金開關(需先確認經濟平衡)、RUL Stage 4(選配)。
+- 本輪(2026-10-06,例行開發 session):**內容擴充 · 事故/環境/備品/海況判斷任務 +5 題**——無未合併 PR。`TASKS` 207→212(新增題 id:`g_near_miss_report`/`e_bird_curtailment`/`a_hydraulic_leak`/`d_spare_stock_level`/`e_swell_transfer_limit`),單元測試 190→**191**,`public/sw.js` v26→**v27**。typecheck/test/build 全綠。**下一步**:Exam 教師發布/雲端報告(需後端)、內容編輯器、戰情室停機折抵現金開關(需先確認經濟平衡)、RUL Stage 4(選配);內容擴充已連續多輪,建議改做其他項目。
+- 前一輪(2026-10-05,例行開發 session):**內容擴充 · 監控/備援判斷任務 +5 題**——無未合併 PR。`TASKS` 202→207(新增題 id:`a_pitch_battery_low`/`b_cable_strain_trend`/`c_tower_flange_inspect`/`e_jellyfish_intake`/`f_shift_fatigue_handover`),單元測試 189→**190**,`public/sw.js` v25→**v26**。typecheck/test/build 全綠。**下一步**:Exam 教師發布/雲端報告(需後端)、內容編輯器、戰情室停機折抵現金開關(需先確認經濟平衡)、RUL Stage 4(選配)。
 - 前一輪(2026-10-04,例行開發 session):**內容擴充 · 現場實務判斷任務 +5 題**——`TASKS` 197→202(`a_blade_leading_edge`/`c_grease_interval`/`e_transfer_window`/`g_medevac_delay`/`d_spare_pooling`),單元測試 188→**189**,`public/sw.js` v24→**v25**。typecheck/test/build 全綠。**下一步**:Exam 教師發布/雲端報告(需後端)、內容編輯器、戰情室停機折抵現金開關(需先確認經濟平衡)、RUL Stage 4(選配)。
 - 前一輪(2026-10-03,例行開發 session):**內容擴充 · 數位化/資安判斷任務 +5 題**——無未合併 PR。`TASKS` 192→197(新增題 id:`g_scada_intrusion`/`c_firmware_update`/`b_sensor_drift`/`d_data_retention`/`f_spare_lead_time`),單元測試 187→**188**,`public/sw.js` v23→**v24**。typecheck/test/build 全綠。**下一步**:Exam 教師發布/雲端報告(需後端)、內容編輯器、戰情室停機折抵現金開關(需先與擁有者確認經濟平衡)、RUL Stage 4(選配)。
 - 前一輪(2026-10-02,例行開發 session):**Exam 進階版 · 選項順序依種子洗牌(防抄襲)**——無未合併 PR。`buildExam` 選題後再洗牌各題選項(複本、選題結果不變、同種子可重現);單元測試 186→**187**;e2e 兩個 ExamModal 樣本改用離線算得 `GOOD_IDX` 點選(38 項不變)。`public/sw.js` v22→**v23**。typecheck/test/build/e2e 本機全綠。**下一步**:Exam 教師發布/雲端報告(需後端)、內容編輯器、戰情室停機折抵現金開關、RUL Stage 4(選配)。

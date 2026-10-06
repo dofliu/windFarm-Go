@@ -2,7 +2,9 @@
 
 > 以 zh-TW 為主、English secondary。本藍圖依現況（[STATUS.yaml](../STATUS.yaml)、[GAME_DESIGN.md](GAME_DESIGN.md)）盤點已完成與待辦，並提出**規劃方向**。
 > ⚠ 標示為**規劃中／推測（speculative）**者尚未實作，請勿當成現況；本文為**規劃**而非承諾。
-> Lead with zh-TW; English summaries follow. Last reviewed: 2026-10-05。
+> Lead with zh-TW; English summaries follow. Last reviewed: 2026-10-06。
+
+**✅ 內容擴充 · 事故/環境/備品/海況判斷任務 +5 題**(2026-10-06 例行 session):`TASKS` 207→**212**。新增虛驚事件通報(G)、候鳥遷徙季節性停機(E)、輪轂液壓油滲漏(A)、關鍵備品安全庫存(D)、長浪湧與登塔限制(E),各題一個正解、雙語回饋;單元測試 190→**191**;`public/sw.js` v26→**v27**。typecheck/test/build 全綠(CI 月額度考量,未等 CI,自行覆核)。
 
 **✅ 內容擴充 · 監控/備援判斷任務 +5 題**(2026-10-05 例行 session):`TASKS` 202→**207**。新增變槳備援電池電壓偏低(A)、動態海纜應變趨勢(B)、塔筒法蘭螺栓抽檢(C)、水母群與冷卻進水(E)、連續輪班疲勞管理(F),各題一個正解、雙語回饋;單元測試 189→**190**;`public/sw.js` v25→**v26**。typecheck/test/build 全綠(CI 月額度考量,以本機覆核為準)。
 
