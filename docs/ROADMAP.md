@@ -2,7 +2,7 @@
 
 > 以 zh-TW 為主、English secondary。本藍圖依現況（[STATUS.yaml](../STATUS.yaml)、[GAME_DESIGN.md](GAME_DESIGN.md)）盤點已完成與待辦，並提出**規劃方向**。
 > ⚠ 標示為**規劃中／推測（speculative）**者尚未實作，請勿當成現況；本文為**規劃**而非承諾。
-> Lead with zh-TW; English summaries follow. Last reviewed: 2026-10-06。
+> Lead with zh-TW; English summaries follow. Last reviewed: 2026-10-07。
 
 **✅ 內容擴充 · 事故/環境/備品/海況判斷任務 +5 題**(2026-10-06 例行 session):`TASKS` 207→**212**。新增虛驚事件通報(G)、候鳥遷徙季節性停機(E)、輪轂液壓油滲漏(A)、關鍵備品安全庫存(D)、長浪湧與登塔限制(E),各題一個正解、雙語回饋;單元測試 190→**191**;`public/sw.js` v26→**v27**。typecheck/test/build 全綠(CI 月額度考量,未等 CI,自行覆核)。
 
@@ -147,7 +147,7 @@
 
 **立即可做（免後端）**
 - **Playwright UI 迴歸測試擴充** — ✅ 首批（2026-09-01，登入/訪客/教學跳過/調度中心彈窗 focus trap）、交易所/出海/維修畫面擴充（2026-09-02）、加班搶修（`#rush`）分支（2026-09-03）、風場戰情室/母港建設彈窗 focus trap（2026-09-04）、營運趨勢彈窗 focus trap（2026-09-05）、課程模式彈窗 focus trap（2026-09-06）、機具工坊彈窗 focus trap（2026-09-07）、風場建置番外篇彈窗鍵盤操作補完（2026-09-08）、登入畫面鍵盤操作補完 + `TeacherModal` 樣本新增（2026-09-09）、頂欄（TopBar/MobileBar）鍵盤操作補完 + 修正串接開啟彈窗焦點遺失迴歸（2026-09-10）、個人檔案（ProfileModal）彈窗 focus trap（2026-09-11）、案例檔（CaseFileModal）彈窗 focus trap（2026-09-12）、自由營運中心（OpsCenterModal）判斷任務選項卡鍵盤操作補完（2026-09-13）、獨立測驗模式（ExamModal）作答頁/結果頁（2026-09-14）、自由營運中心案例演練（`kind:"case"`）分支（2026-09-15）、個人檔案（ProfileModal）「已作答/有錯題」狀態 + 錯題本主動回想完整互動流程（2026-09-16）、TeacherModal「查詢結果」狀態（2026-09-17）、`FacilityModal` 6 種 kind 全數覆蓋（2026-09-18〜09-22）、獨立測驗模式（ExamModal）「20 題」長度樣本（2026-09-23）皆已完成，共 **38** 項（`npm run e2e` + CI `e2e` job）；後續可再挑 `ExamModal` 其他種子排列（優先序較低），或涵蓋大型組件大修/審慎返港再規劃（`#carry`，需處理跨日天氣重擲的非決定性）等分支路徑。
-- **戰情室停機折抵「現金」收入的設定開關** — 目前停機只折抵淨發電；提供設定把戰情室層接入售電現金流（需確認經濟平衡）。
+- ~~**戰情室停機折抵「現金」收入的設定開關**~~ — ✅ 查核後結案（2026-10-07，無需實作）：`advance()` 的售電收入 = 運轉中機組發電 × `ELECTRICITY_PRICE`，故障/維修機組本就不進帳，停機已直接折抵現金；另設開關只會與既有設計（GAME_DESIGN §8「無雙重計算」）重複扣款。原條目描述過時。
 - **每機獨立健康度 / RUL 預測性維護** — ✅ 設計草案已完成（2026-09-24，詳見 [RUL_DESIGN.md](RUL_DESIGN.md)：資料模型、與既有機制整合點、分 4 階段實作計畫）；✅ **Stage 1（資料骨架 + 純展示）已完成（2026-09-25）**：`Turbine.wear`/`age` 欄位、每日累積(含故障加速)、定檢/計畫保養/維修完工下修、戰情室風險徽章展示,不動故障挑選機率與經濟平衡。✅ **Stage 2（接上故障挑選權重）已完成（2026-09-26）**：`faultTurbines`/戰情室逐日新故障選取改依 `wear` 加權抽樣（`pickWeightedByWear`，高 wear 越容易被抽中、保留下限機率、全場 wear 相同時退化為近似均勻分布），`OPS_INSPECT`/`SCHEDULED_SERVICE`/`FINISH_REPAIR` 的下修效果首次真正影響故障率；`test/run.mjs` 新增 5 項統計驗證斷言（共 180 全綠），`npm run sim` 重新校正確認相對排序（passive≪active<full-crew）與梯度健康（較 Stage 2 上線前略為擴大，符合預期），免調整平衡常數。下一輪建議接續 **Stage 3（單機定檢動作 + `diagLevel` 真數值接軌）**。
 - **無障礙延伸（後續）** — ✅ 工單循環鍵盤操作、✅ 全部彈窗 focus trap（開啟時 focus 移入、Tab/Shift+Tab 侷限循環於面板內、Esc 關閉並歸還焦點）皆已完成（見上）；尚待：更全面色盲配色審查、對話／音效字幕與旁白。
 
