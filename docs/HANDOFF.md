@@ -5,6 +5,7 @@
 > 測試數以 `npm test` 實跑為準(目前 **191**);判斷任務題數以 `TASKS.length` 為準(**212**);另有 Playwright UI 迴歸測試 `npm run e2e`(**38** 項)。
 
 ## 目前狀態
+- 本輪(2026-10-07,例行開發 session):**backlog 盤點 · 純文件**——無未合併 PR。查核「戰情室停機折抵現金開關」發現原條目過時(停機已折抵現金),予以結案。剩餘項目皆需後端/擁有者決策或屬選配(Exam 教師發布/雲端報告、內容編輯器、RUL Stage 4),建議擁有者補充 ROADMAP 後再推進。無 app 程式碼變動,`sw.js` 免動。
 - 本輪(2026-10-06,例行開發 session,補充):**修復 main 上 CI e2e 連續紅燈**——10/3 起 `e2e` job 每次失敗(`check` job 綠):根因是 `test/e2e.mjs` 把 ExamModal 抽題結果(題序/正解索引/分數)與「TASKS 最後一筆模板」硬編碼,題庫每擴充一次就整段失敗並連鎖拖垮後續彈窗測試。改為執行時以 esbuild 打包 `src/state/exam.ts`/`tasks.ts`,由 `buildExam`/`gradeExam`/`TASKS` 動態算出預期值(`examPlan()`),之後擴充題庫不需改 e2e。本機 `npm run e2e` 38/38 全綠。純測試改動,`sw.js` 免動。
 - 本輪(2026-10-06,例行開發 session):**內容擴充 · 事故/環境/備品/海況判斷任務 +5 題**——無未合併 PR。`TASKS` 207→212(新增題 id:`g_near_miss_report`/`e_bird_curtailment`/`a_hydraulic_leak`/`d_spare_stock_level`/`e_swell_transfer_limit`),單元測試 190→**191**,`public/sw.js` v26→**v27**。typecheck/test/build 全綠。**下一步**:Exam 教師發布/雲端報告(需後端)、內容編輯器、戰情室停機折抵現金開關(需先確認經濟平衡)、RUL Stage 4(選配);內容擴充已連續多輪,建議改做其他項目。
 - 前一輪(2026-10-05,例行開發 session):**內容擴充 · 監控/備援判斷任務 +5 題**——無未合併 PR。`TASKS` 202→207(新增題 id:`a_pitch_battery_low`/`b_cable_strain_trend`/`c_tower_flange_inspect`/`e_jellyfish_intake`/`f_shift_fatigue_handover`),單元測試 189→**190**,`public/sw.js` v25→**v26**。typecheck/test/build 全綠。**下一步**:Exam 教師發布/雲端報告(需後端)、內容編輯器、戰情室停機折抵現金開關(需先確認經濟平衡)、RUL Stage 4(選配)。
@@ -83,7 +84,7 @@
 
 ### 立即可做(免後端)
 - **Playwright UI 迴歸測試擴充** — ✅ 首批(2026-09-01,登入/訪客/教學跳過/調度中心彈窗 focus trap)、交易所/出海/維修畫面擴充(2026-09-02)、加班搶修分支(2026-09-03)、風場戰情室/母港建設彈窗 focus trap(2026-09-04)、營運趨勢彈窗 focus trap(2026-09-05)、課程模式彈窗 focus trap(2026-09-06)、機具工坊彈窗 focus trap(2026-09-07)、風場建置番外篇彈窗鍵盤操作補完(2026-09-08)、登入畫面鍵盤操作補完 + `TeacherModal` 樣本新增(2026-09-09)、頂欄鍵盤操作補完(2026-09-10)、個人檔案(`ProfileModal`)彈窗 focus trap(2026-09-11)、案例檔(`CaseFileModal`)彈窗 focus trap(2026-09-12)、自由營運中心(`OpsCenterModal`)判斷任務選項卡鍵盤操作補完(2026-09-13)、獨立測驗模式(`ExamModal`)作答頁/結果頁(2026-09-14)、自由營運中心案例演練(`kind:"case"`)分支(2026-09-15)、個人檔案(`ProfileModal`)「已作答/有錯題」狀態 + 錯題本主動回想完整互動流程(2026-09-16)、TeacherModal「查詢結果」狀態 + 個別學生掌握度鑽取鍵盤操作補完(2026-09-17)、`FacilityModal` 設施「圖鑑」(kind="codex")CodexCard 鍵盤操作補完(2026-09-18)、`FacilityModal` 設施「風場拓展」(kind="farms")focus trap 樣本新增(2026-09-19,見上)皆已完成,共 **34** 項,CI `e2e` job 已覆蓋;後續可再挑剩餘的 `ExamModal` 的「20 題」長度/其他種子排列,或 `FacilityModal` 剩餘 3 種 kind(技師公會/船隊整備廠/排行)中的代表性樣本(`FacilityModal(kind="tech")` 需先解決候選名單隨機抽取導致可聚焦元素數量不穩定的問題;`kind="vessel"` 可聚焦元素數依賴開局預算與購置成本相對大小,需先確認插入時間點),或涵蓋大型組件大修(#overhaul)/審慎返港再規劃(#carry,需處理跨日天氣重擲的非決定性)等目前尚未走過的分支路徑。
-- **戰情室停機折抵「現金」收入的設定開關** — 目前停機只折抵淨發電(少賺+扣分);提供設定把戰情室層也接入售電現金流(需與設計者確認經濟平衡)。
+- ~~戰情室停機折抵「現金」收入的設定開關~~ — 2026-10-07 查核結案:停機本就直接折抵售電現金(見 GAME_DESIGN §8),再加開關會重複扣款,無需實作。
 - **每機獨立健康度 / RUL 預測性維護** — 由全場 `fleetHealth` 延伸到每台機組的健康指標與剩餘壽命(Remaining Useful Life)建模,深化 CBM/預測性維護教學。中大型工作,建議先出設計草案再動手。
 - **無障礙延伸(後續)** — ✅ 工單循環鍵盤操作(Tab/Enter)、✅ 全部彈窗 focus trap(開啟時 focus 移入、Tab/Shift+Tab 侷限循環、Esc 關閉並歸還焦點)皆已完成(2026-08-31,見上);尚待:更全面的色盲友善配色審查、對話/音效字幕與旁白。
 
